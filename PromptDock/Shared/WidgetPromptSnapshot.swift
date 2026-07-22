@@ -9,22 +9,48 @@ struct WidgetPromptSnapshot: Codable, Hashable, Identifiable {
     let isFavorite: Bool
 }
 
+private final class BuiltInCategoryBundleToken: NSObject {}
+
 enum BuiltInCategoryPresentation {
+    private static let localizationBundle = Bundle(
+        for: BuiltInCategoryBundleToken.self
+    )
+
     static func displayName(
         for categoryName: String,
         locale: Locale = .autoupdatingCurrent
     ) -> String {
         switch categoryName {
         case "Teaching":
-            String(localized: "Teaching", locale: locale)
+            String(
+                localized: "Teaching",
+                bundle: localizationBundle,
+                locale: locale
+            )
         case "Coding":
-            String(localized: "Coding", locale: locale)
+            String(
+                localized: "Coding",
+                bundle: localizationBundle,
+                locale: locale
+            )
         case "AI":
-            String(localized: "AI", locale: locale)
+            String(
+                localized: "AI",
+                bundle: localizationBundle,
+                locale: locale
+            )
         case "Writing":
-            String(localized: "Writing", locale: locale)
+            String(
+                localized: "Writing",
+                bundle: localizationBundle,
+                locale: locale
+            )
         case "Uncategorized":
-            String(localized: "Uncategorized", locale: locale)
+            String(
+                localized: "Uncategorized",
+                bundle: localizationBundle,
+                locale: locale
+            )
         default:
             categoryName
         }
