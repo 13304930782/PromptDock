@@ -16,41 +16,48 @@ enum BuiltInCategoryPresentation {
         for: BuiltInCategoryBundleToken.self
     )
 
+    private static func localizedString(
+        for key: String,
+        locale: Locale
+    ) -> String {
+        let preferredLocalizations = Bundle.preferredLocalizations(
+            from: localizationBundle.localizations,
+            forPreferences: [locale.identifier]
+        )
+
+        guard
+            let localization = preferredLocalizations.first,
+            let path = localizationBundle.path(
+                forResource: localization,
+                ofType: "lproj"
+            ),
+            let bundle = Bundle(path: path)
+        else {
+            return key
+        }
+
+        return bundle.localizedString(
+            forKey: key,
+            value: key,
+            table: nil
+        )
+    }
+
     static func displayName(
         for categoryName: String,
         locale: Locale = .autoupdatingCurrent
     ) -> String {
         switch categoryName {
         case "Teaching":
-            String(
-                localized: "Teaching",
-                bundle: localizationBundle,
-                locale: locale
-            )
+            localizedString(for: "Teaching", locale: locale)
         case "Coding":
-            String(
-                localized: "Coding",
-                bundle: localizationBundle,
-                locale: locale
-            )
+            localizedString(for: "Coding", locale: locale)
         case "AI":
-            String(
-                localized: "AI",
-                bundle: localizationBundle,
-                locale: locale
-            )
+            localizedString(for: "AI", locale: locale)
         case "Writing":
-            String(
-                localized: "Writing",
-                bundle: localizationBundle,
-                locale: locale
-            )
+            localizedString(for: "Writing", locale: locale)
         case "Uncategorized":
-            String(
-                localized: "Uncategorized",
-                bundle: localizationBundle,
-                locale: locale
-            )
+            localizedString(for: "Uncategorized", locale: locale)
         default:
             categoryName
         }
