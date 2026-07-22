@@ -62,10 +62,7 @@ final class MenuBarController: NSObject {
             return
         }
 
-        let languageRawValue = UserDefaults.standard.string(
-            forKey: AppLanguage.storageKey
-        ) ?? AppLanguage.system.rawValue
-        let language = AppLanguage(rawValue: languageRawValue) ?? .system
+        let language = AppPreferences.selectedLanguage
         popover.contentSize = NSSize(width: 410, height: 88)
         popover.contentViewController = NSHostingController(
             rootView: QuickSearchView(
@@ -110,10 +107,7 @@ final class QuickSearchPanelController: NSObject, NSWindowDelegate {
 
     func show() {
         let panel = makePanelIfNeeded()
-        let languageRawValue = UserDefaults.standard.string(
-            forKey: AppLanguage.storageKey
-        ) ?? AppLanguage.system.rawValue
-        let language = AppLanguage(rawValue: languageRawValue) ?? .system
+        let language = AppPreferences.selectedLanguage
         resize(panel, to: 88, animated: false)
         panel.contentViewController = NSHostingController(
             rootView: QuickSearchView(
@@ -251,28 +245,20 @@ final class AppRuntime: ObservableObject {
         guard !hasStarted else { return }
         hasStarted = true
         menuBarController.setVisible(
-            UserDefaults.standard.bool(forKey: AppPreferences.showMenuBar)
+            AppPreferences.isMenuBarVisible
         )
         hotKeyService.setEnabled(
-            UserDefaults.standard.bool(
-                forKey: AppPreferences.globalQuickSearchEnabled
-            )
+            AppPreferences.isGlobalQuickSearchEnabled
         )
     }
 
     func setGlobalQuickSearchEnabled(_ enabled: Bool) {
-        UserDefaults.standard.set(
-            enabled,
-            forKey: AppPreferences.globalQuickSearchEnabled
-        )
+        AppPreferences.isGlobalQuickSearchEnabled = enabled
         hotKeyService.setEnabled(enabled)
     }
 
     func setMenuBarVisible(_ isVisible: Bool) {
-        UserDefaults.standard.set(
-            isVisible,
-            forKey: AppPreferences.showMenuBar
-        )
+        AppPreferences.isMenuBarVisible = isVisible
         menuBarController.setVisible(isVisible)
     }
 

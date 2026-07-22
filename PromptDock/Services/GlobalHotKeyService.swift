@@ -146,33 +146,126 @@ enum HotKeyConflictStatus: Equatable {
 }
 
 @MainActor
-final class GlobalHotKeyService: ObservableObject {
-    @Published private(set) var combination: HotKeyCombination
-    @Published private(set) var conflictStatus: HotKeyConflictStatus = .disabled
+protocol GlobalHotKeyRegistering: AnyObject {
+    var onTrigger: (() -> Void)? { get set }
+    func register(_ combination: HotKeyCombination) -> OSStatus
+    func unregister()
+}
 
+@MainActor
+final class CarbonGlobalHotKeyRegistrar: GlobalHotKeyRegistering {
     var onTrigger: (() -> Void)?
 
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
-    private var isEnabled = false
+    private let identifier = EventHotKeyID(
+        signature: CarbonGlobalHotKeyRegistrar.fourCharacterCode("PDOC"),
+        id: UInt32.random(in: 1...UInt32.max)
+    )
 
     init() {
-        if let data = UserDefaults.standard.data(
-            forKey: AppPreferences.globalQuickSearchHotKey
-        ), let saved = try? JSONDecoder().decode(
-            HotKeyCombination.self,
-            from: data
-        ) {
-            combination = saved
-        } else {
-            combination = .defaultQuickSearch
-        }
         installEventHandler()
     }
 
     deinit {
         if let hotKeyRef { UnregisterEventHotKey(hotKeyRef) }
         if let eventHandlerRef { RemoveEventHandler(eventHandlerRef) }
+    }
+
+    func register(_ combination: HotKeyCombination) -> OSStatus {
+        unregister()
+        var registeredRef: EventHotKeyRef?
+        let status = RegisterEventHotKey(
+            combination.keyCode,
+            combination.modifiers,
+            identifier,
+            GetApplicationEventTarget(),
+            OptionBits(kEventHotKeyExclusive),
+            &registeredRef
+        )
+        if status == noErr {
+            hotKeyRef = registeredRef
+        }
+        return status
+    }
+
+    func unregister() {
+        guard let hotKeyRef else { return }
+        UnregisterEventHotKey(hotKeyRef)
+        self.hotKeyRef = nil
+    }
+
+    private func installEventHandler() {
+        var specification = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: UInt32(kEventHotKeyPressed)
+        )
+        let pointer = Unmanaged.passUnretained(self).toOpaque()
+        InstallEventHandler(
+            GetApplicationEventTarget(),
+            { _, event, userData -> OSStatus in
+                guard let userData, let event else {
+                    return OSStatus(eventNotHandledErr)
+                }
+                let registrar = Unmanaged<CarbonGlobalHotKeyRegistrar>
+                    .fromOpaque(userData)
+                    .takeUnretainedValue()
+                var receivedID = EventHotKeyID()
+                let status = GetEventParameter(
+                    event,
+                    EventParamName(kEventParamDirectObject),
+                    EventParamType(typeEventHotKeyID),
+                    nil,
+                    MemoryLayout<EventHotKeyID>.size,
+                    nil,
+                    &receivedID
+                )
+                guard status == noErr,
+                      receivedID.signature == registrar.identifier.signature,
+                      receivedID.id == registrar.identifier.id
+                else {
+                    return OSStatus(eventNotHandledErr)
+                }
+                Task { @MainActor in registrar.onTrigger?() }
+                return OSStatus(noErr)
+            },
+            1,
+            &specification,
+            pointer,
+            &eventHandlerRef
+        )
+    }
+
+    private static func fourCharacterCode(_ value: String) -> OSType {
+        value.utf8.reduce(0) { partialResult, byte in
+            (partialResult << 8) | OSType(byte)
+        }
+    }
+}
+
+@MainActor
+final class GlobalHotKeyService: ObservableObject {
+    @Published private(set) var combination: HotKeyCombination
+    @Published private(set) var conflictStatus: HotKeyConflictStatus = .disabled
+
+    var onTrigger: (() -> Void)? {
+        didSet { registrar.onTrigger = onTrigger }
+    }
+
+    private let registrar: GlobalHotKeyRegistering
+    private var hasRegisteredHotKey = false
+    private var isEnabled = false
+
+    init(registrar: GlobalHotKeyRegistering? = nil) {
+        self.registrar = registrar ?? CarbonGlobalHotKeyRegistrar()
+        if let saved = AppPreferences.loadGlobalQuickSearchHotKey() {
+            combination = saved
+        } else {
+            combination = .defaultQuickSearch
+        }
+        self.registrar.onTrigger = { [weak self] in
+            self?.onTrigger?()
+        }
     }
 
     func setEnabled(_ enabled: Bool) {
@@ -211,7 +304,7 @@ final class GlobalHotKeyService: ObservableObject {
     }
 
     private func rejectCandidate(with status: HotKeyConflictStatus) -> Bool {
-        if isEnabled, hotKeyRef == nil {
+        if isEnabled, !hasRegisteredHotKey {
             _ = register(combination)
         }
         conflictStatus = status
@@ -235,70 +328,25 @@ final class GlobalHotKeyService: ObservableObject {
     }
 
     private func register(_ candidate: HotKeyCombination) -> Bool {
-        var registeredRef: EventHotKeyRef?
-        let identifier = EventHotKeyID(
-            signature: Self.signature,
-            id: 1
-        )
-        let status = RegisterEventHotKey(
-            candidate.keyCode,
-            candidate.modifiers,
-            identifier,
-            GetApplicationEventTarget(),
-            OptionBits(kEventHotKeyExclusive),
-            &registeredRef
-        )
-        guard status == noErr, let registeredRef else {
+        let status = registrar.register(candidate)
+        guard status == noErr else {
+            hasRegisteredHotKey = false
             conflictStatus = .registrationFailed(status)
             return false
         }
-        hotKeyRef = registeredRef
+        hasRegisteredHotKey = true
         conflictStatus = .available
         return true
     }
 
     private func unregisterCurrent() {
-        guard let hotKeyRef else { return }
-        UnregisterEventHotKey(hotKeyRef)
-        self.hotKeyRef = nil
-    }
-
-    private func installEventHandler() {
-        var specification = EventTypeSpec(
-            eventClass: OSType(kEventClassKeyboard),
-            eventKind: UInt32(kEventHotKeyPressed)
-        )
-        let pointer = Unmanaged.passUnretained(self).toOpaque()
-        InstallEventHandler(
-            GetApplicationEventTarget(),
-            { _, event, userData -> OSStatus in
-                guard let userData, event != nil else {
-                    return OSStatus(eventNotHandledErr)
-                }
-                let service = Unmanaged<GlobalHotKeyService>
-                    .fromOpaque(userData)
-                    .takeUnretainedValue()
-                Task { @MainActor in service.onTrigger?() }
-                return OSStatus(noErr)
-            },
-            1,
-            &specification,
-            pointer,
-            &eventHandlerRef
-        )
+        registrar.unregister()
+        hasRegisteredHotKey = false
     }
 
     private func persist(_ combination: HotKeyCombination) {
-        guard let data = try? JSONEncoder().encode(combination) else {
-            return
-        }
-        UserDefaults.standard.set(
-            data,
-            forKey: AppPreferences.globalQuickSearchHotKey
-        )
+        try? AppPreferences.saveGlobalQuickSearchHotKey(combination)
     }
-
-    private static let signature: OSType = 0x50444F43
 
     private static let internalShortcuts: Set<HotKeyCombination> = [
         HotKeyCombination(keyCode: UInt32(kVK_ANSI_N), modifiers: UInt32(cmdKey)),

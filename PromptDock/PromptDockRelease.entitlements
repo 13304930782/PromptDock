@@ -8,7 +8,7 @@
 	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>L96B6KHL5Y.PromptDock</string>
+		<string>$(PROMPTDOCK_APP_GROUP_IDENTIFIER)</string>
 	</array>
 </dict>
 </plist>

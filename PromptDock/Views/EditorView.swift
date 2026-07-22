@@ -2,6 +2,7 @@ import SwiftUI
 
 struct EditorView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
 
     private let prompt: Prompt?
     private let categories: [PromptCategory]
@@ -49,7 +50,13 @@ struct EditorView: View {
 
                     Picker("Category", selection: $category) {
                         ForEach(categoryOptions, id: \.self) { name in
-                            Text(LocalizedStringKey(name)).tag(name)
+                            Text(
+                                BuiltInCategoryPresentation.displayName(
+                                    for: name,
+                                    locale: locale
+                                )
+                            )
+                            .tag(name)
                         }
                     }
                 }
@@ -110,7 +117,8 @@ struct EditorView: View {
         var names = categories.map(\.name)
         if !category.isEmpty,
            !names.contains(where: {
-               $0.localizedCaseInsensitiveCompare(category) == .orderedSame
+               CategoryNameIdentity.normalized($0)
+                   == CategoryNameIdentity.normalized(category)
            }) {
             names.append(category)
         }

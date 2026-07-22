@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SidebarView: View {
+    @Environment(\.locale) private var locale
     @Binding var selection: PromptSection
     let categories: [PromptCategory]
     let onCreateCategory: (String, CategoryIconDraft) -> Void
@@ -86,14 +87,14 @@ struct SidebarView: View {
             isPresented: deletionIsPresented,
             presenting: categoryPendingDeletion
         ) { category in
-            Button("Delete “\(category.name)”", role: .destructive) {
+            Button("Delete “\(displayName(for: category))”", role: .destructive) {
                 onDeleteCategory(category)
                 categoryPendingDeletionID = nil
             }
             Button("Cancel", role: .cancel) {}
         } message: { category in
             Text(
-                "Prompts in “\(category.name)” will be kept and moved to another category."
+                "Prompts in “\(displayName(for: category))” will be kept and moved to another category."
             )
         }
     }
@@ -101,7 +102,7 @@ struct SidebarView: View {
     @ViewBuilder
     private func categoryLabel(_ category: PromptCategory) -> some View {
         Label {
-            Text(LocalizedStringKey(category.name))
+            Text(displayName(for: category))
         } icon: {
             CategoryIconView(category: category)
         }
@@ -138,6 +139,13 @@ struct SidebarView: View {
             Image(systemName: section.systemImage)
         }
             .tag(section)
+    }
+
+    private func displayName(for category: PromptCategory) -> String {
+        BuiltInCategoryPresentation.displayName(
+            for: category.name,
+            locale: locale
+        )
     }
 
     private func presentReorderHintIfNeeded() {

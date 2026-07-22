@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PromptDetailView: View {
+    @Environment(\.locale) private var locale
     let prompt: Prompt?
     let searchText: String
     let isCopied: Bool
@@ -28,7 +29,10 @@ struct PromptDetailView: View {
                         HStack(spacing: 16) {
                             Label {
                                 SearchHighlightedText(
-                                    text: prompt.category,
+                                    text: BuiltInCategoryPresentation.displayName(
+                                        for: prompt.category,
+                                        locale: locale
+                                    ),
                                     query: searchText
                                 )
                             } icon: {

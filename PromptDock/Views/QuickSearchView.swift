@@ -2,6 +2,8 @@ import SwiftData
 import SwiftUI
 
 struct QuickSearchView: View {
+    @Environment(\.locale) private var locale
+
     @Query(sort: \Prompt.updatedDate, order: .reverse)
     private var prompts: [Prompt]
 
@@ -12,6 +14,7 @@ struct QuickSearchView: View {
     @State private var selectedPromptID: UUID?
     @State private var copiedPromptID: UUID?
     @State private var errorMessage: String?
+    @State private var results: [Prompt] = []
     @FocusState private var isSearchFocused: Bool
 
     private let clipboardService = ClipboardService()
@@ -24,11 +27,14 @@ struct QuickSearchView: View {
         self.onPreferredHeightChange = onPreferredHeightChange
     }
 
-    private var results: [Prompt] {
-        Array(
-            PromptSearchService.results(in: prompts, query: query)
-                .prefix(12)
-        )
+    private var promptRevision: [PromptSearchRevision] {
+        prompts.map {
+            PromptSearchRevision(
+                id: $0.id,
+                updatedDate: $0.updatedDate,
+                category: $0.category
+            )
+        }
     }
 
     private var preferredHeight: CGFloat {
@@ -115,6 +121,7 @@ struct QuickSearchView: View {
         }
         .onAppear {
             query = ""
+            results = []
             selectedPromptID = nil
             onPreferredHeightChange(preferredHeight)
             Task { @MainActor in
@@ -123,7 +130,13 @@ struct QuickSearchView: View {
             }
         }
         .onChange(of: query) {
-            selectedPromptID = results.first?.id
+            refreshResults()
+        }
+        .onChange(of: promptRevision) {
+            refreshResults()
+        }
+        .onChange(of: locale.identifier) {
+            refreshResults()
         }
         .onChange(of: preferredHeight) { _, height in
             onPreferredHeightChange(height)
@@ -175,7 +188,12 @@ struct QuickSearchView: View {
                 Text(prompt.title)
                     .font(.body.weight(.semibold))
                     .lineLimit(1)
-                Text(prompt.category)
+                Text(
+                    BuiltInCategoryPresentation.displayName(
+                        for: prompt.category,
+                        locale: locale
+                    )
+                )
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -217,6 +235,20 @@ struct QuickSearchView: View {
         selectedPromptID = results[nextIndex].id
     }
 
+    private func refreshResults() {
+        results = PromptSearchService.results(
+            in: prompts,
+            query: query,
+            locale: locale,
+            limit: 12
+        )
+        if let selectedPromptID,
+           results.contains(where: { $0.id == selectedPromptID }) {
+            return
+        }
+        selectedPromptID = results.first?.id
+    }
+
     private func copyAndClose(_ prompt: Prompt) {
         guard clipboardService.copy(prompt.content) else {
             errorMessage = "PromptDock could not write to the clipboard."
@@ -229,4 +261,10 @@ struct QuickSearchView: View {
             onClose()
         }
     }
+}
+
+private struct PromptSearchRevision: Equatable {
+    let id: UUID
+    let updatedDate: Date
+    let category: String
 }

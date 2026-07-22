@@ -1,6 +1,7 @@
 import XCTest
 import SwiftData
 import AppKit
+import Carbon
 @testable import PromptDock
 
 final class PromptDockTests: XCTestCase {
@@ -391,12 +392,87 @@ final class PromptDockTests: XCTestCase {
         )
     }
 
-    func testWidgetSnapshotsRoundTripThroughSharedStore() throws {
-        let suiteName = "PromptDockTests.Widget.\(UUID().uuidString)"
-        guard let defaults = UserDefaults(suiteName: suiteName) else {
-            XCTFail("Unable to create test UserDefaults suite")
-            return
+    func testCategoryNameIdentityIsStableAcrossCaseAndDiacritics() {
+        XCTAssertEqual(
+            CategoryNameIdentity.normalized("  Résumé  "),
+            CategoryNameIdentity.normalized("resume")
+        )
+        XCTAssertEqual(
+            CategoryNameIdentity.normalized("编程"),
+            "编程"
+        )
+        XCTAssertNotEqual(
+            CategoryNameIdentity.normalized("I"),
+            CategoryNameIdentity.normalized("ı")
+        )
+    }
+
+    func testBoundedFileReaderAcceptsLimitAndRejectsOneExtraByte() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fileURL = directory.appendingPathComponent("input.bin")
+
+        let accepted = Data(repeating: 7, count: 128)
+        try accepted.write(to: fileURL)
+        XCTAssertEqual(
+            try BoundedFileReader.read(
+                url: fileURL,
+                maximumByteCount: 128
+            ),
+            accepted
+        )
+
+        try Data(repeating: 8, count: 129).write(to: fileURL)
+        XCTAssertThrowsError(
+            try BoundedFileReader.read(
+                url: fileURL,
+                maximumByteCount: 128
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? BoundedFileReaderError,
+                .fileTooLarge(maximumByteCount: 128)
+            )
         }
+    }
+
+    func testBoundedFileReaderUsesAlreadyOpenedFile() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fileURL = directory.appendingPathComponent("input.bin")
+        let original = Data("original".utf8)
+        try original.write(to: fileURL)
+
+        let handle = try FileHandle(forReadingFrom: fileURL)
+        defer { try? handle.close() }
+        try Data("replacement".utf8).write(to: fileURL, options: .atomic)
+
+        XCTAssertEqual(
+            try BoundedFileReader.read(
+                fileHandle: handle,
+                maximumByteCount: 32
+            ),
+            original
+        )
+    }
+
+    func testWidgetSnapshotsRoundTripThroughSharedStore() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = WidgetSnapshotStore(
+            fileURL: directory.appendingPathComponent("prompts.json")
+        )
 
         let snapshot = WidgetPromptSnapshot(
             id: UUID(),
@@ -407,13 +483,107 @@ final class PromptDockTests: XCTestCase {
             isFavorite: true
         )
 
-        try WidgetSharedStore.save([snapshot], to: defaults)
+        try store.save([snapshot])
+        XCTAssertEqual(try store.load(), [snapshot])
+
+        try Data("not json".utf8).write(to: store.fileURL)
+        XCTAssertThrowsError(try store.load())
+    }
+
+    func testBuiltInCategoryLocalizationAndLocalizedSearch() {
+        let chinese = Locale(identifier: "zh-Hans")
         XCTAssertEqual(
-            WidgetSharedStore.load(from: defaults),
-            [snapshot]
+            BuiltInCategoryPresentation.displayName(
+                for: "Coding",
+                locale: chinese
+            ),
+            "编程"
+        )
+        XCTAssertEqual(
+            BuiltInCategoryPresentation.displayName(
+                for: "My Category",
+                locale: chinese
+            ),
+            "My Category"
         )
 
-        defaults.removePersistentDomain(forName: suiteName)
+        let prompt = Prompt(
+            title: "Swift",
+            category: "Coding",
+            content: "Actors"
+        )
+        XCTAssertEqual(
+            PromptSearchService.results(
+                in: [prompt],
+                query: "编程",
+                locale: chinese
+            ).map(\.id),
+            [prompt.id]
+        )
+    }
+
+    func testLimitedSearchMatchesFullSearchPrefix() {
+        let prompts = (0..<10_000).map { index in
+            Prompt(
+                title: "Swift Result \(index)",
+                category: index.isMultiple(of: 2) ? "Coding" : "Teaching",
+                content: "A deterministic search result \(index)",
+                updatedDate: Date(timeIntervalSince1970: TimeInterval(index)),
+                isFavorite: index.isMultiple(of: 17)
+            )
+        }
+        let full = PromptSearchService.results(
+            in: prompts,
+            query: "Swift",
+            locale: Locale(identifier: "en")
+        )
+        let limited = PromptSearchService.results(
+            in: prompts,
+            query: "Swift",
+            locale: Locale(identifier: "en"),
+            limit: 12
+        )
+        XCTAssertEqual(limited.map(\.id), full.prefix(12).map(\.id))
+    }
+
+    @MainActor
+    func testHotKeyRegistrationFailureRestoresPreviousCombination() {
+        let registrar = FakeGlobalHotKeyRegistrar()
+        let service = GlobalHotKeyService(registrar: registrar)
+        service.setEnabled(true)
+        let previous = service.combination
+
+        registrar.nextStatus = -1
+        let candidate = HotKeyCombination(
+            keyCode: 40,
+            modifiers: UInt32(cmdKey | shiftKey)
+        )
+        XCTAssertFalse(service.apply(candidate))
+        XCTAssertEqual(service.combination, previous)
+        XCTAssertEqual(registrar.registered.last, previous)
+        guard case .registrationFailed(-1) = service.conflictStatus else {
+            XCTFail("Expected registration failure status")
+            return
+        }
+    }
+
+    @MainActor
+    func testBootstrapReportsModelContainerFailure() async {
+        struct TestFailure: Error {}
+        let bootstrap = AppBootstrapController {
+            throw TestFailure()
+        }
+
+        for _ in 0..<100 {
+            if case .failed = bootstrap.state { break }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+
+        guard case .failed(let failure) = bootstrap.state else {
+            XCTFail("Expected bootstrap failure")
+            return
+        }
+        XCTAssertFalse(failure.diagnosticDetails.isEmpty)
     }
 
     @MainActor
@@ -770,7 +940,7 @@ final class PromptDockTests: XCTestCase {
                 PromptDockBackup.PromptRecord(
                     id: existing.id,
                     title: "Updated Title",
-                    category: "Coding",
+                    category: " coding ",
                     content: "Updated content",
                     createdDate: existing.createdDate,
                     updatedDate: .now,
@@ -786,7 +956,19 @@ final class PromptDockTests: XCTestCase {
                     isFavorite: false
                 )
             ],
-            categories: []
+            categories: [
+                PromptDockBackup.CategoryRecord(
+                    id: UUID(),
+                    name: "Coding",
+                    systemImage: "chevron.left.forwardslash.chevron.right",
+                    sortOrder: 0,
+                    createdDate: .now,
+                    isBuiltIn: true,
+                    iconKind: .sfSymbol,
+                    iconEmoji: nil,
+                    iconImageData: nil
+                )
+            ]
         )
 
         _ = try BackupService.importBackup(
@@ -804,6 +986,10 @@ final class PromptDockTests: XCTestCase {
             "Updated Title"
         )
         XCTAssertTrue(prompts.first { $0.id == existing.id }?.isFavorite == true)
+        XCTAssertEqual(
+            prompts.first { $0.id == existing.id }?.category,
+            "Coding"
+        )
         XCTAssertTrue(categories.contains { $0.name == "Research" })
         XCTAssertTrue(categories.contains { $0.name == "Coding" })
     }
@@ -896,4 +1082,20 @@ final class PromptDockTests: XCTestCase {
         )
         XCTAssertEqual(migratedPrompts.map(\.id), [promptID])
     }
+}
+
+@MainActor
+private final class FakeGlobalHotKeyRegistrar: GlobalHotKeyRegistering {
+    var onTrigger: (() -> Void)?
+    var nextStatus: OSStatus = noErr
+    private(set) var registered: [HotKeyCombination] = []
+
+    func register(_ combination: HotKeyCombination) -> OSStatus {
+        registered.append(combination)
+        let status = nextStatus
+        nextStatus = noErr
+        return status
+    }
+
+    func unregister() {}
 }

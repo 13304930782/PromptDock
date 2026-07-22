@@ -119,12 +119,12 @@ enum CategoryService {
         in context: ModelContext
     ) throws {
         let existing = try context.fetch(FetchDescriptor<PromptCategory>())
-        var knownNames = Set(existing.map { normalizedKey($0.name) })
+        var knownNames = Set(existing.map { CategoryNameIdentity.normalized($0.name) })
         var nextOrder = (existing.map(\.sortOrder).max() ?? -1) + 1
         var insertedCategory = false
 
         for definition in defaultCategories {
-            guard knownNames.insert(normalizedKey(definition.name)).inserted
+            guard knownNames.insert(CategoryNameIdentity.normalized(definition.name)).inserted
             else { continue }
 
             context.insert(
@@ -140,11 +140,9 @@ enum CategoryService {
         }
 
         for prompt in prompts {
-            let name = prompt.category.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
+            let name = CategoryNameIdentity.trimmed(prompt.category)
             guard !name.isEmpty,
-                  knownNames.insert(normalizedKey(name)).inserted
+                  knownNames.insert(CategoryNameIdentity.normalized(name)).inserted
             else { continue }
 
             context.insert(
@@ -173,16 +171,15 @@ enum CategoryService {
         icon: CategoryIconDraft = .defaultEmoji,
         in context: ModelContext
     ) throws -> PromptCategory {
-        let name = proposedName.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
+        let name = CategoryNameIdentity.trimmed(proposedName)
         guard !name.isEmpty else {
             throw CategoryValidationError.missingName
         }
 
         let existing = try context.fetch(FetchDescriptor<PromptCategory>())
         guard !existing.contains(where: {
-            normalizedKey($0.name) == normalizedKey(name)
+            CategoryNameIdentity.normalized($0.name)
+                == CategoryNameIdentity.normalized(name)
         }) else {
             throw CategoryValidationError.duplicateName
         }
@@ -238,9 +235,7 @@ enum CategoryService {
             throw CategoryValidationError.builtInCategory
         }
 
-        let name = proposedName.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
+        let name = CategoryNameIdentity.trimmed(proposedName)
         guard !name.isEmpty else {
             throw CategoryValidationError.missingName
         }
@@ -248,19 +243,20 @@ enum CategoryService {
         let existing = try context.fetch(FetchDescriptor<PromptCategory>())
         guard !existing.contains(where: {
             $0.id != category.id
-                && normalizedKey($0.name) == normalizedKey(name)
+                && CategoryNameIdentity.normalized($0.name)
+                    == CategoryNameIdentity.normalized(name)
         }) else {
             throw CategoryValidationError.duplicateName
         }
 
-        let previousKey = normalizedKey(category.name)
+        let previousKey = CategoryNameIdentity.normalized(category.name)
         category.name = name
         if let icon {
             apply(icon, to: category)
         }
         let updatedDate = Date.now
 
-        for prompt in prompts where normalizedKey(prompt.category) == previousKey {
+        for prompt in prompts where CategoryNameIdentity.normalized(prompt.category) == previousKey {
             prompt.category = name
             prompt.updatedDate = updatedDate
         }
@@ -293,9 +289,9 @@ enum CategoryService {
                 }
                 return $0.sortOrder < $1.sortOrder
             }
-        let deletedKey = normalizedKey(category.name)
+        let deletedKey = CategoryNameIdentity.normalized(category.name)
         let affectedPrompts = prompts.filter {
-            normalizedKey($0.category) == deletedKey
+            CategoryNameIdentity.normalized($0.category) == deletedKey
         }
         var destination = remainingCategories.first
 
@@ -329,14 +325,6 @@ enum CategoryService {
             context.rollback()
             throw error
         }
-    }
-
-    private static func normalizedKey(_ name: String) -> String {
-        name.trimmingCharacters(in: .whitespacesAndNewlines)
-            .folding(
-                options: [.caseInsensitive, .diacriticInsensitive],
-                locale: .current
-            )
     }
 
     private static func apply(

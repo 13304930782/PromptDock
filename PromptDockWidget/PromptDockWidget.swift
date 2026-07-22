@@ -45,13 +45,14 @@ struct PromptDockWidgetProvider: TimelineProvider {
     private func entry() -> PromptDockWidgetEntry {
         PromptDockWidgetEntry(
             date: .now,
-            prompt: WidgetSharedStore.load().first
+            prompt: (try? WidgetSharedStore.load())?.first
         )
     }
 }
 
 struct PromptDockWidgetEntryView: View {
     @Environment(\.widgetFamily) private var family
+    @Environment(\.locale) private var locale
     let entry: PromptDockWidgetEntry
 
     var body: some View {
@@ -73,7 +74,12 @@ struct PromptDockWidgetEntryView: View {
                 Image(systemName: prompt.isFavorite ? "star.fill" : "text.bubble")
                     .foregroundStyle(.tint)
 
-                Text(prompt.category)
+                Text(
+                    BuiltInCategoryPresentation.displayName(
+                        for: prompt.category,
+                        locale: locale
+                    )
+                )
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

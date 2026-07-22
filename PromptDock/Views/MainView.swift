@@ -44,7 +44,10 @@ struct MainView: View {
     }
 
     private var visiblePrompts: [Prompt] {
-        viewModel.filteredPrompts(from: prompts)
+        viewModel.filteredPrompts(
+            from: prompts,
+            locale: selectedLanguage.locale
+        )
     }
 
     private var visiblePromptIDs: [UUID] {
@@ -108,7 +111,10 @@ struct MainView: View {
                 query: viewModel.searchText
             )
             count += SearchHighlighter.matchCount(
-                in: prompt.category,
+                in: BuiltInCategoryPresentation.displayName(
+                    for: prompt.category,
+                    locale: selectedLanguage.locale
+                ),
                 query: viewModel.searchText
             )
             count += SearchHighlighter.matchCount(
@@ -307,14 +313,23 @@ struct MainView: View {
         }
         .onAppear {
             ensureCategories()
-            viewModel.reconcileSelection(in: prompts)
+            viewModel.reconcileSelection(
+                in: prompts,
+                locale: selectedLanguage.locale
+            )
             WidgetSnapshotService.refresh(from: prompts)
         }
         .onChange(of: viewModel.selectedSection) {
-            viewModel.reconcileSelection(in: prompts)
+            viewModel.reconcileSelection(
+                in: prompts,
+                locale: selectedLanguage.locale
+            )
         }
         .onChange(of: visiblePromptIDs) {
-            viewModel.reconcileSelection(in: prompts)
+            viewModel.reconcileSelection(
+                in: prompts,
+                locale: selectedLanguage.locale
+            )
         }
         .onChange(of: widgetSnapshotRevision) {
             WidgetSnapshotService.refresh(from: prompts)

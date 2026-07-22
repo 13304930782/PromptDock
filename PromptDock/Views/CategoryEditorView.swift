@@ -165,9 +165,16 @@ struct CategoryEditorView: View {
             defer {
                 if hasAccess { url.stopAccessingSecurityScopedResource() }
             }
-            imageData = try CategoryImageProcessor.process(
-                Data(contentsOf: url, options: .mappedIfSafe)
-            )
+            let data: Data
+            do {
+                data = try BoundedFileReader.read(
+                    url: url,
+                    maximumByteCount: CategoryImageProcessor.maximumSourceByteCount
+                )
+            } catch BoundedFileReaderError.fileTooLarge {
+                throw CategoryImageError.fileTooLarge
+            }
+            imageData = try CategoryImageProcessor.process(data)
             iconKind = .localImage
         } catch {
             errorMessage = error.localizedDescription

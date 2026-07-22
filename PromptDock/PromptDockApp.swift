@@ -46,21 +46,11 @@ struct PromptDockApp: App {
     @AppStorage(AppLanguage.storageKey)
     private var languageRawValue = AppLanguage.system.rawValue
 
-    private let modelContainer: ModelContainer
-    @StateObject private var runtime: AppRuntime
+    @StateObject private var bootstrap: AppBootstrapController
 
     init() {
         AppPreferences.registerDefaults()
-        do {
-            let container = try DataService.makeModelContainer()
-            modelContainer = container
-            _runtime = StateObject(
-                wrappedValue: AppRuntime(modelContainer: container)
-            )
-        } catch {
-            fatalError("Unable to create the PromptDock model container: \(error)")
-        }
-
+        _bootstrap = StateObject(wrappedValue: AppBootstrapController())
     }
 
     private var selectedLanguage: AppLanguage {
@@ -69,11 +59,9 @@ struct PromptDockApp: App {
 
     var body: some Scene {
         WindowGroup("PromptDock", id: "main") {
-            MainView()
+            BootstrapMainView(bootstrap: bootstrap)
                 .environment(\.locale, selectedLanguage.locale)
-                .onAppear { runtime.start() }
         }
-        .modelContainer(modelContainer)
         .defaultSize(width: 1_080, height: 720)
         .windowResizability(.contentMinSize)
         .commands {
@@ -81,9 +69,54 @@ struct PromptDockApp: App {
         }
 
         Settings {
-            SettingsView(runtime: runtime)
+            BootstrapSettingsView(bootstrap: bootstrap)
                 .environment(\.locale, selectedLanguage.locale)
         }
-        .modelContainer(modelContainer)
+    }
+}
+
+private struct BootstrapMainView: View {
+    @ObservedObject var bootstrap: AppBootstrapController
+
+    var body: some View {
+        Group {
+            switch bootstrap.state {
+            case .loading:
+                ProgressView("Opening PromptDock…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .ready(let container, let runtime):
+                MainView()
+                    .modelContainer(container)
+                    .onAppear { runtime.start() }
+            case .failed(let failure):
+                StartupFailureView(
+                    failure: failure,
+                    onRetry: bootstrap.retry
+                )
+            }
+        }
+    }
+}
+
+private struct BootstrapSettingsView: View {
+    @ObservedObject var bootstrap: AppBootstrapController
+
+    var body: some View {
+        Group {
+            switch bootstrap.state {
+            case .loading:
+                ProgressView("Opening PromptDock…")
+                    .frame(width: 580, height: 450)
+            case .ready(let container, let runtime):
+                SettingsView(runtime: runtime)
+                    .modelContainer(container)
+            case .failed(let failure):
+                StartupFailureView(
+                    failure: failure,
+                    onRetry: bootstrap.retry
+                )
+                .frame(width: 580, height: 450)
+            }
+        }
     }
 }

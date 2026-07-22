@@ -330,15 +330,17 @@ private struct PrivacySettingsView: View {
                 }
             }
 
-            let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey])
-            if let fileSize = resourceValues.fileSize,
-               fileSize > BackupService.maximumBackupByteCount {
+            let data: Data
+            do {
+                data = try BoundedFileReader.read(
+                    url: url,
+                    maximumByteCount: BackupService.maximumBackupByteCount
+                )
+            } catch BoundedFileReaderError.fileTooLarge {
                 throw BackupError.fileTooLarge
             }
 
-            importCandidate = try BackupService.decode(
-                Data(contentsOf: url, options: .mappedIfSafe)
-            )
+            importCandidate = try BackupService.decode(data)
             isChoosingImportMode = true
         } catch {
             importCandidate = nil
