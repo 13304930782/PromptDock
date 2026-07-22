@@ -3,21 +3,31 @@ import WidgetKit
 
 struct PromptDockWidgetEntry: TimelineEntry {
     let date: Date
-    let prompt: WidgetPromptSnapshot?
+    let prompts: [WidgetPromptSnapshot]
 }
 
 struct PromptDockWidgetProvider: TimelineProvider {
     func placeholder(in context: Context) -> PromptDockWidgetEntry {
         PromptDockWidgetEntry(
             date: .now,
-            prompt: WidgetPromptSnapshot(
-                id: UUID(),
-                title: "Explain SwiftData",
-                category: "Coding",
-                content: "Explain SwiftData with a practical example.",
-                updatedDate: .now,
-                isFavorite: true
-            )
+            prompts: [
+                WidgetPromptSnapshot(
+                    id: UUID(),
+                    title: "Explain SwiftData",
+                    category: "Coding",
+                    content: "Explain SwiftData with a practical example.",
+                    updatedDate: .now,
+                    isFavorite: true
+                ),
+                WidgetPromptSnapshot(
+                    id: UUID(),
+                    title: "Review this code",
+                    category: "AI",
+                    content: "Review this code for correctness and clarity.",
+                    updatedDate: .now,
+                    isFavorite: false
+                )
+            ]
         )
     }
 
@@ -45,7 +55,7 @@ struct PromptDockWidgetProvider: TimelineProvider {
     private func entry() -> PromptDockWidgetEntry {
         PromptDockWidgetEntry(
             date: .now,
-            prompt: (try? WidgetSharedStore.load())?.first
+            prompts: Array((try? WidgetSharedStore.load())?.prefix(2) ?? [])
         )
     }
 }
@@ -57,17 +67,36 @@ struct PromptDockWidgetEntryView: View {
 
     var body: some View {
         Group {
-            if let prompt = entry.prompt {
-                promptContent(prompt)
-            } else {
+            if entry.prompts.isEmpty {
                 emptyContent
+            } else {
+                promptContent
             }
         }
         .containerBackground(.fill.tertiary, for: .widget)
     }
 
-    private func promptContent(
-        _ prompt: WidgetPromptSnapshot
+    @ViewBuilder
+    private var promptContent: some View {
+        if family == .systemMedium {
+            HStack(spacing: 0) {
+                ForEach(Array(entry.prompts.prefix(2).enumerated()), id: \.element.id) { index, prompt in
+                    if index > 0 {
+                        Divider()
+                    }
+
+                    promptCard(prompt, isSmall: false)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+        } else if let prompt = entry.prompts.first {
+            promptCard(prompt, isSmall: true)
+        }
+    }
+
+    private func promptCard(
+        _ prompt: WidgetPromptSnapshot,
+        isSmall: Bool
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 5) {
@@ -87,12 +116,12 @@ struct PromptDockWidgetEntryView: View {
 
             Text(prompt.title)
                 .font(.headline)
-                .lineLimit(family == .systemSmall ? 2 : 1)
+                .lineLimit(isSmall ? 2 : 1)
 
             Text(prompt.content)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .lineLimit(family == .systemSmall ? 3 : 4)
+                .lineLimit(isSmall ? 3 : 2)
 
             Spacer(minLength: 0)
 
