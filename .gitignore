@@ -1,0 +1,20 @@
+.DS_Store
+
+# Xcode build products and caches
+DerivedData*/
+Build/
+build/
+.build/
+*.xcarchive
+*.xcresult
+*.xccovarchive
+*.xccovreport
+*.profraw
+
+# Local Xcode user state
+xcuserdata/
+*.xcuserstate
+
+# Local distribution artifacts
+*.dmg
+*.zip
