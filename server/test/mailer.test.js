@@ -63,6 +63,7 @@ test('supports Google Workspace relay authenticated by server IP', () => {
     port: 587,
     secure: false,
     authRequired: false,
+    timeoutMs: 20000,
     user: '',
     pass: '',
     from: 'CueGrove <mooncci@cuegroveapp.com>',
@@ -74,6 +75,9 @@ test('supports Google Workspace relay authenticated by server IP', () => {
       host: 'smtp-relay.gmail.com',
       port: 587,
       secure: false,
+      connectionTimeout: 20000,
+      greetingTimeout: 20000,
+      socketTimeout: 20000,
     });
   } finally {
     Object.assign(config.mail, original);
@@ -88,6 +92,7 @@ test('still requires credentials for authenticated SMTP', () => {
     port: 465,
     secure: true,
     authRequired: true,
+    timeoutMs: 20000,
     user: '',
     pass: '',
     from: 'CueGrove <mooncci@cuegroveapp.com>',

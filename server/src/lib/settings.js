@@ -11,13 +11,23 @@ const defaults = {
   },
 };
 
+function parseSettingValue(value) {
+  let parsed = value;
+  if (Buffer.isBuffer(parsed)) parsed = parsed.toString('utf8');
+  if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Stored setting must be a JSON object.');
+  }
+  return parsed;
+}
+
 async function getSetting(key) {
   const fallback = defaults[key];
   if (!fallback) throw new Error(`Unknown setting: ${key}`);
   const [rows] = await db.query('SELECT setting_value FROM site_settings WHERE setting_key=? LIMIT 1', [key]);
   if (!rows[0]) return { ...fallback };
   try {
-    return { ...fallback, ...JSON.parse(rows[0].setting_value) };
+    return { ...fallback, ...parseSettingValue(rows[0].setting_value) };
   } catch {
     return { ...fallback };
   }
@@ -33,4 +43,4 @@ async function saveSetting(key, value) {
   return value;
 }
 
-module.exports = { defaults, getSetting, saveSetting };
+module.exports = { defaults, getSetting, parseSettingValue, saveSetting };

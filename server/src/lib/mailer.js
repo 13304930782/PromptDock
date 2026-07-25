@@ -33,6 +33,9 @@ function smtpTransportOptions() {
     host: config.mail.host,
     port: config.mail.port,
     secure: config.mail.secure,
+    connectionTimeout: config.mail.timeoutMs,
+    greetingTimeout: config.mail.timeoutMs,
+    socketTimeout: config.mail.timeoutMs,
   };
   if (config.mail.authRequired) {
     options.auth = {

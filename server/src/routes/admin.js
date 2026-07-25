@@ -74,13 +74,14 @@ router.patch('/early-access/:id/review', async (req, res, next) => {
 
   let application;
   let settings;
-  const connection = await db.getConnection();
+  let connection;
   try {
     settings = await getSetting('early_access');
     if (decision === 'approved' && !settings.download_url) {
       return res.status(409).json({ message: 'Configure the PromptDock download URL before approving applications.' });
     }
 
+    connection = await db.getConnection();
     await connection.beginTransaction();
     const [rows] = await connection.query(
       'SELECT * FROM early_access_applications WHERE id=? FOR UPDATE',
@@ -110,10 +111,10 @@ router.patch('/early-access/:id/review', async (req, res, next) => {
       applicant_message: applicantMessage,
     };
   } catch (error) {
-    await connection.rollback().catch(() => undefined);
+    if (connection) await connection.rollback().catch(() => undefined);
     return next(error);
   } finally {
-    connection.release();
+    if (connection) connection.release();
   }
 
   try {

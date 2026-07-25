@@ -36,6 +36,7 @@ SMTP_HOST=smtp-relay.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_AUTH_REQUIRED=false
+SMTP_TIMEOUT_MS=20000
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=CueGrove <mooncci@cuegroveapp.com>
