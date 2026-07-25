@@ -202,6 +202,7 @@ router.get('/settings/mail/status', (_req, res) => {
     mail: {
       enabled: mailReady(),
       host_configured: Boolean(config.mail.host),
+      auth_required: config.mail.authRequired,
       user_configured: Boolean(config.mail.user),
       password_configured: Boolean(config.mail.pass),
       from: config.mail.from,

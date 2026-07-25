@@ -20,25 +20,34 @@ function mailReady() {
   return Boolean(
     config.mail.enabled &&
     config.mail.host &&
-    config.mail.user &&
-    config.mail.pass &&
-    config.mail.from,
+    config.mail.from &&
+    (
+      !config.mail.authRequired ||
+      (config.mail.user && config.mail.pass)
+    ),
   );
+}
+
+function smtpTransportOptions() {
+  const options = {
+    host: config.mail.host,
+    port: config.mail.port,
+    secure: config.mail.secure,
+  };
+  if (config.mail.authRequired) {
+    options.auth = {
+      user: config.mail.user,
+      pass: config.mail.pass,
+    };
+  }
+  return options;
 }
 
 function transporter() {
   if (!mailReady()) {
     throw new Error('SMTP is disabled or incomplete.');
   }
-  return nodemailer.createTransport({
-    host: config.mail.host,
-    port: config.mail.port,
-    secure: config.mail.secure,
-    auth: {
-      user: config.mail.user,
-      pass: config.mail.pass,
-    },
-  });
+  return nodemailer.createTransport(smtpTransportOptions());
 }
 
 function emailFrame({ locale, title, bodyHtml, actionLabel, actionUrl, footer }) {
@@ -255,6 +264,7 @@ module.exports = {
   emailFrame,
   escapeHtml,
   mailReady,
+  smtpTransportOptions,
   sendDecisionEmail,
   sendNewApplicationNotification,
   sendPasswordReset,

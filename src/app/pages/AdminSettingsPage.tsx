@@ -6,6 +6,7 @@ import type { EarlyAccessSettings } from '../types';
 type MailStatus = {
   enabled: boolean;
   host_configured: boolean;
+  auth_required: boolean;
   user_configured: boolean;
   password_configured: boolean;
   from: string;
@@ -97,9 +98,10 @@ export default function AdminSettingsPage() {
               <ul className="mail-status-list">
                 <li><span>Mail enabled</span><strong>{mail.enabled ? 'Yes' : 'No'}</strong></li>
                 <li><span>SMTP host</span><strong>{mail.host_configured ? 'Configured' : 'Missing'}</strong></li>
-                <li><span>SMTP user</span><strong>{mail.user_configured ? 'Configured' : 'Missing'}</strong></li>
-                <li><span>SMTP password</span><strong>{mail.password_configured ? 'Configured' : 'Missing'}</strong></li>
-                <li><span>From</span><strong>{mail.from || 'SMTP user'}</strong></li>
+                <li><span>Authentication</span><strong>{mail.auth_required ? 'Username and password' : 'Server IP allowlist'}</strong></li>
+                <li><span>SMTP user</span><strong>{mail.auth_required ? (mail.user_configured ? 'Configured' : 'Missing') : 'Not required'}</strong></li>
+                <li><span>SMTP password</span><strong>{mail.auth_required ? (mail.password_configured ? 'Configured' : 'Missing') : 'Not required'}</strong></li>
+                <li><span>From</span><strong>{mail.from || 'Missing'}</strong></li>
               </ul>
               <p className="settings-hint">SMTP secrets are server-only environment variables and never appear here.</p>
               <button className="button button-secondary" type="button" disabled={working || !mail.enabled} onClick={testMail}><Send size={16} />Send test email</button>

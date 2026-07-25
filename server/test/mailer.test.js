@@ -1,6 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildDecisionMessage, escapeHtml } = require('../src/lib/mailer');
+const config = require('../src/config');
+const {
+  buildDecisionMessage,
+  escapeHtml,
+  mailReady,
+  smtpTransportOptions,
+} = require('../src/lib/mailer');
 
 const settings = {
   download_url: 'https://cuegrove.example/download',
@@ -47,4 +53,49 @@ test('escapes applicant-provided HTML in branded mail', () => {
   }, settings);
   assert.doesNotMatch(message.html, /<script>/);
   assert.doesNotMatch(message.html, /<b>hello<\/b>/);
+});
+
+test('supports Google Workspace relay authenticated by server IP', () => {
+  const original = { ...config.mail };
+  Object.assign(config.mail, {
+    enabled: true,
+    host: 'smtp-relay.gmail.com',
+    port: 587,
+    secure: false,
+    authRequired: false,
+    user: '',
+    pass: '',
+    from: 'CueGrove <mooncci@cuegroveapp.com>',
+  });
+
+  try {
+    assert.equal(mailReady(), true);
+    assert.deepEqual(smtpTransportOptions(), {
+      host: 'smtp-relay.gmail.com',
+      port: 587,
+      secure: false,
+    });
+  } finally {
+    Object.assign(config.mail, original);
+  }
+});
+
+test('still requires credentials for authenticated SMTP', () => {
+  const original = { ...config.mail };
+  Object.assign(config.mail, {
+    enabled: true,
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    authRequired: true,
+    user: '',
+    pass: '',
+    from: 'CueGrove <mooncci@cuegroveapp.com>',
+  });
+
+  try {
+    assert.equal(mailReady(), false);
+  } finally {
+    Object.assign(config.mail, original);
+  }
 });

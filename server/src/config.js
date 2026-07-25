@@ -52,6 +52,7 @@ module.exports = {
     host: process.env.SMTP_HOST || '',
     port: int(process.env.SMTP_PORT, 465),
     secure: bool(process.env.SMTP_SECURE, true),
+    authRequired: bool(process.env.SMTP_AUTH_REQUIRED, true),
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
     from: process.env.SMTP_FROM || process.env.SMTP_USER || '',

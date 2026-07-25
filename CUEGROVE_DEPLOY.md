@@ -23,6 +23,28 @@ Copy `server/.env.example` to `server/.env` and configure:
 
 Never commit `server/.env`.
 
+### Google Workspace SMTP relay
+
+For a server with a fixed public IP, Google Workspace can authenticate SMTP relay
+traffic by IP without storing a Google account password. Add the server IP in
+Google Admin Console under **Apps > Google Workspace > Gmail > Routing > SMTP
+relay service**, restrict senders to your domain, and require TLS. Then use:
+
+```dotenv
+MAIL_ENABLED=true
+SMTP_HOST=smtp-relay.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_AUTH_REQUIRED=false
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=CueGrove <mooncci@cuegroveapp.com>
+SMTP_REPLY_TO=mooncci@cuegroveapp.com
+```
+
+Keep `SMTP_AUTH_REQUIRED=true` for providers that authenticate with a username
+and password.
+
 ## 2. Install, migrate, and create the owner
 
 ```bash
