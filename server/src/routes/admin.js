@@ -145,8 +145,8 @@ router.post('/early-access/:id/retry-email', async (req, res, next) => {
        ORDER BY id DESC LIMIT 1`,
       [id],
     );
-    if (logRows[0]?.status !== 'failed') {
-      return res.status(409).json({ message: 'Only a failed decision email can be retried.' });
+    if (logRows[0]?.status === 'sent') {
+      return res.status(409).json({ message: 'The latest decision email was already sent.' });
     }
     const settings = await getSetting('early_access');
     if (application.status === 'approved' && !settings.download_url) {

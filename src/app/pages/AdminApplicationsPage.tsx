@@ -179,8 +179,10 @@ export default function AdminApplicationsPage() {
                 <div className="detail-block"><span>Reviewed by</span><p>{selected.reviewer_name || '—'} · {formatDate(selected.reviewed_at)}</p></div>
                 {selected.internal_note && <div className="detail-block"><span>Internal note</span><p>{selected.internal_note}</p></div>}
                 {selected.applicant_message && <div className="detail-block"><span>Applicant message</span><p>{selected.applicant_message}</p></div>}
-                {selected.latest_email_status === 'failed' && (
-                  <button className="button button-retry" type="button" disabled={working} onClick={retryEmail}><RotateCw size={17} />Retry decision email</button>
+                {selected.latest_email_status !== 'sent' && (
+                  <button className="button button-retry" type="button" disabled={working} onClick={retryEmail}>
+                    <RotateCw size={17} />{selected.latest_email_status === 'failed' ? 'Retry decision email' : 'Send decision email'}
+                  </button>
                 )}
                 {selected.latest_email_status === 'sent' && <div className="button button-retry"><Mail size={17} />Decision email sent</div>}
               </>
