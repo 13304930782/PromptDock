@@ -37,6 +37,7 @@ function smtpTransportOptions() {
     greetingTimeout: config.mail.timeoutMs,
     socketTimeout: config.mail.timeoutMs,
   };
+  if (config.mail.heloName) options.name = config.mail.heloName;
   if (config.mail.authRequired) {
     options.auth = {
       user: config.mail.user,

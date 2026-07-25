@@ -37,6 +37,7 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_AUTH_REQUIRED=false
 SMTP_TIMEOUT_MS=20000
+SMTP_HELO_NAME=mail.cuegroveapp.com
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=CueGrove <mooncci@cuegroveapp.com>
@@ -45,6 +46,12 @@ SMTP_REPLY_TO=mooncci@cuegroveapp.com
 
 Keep `SMTP_AUTH_REQUIRED=true` for providers that authenticate with a username
 and password.
+
+For reliable Google relay delivery, create a DNS-only `A` record for the EHLO
+hostname that points to the server public IP, and configure the server
+provider's reverse DNS/PTR for that IP to the same hostname. Google can
+temporarily reject connections whose EHLO name is not a fully qualified domain
+name or whose forward and reverse DNS do not match.
 
 ## 2. Install, migrate, and create the owner
 
