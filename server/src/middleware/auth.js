@@ -67,9 +67,17 @@ async function requireAdmin(req, res, next) {
   }
 }
 
+function requireOwner(req, res, next) {
+  if (req.admin?.role !== 'owner') {
+    return res.status(403).json({ message: 'Owner permission is required for this action.' });
+  }
+  next();
+}
+
 module.exports = {
   clearSession,
   issueSession,
   publicAdmin,
   requireAdmin,
+  requireOwner,
 };

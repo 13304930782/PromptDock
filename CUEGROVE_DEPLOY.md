@@ -19,9 +19,16 @@ Copy `server/.env.example` to `server/.env` and configure:
 - the isolated database credentials;
 - a random `JWT_SECRET` of at least 32 characters;
 - a unique secure cookie name and `COOKIE_SECURE=true`;
-- SMTP host, credentials, verified CueGrove sender, and optional reply-to address.
+- optional initial SMTP host and credentials. After the first owner signs in,
+  SMTP can be moved into the encrypted database-backed settings page.
 
 Never commit `server/.env`.
+
+`DB_PASSWORD`, `JWT_SECRET`, cookie security, and the API port are boot-level
+settings and intentionally remain in `server/.env`. The website never returns
+these values to a browser. The SMTP password saved in the administrator UI is
+encrypted with a key derived from `JWT_SECRET`; if `JWT_SECRET` is rotated,
+re-enter the SMTP password in the UI.
 
 ### Google Workspace SMTP relay
 
@@ -78,7 +85,7 @@ pm2 save
 
 Adapt `server/nginx.cuegrove.conf.example`, enable HTTPS, then reload Nginx. The frontend and `/api` must share one origin for the administrator cookie and origin checks.
 
-## 4. Finish Early Access setup
+## 4. Finish setup in the administrator UI
 
 Sign in at `/admin/login`, open Settings, and configure:
 
@@ -86,9 +93,36 @@ Sign in at `/admin/login`, open Settings, and configure:
 2. the real PromptDock download URL;
 3. the feedback URL;
 4. the administrator notification email;
-5. whether new applications should trigger notification email.
+5. whether new applications should trigger notification email;
+6. SMTP host, port, connection security, mailbox credentials, sender, and
+   reply-to address.
 
 Approvals remain disabled until the download URL is present. Use **Send test email** before reviewing applicants.
+
+Owners can open **Administrators** to create or disable administrator accounts,
+change `owner/admin` roles, clear login locks, and set a new password. At least
+one active owner is always required. Public registration is intentionally not
+available: visitors submit Early Access applications without creating an
+account.
+
+Environment SMTP values are used only as a fallback until an owner saves the
+SMTP form. Passwords are encrypted at rest and are never displayed again.
+
+## Updating an existing BaoTa deployment
+
+From the project directory, update the same branch and apply all new migrations:
+
+```bash
+cd /www/wwwroot/cuegrove
+git pull origin codex/cuegrove-site
+pnpm install --frozen-lockfile
+pnpm --dir server migrate
+pnpm build
+```
+
+Then restart the `cuegrove-api` Node/PM2 project in BaoTa. Nginx should continue
+serving `/www/wwwroot/cuegrove/dist` and proxying `/api/` to
+`http://127.0.0.1:3001`. No new public registration route is required.
 
 ## Backup and recovery
 

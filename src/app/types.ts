@@ -14,6 +14,32 @@ export type EarlyAccessSettings = {
   notify_on_new_application: boolean;
 };
 
+export type MailSettings = {
+  configured: boolean;
+  source: 'environment' | 'database';
+  enabled: boolean;
+  ready: boolean;
+  host: string;
+  port: number;
+  secure: boolean;
+  auth_required: boolean;
+  timeout_ms: number;
+  helo_name: string;
+  user: string;
+  password_configured: boolean;
+  from: string;
+  reply_to: string;
+  configuration_error: string;
+};
+
+export type ManagedAdminUser = AdminUser & {
+  status: 'active' | 'disabled';
+  failed_login_count: number;
+  locked_until: string | null;
+  last_login_at: string | null;
+  created_at: string;
+};
+
 export type Application = {
   id: number;
   full_name: string;

@@ -9,6 +9,20 @@ const defaults = {
     notify_email: '',
     notify_on_new_application: false,
   },
+  mail_transport: {
+    configured: false,
+    enabled: false,
+    host: '',
+    port: 587,
+    secure: false,
+    auth_required: true,
+    timeout_ms: 20000,
+    helo_name: '',
+    user: '',
+    password_encrypted: '',
+    from: '',
+    reply_to: '',
+  },
 };
 
 function parseSettingValue(value) {

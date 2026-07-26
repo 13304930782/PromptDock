@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { ArrowDown, ArrowRight, Check, Command, FolderHeart, HardDrive, Leaf, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowDown, ArrowRight, Check, Command, FolderHeart, HardDrive, Leaf, LogIn, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import Plasma from '../components/Plasma';
 import { api } from '../lib/api';
 import { copy, Locale } from '../content';
@@ -82,6 +82,7 @@ export default function PublicSite() {
         <nav className="main-nav" aria-label="Primary">
           <a href="#philosophy">{t.navStory}</a>
           <a href="#promptdock">{t.navProduct}</a>
+          <a className="nav-admin" href="/admin/login"><LogIn size={15} />{locale === 'zh' ? '管理员登录' : 'Admin'}</a>
           <a className="nav-apply" href="#early-access">{t.navApply}</a>
           <button type="button" className="language-button" onClick={toggleLocale} aria-label="Switch language">
             {t.languageName}

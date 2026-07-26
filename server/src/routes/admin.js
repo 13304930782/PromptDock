@@ -1,13 +1,179 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const db = require('../db');
 const config = require('../config');
-const { requireAdmin } = require('../middleware/auth');
+const { requireAdmin, requireOwner } = require('../middleware/auth');
 const { getSetting, saveSetting } = require('../lib/settings');
-const { mailReady, sendDecisionEmail, sendTestEmail } = require('../lib/mailer');
-const { isEmail, isHttpUrl, normalizeEmail, string } = require('../lib/validation');
+const { mailReady, resolveMailConfig, sendDecisionEmail, sendTestEmail } = require('../lib/mailer');
+const { encryptSecret } = require('../lib/secrets');
+const { isEmail, isHttpUrl, normalizeEmail, passwordError, string } = require('../lib/validation');
 
 const router = express.Router();
 router.use(requireAdmin);
+
+function publicManagedAdmin(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    status: user.status,
+    failed_login_count: user.failed_login_count,
+    locked_until: user.locked_until,
+    last_login_at: user.last_login_at,
+    created_at: user.created_at,
+  };
+}
+
+function mailboxEmail(value) {
+  const source = string(value, 255);
+  const bracketed = source.match(/<([^<>]+)>$/);
+  return bracketed ? normalizeEmail(bracketed[1]) : normalizeEmail(source);
+}
+
+function validMailHost(value) {
+  return !value || /^[a-zA-Z0-9][a-zA-Z0-9.-]{0,253}$/.test(value);
+}
+
+function publicMailSettings(stored, resolved) {
+  return {
+    configured: stored.configured === true,
+    source: resolved.source,
+    enabled: resolved.enabled === true,
+    ready: mailReady(resolved),
+    host: resolved.host,
+    port: resolved.port,
+    secure: resolved.secure === true,
+    auth_required: resolved.authRequired === true,
+    timeout_ms: resolved.timeoutMs,
+    helo_name: resolved.heloName,
+    user: resolved.user,
+    password_configured: Boolean(resolved.pass),
+    from: resolved.from,
+    reply_to: resolved.replyTo,
+    configuration_error: resolved.configurationError || '',
+  };
+}
+
+router.get('/users', requireOwner, async (_req, res, next) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id, name, email, role, status, failed_login_count, locked_until, last_login_at, created_at
+       FROM admin_users ORDER BY CASE WHEN role='owner' THEN 0 ELSE 1 END, created_at ASC`,
+    );
+    res.json({ users: rows.map(publicManagedAdmin) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/users', requireOwner, async (req, res, next) => {
+  try {
+    const name = string(req.body.name, 80);
+    const email = normalizeEmail(req.body.email);
+    const role = req.body.role === 'owner' ? 'owner' : 'admin';
+    const password = req.body.password;
+    if (name.length < 2) return res.status(400).json({ message: 'Administrator name must contain at least 2 characters.' });
+    if (!isEmail(email)) return res.status(400).json({ message: 'Administrator email is invalid.' });
+    const invalidPassword = passwordError(password);
+    if (invalidPassword) return res.status(400).json({ message: invalidPassword });
+    const passwordHash = await bcrypt.hash(password, 12);
+    const [result] = await db.query(
+      `INSERT INTO admin_users (name, email, password_hash, role, status)
+       VALUES (?, ?, ?, ?, 'active')`,
+      [name, email, passwordHash, role],
+    );
+    const [rows] = await db.query(
+      `SELECT id, name, email, role, status, failed_login_count, locked_until, last_login_at, created_at
+       FROM admin_users WHERE id=? LIMIT 1`,
+      [result.insertId],
+    );
+    res.status(201).json({ user: publicManagedAdmin(rows[0]) });
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'An administrator with this email already exists.' });
+    next(error);
+  }
+});
+
+router.patch('/users/:id', requireOwner, async (req, res, next) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ message: 'Administrator id is invalid.' });
+  const name = string(req.body.name, 80);
+  const email = normalizeEmail(req.body.email);
+  const role = req.body.role;
+  const status = req.body.status;
+  if (name.length < 2) return res.status(400).json({ message: 'Administrator name must contain at least 2 characters.' });
+  if (!isEmail(email)) return res.status(400).json({ message: 'Administrator email is invalid.' });
+  if (!['owner', 'admin'].includes(role)) return res.status(400).json({ message: 'Administrator role is invalid.' });
+  if (!['active', 'disabled'].includes(status)) return res.status(400).json({ message: 'Administrator status is invalid.' });
+  if (id === req.admin.id && status === 'disabled') {
+    return res.status(409).json({ message: 'You cannot disable your own administrator account.' });
+  }
+
+  let connection;
+  try {
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+    const [rows] = await connection.query('SELECT * FROM admin_users WHERE id=? FOR UPDATE', [id]);
+    const current = rows[0];
+    if (!current) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'Administrator not found.' });
+    }
+    const removesActiveOwner = current.role === 'owner' && current.status === 'active' && (role !== 'owner' || status !== 'active');
+    if (removesActiveOwner) {
+      const [ownerRows] = await connection.query(
+        "SELECT id FROM admin_users WHERE role='owner' AND status='active' FOR UPDATE",
+      );
+      if (ownerRows.length <= 1) {
+        await connection.rollback();
+        return res.status(409).json({ message: 'At least one active owner account is required.' });
+      }
+    }
+    await connection.query(
+      `UPDATE admin_users
+       SET name=?, email=?, role=?, status=?,
+           failed_login_count=IF(?='active', 0, failed_login_count),
+           locked_until=IF(?='active', NULL, locked_until)
+       WHERE id=?`,
+      [name, email, role, status, status, status, id],
+    );
+    await connection.commit();
+    const [updatedRows] = await db.query(
+      `SELECT id, name, email, role, status, failed_login_count, locked_until, last_login_at, created_at
+       FROM admin_users WHERE id=? LIMIT 1`,
+      [id],
+    );
+    res.json({ user: publicManagedAdmin(updatedRows[0]) });
+  } catch (error) {
+    if (connection) await connection.rollback().catch(() => undefined);
+    if (error.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'An administrator with this email already exists.' });
+    next(error);
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+router.post('/users/:id/reset-password', requireOwner, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) return res.status(400).json({ message: 'Administrator id is invalid.' });
+    const invalidPassword = passwordError(req.body.password);
+    if (invalidPassword) return res.status(400).json({ message: invalidPassword });
+    const passwordHash = await bcrypt.hash(req.body.password, 12);
+    const [result] = await db.query(
+      `UPDATE admin_users
+       SET password_hash=?, failed_login_count=0, locked_until=NULL
+       WHERE id=?`,
+      [passwordHash, id],
+    );
+    if (!result.affectedRows) return res.status(404).json({ message: 'Administrator not found.' });
+    await db.query('UPDATE admin_password_resets SET used_at=NOW() WHERE admin_id=? AND used_at IS NULL', [id]);
+    res.json({ message: 'Administrator password updated and account lock cleared.' });
+  } catch (error) {
+    next(error);
+  }
+});
 
 const applicationSelect = `
   SELECT
@@ -198,20 +364,99 @@ router.put('/settings/early-access', async (req, res, next) => {
   }
 });
 
-router.get('/settings/mail/status', (_req, res) => {
-  res.json({
-    mail: {
-      enabled: mailReady(),
-      host_configured: Boolean(config.mail.host),
-      auth_required: config.mail.authRequired,
-      user_configured: Boolean(config.mail.user),
-      password_configured: Boolean(config.mail.pass),
-      from: config.mail.from,
-    },
-  });
+router.get('/settings/mail', requireOwner, async (_req, res, next) => {
+  try {
+    const [stored, resolved] = await Promise.all([
+      getSetting('mail_transport'),
+      resolveMailConfig(),
+    ]);
+    res.json({ settings: publicMailSettings(stored, resolved) });
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.post('/settings/mail/test', async (req, res, next) => {
+router.put('/settings/mail', requireOwner, async (req, res, next) => {
+  try {
+    const current = await getSetting('mail_transport');
+    const enabled = req.body.enabled === true;
+    const host = string(req.body.host, 255).toLowerCase();
+    const port = Number(req.body.port);
+    const timeoutMs = Number(req.body.timeout_ms);
+    const secure = req.body.secure === true;
+    const authRequired = req.body.auth_required === true;
+    const heloName = string(req.body.helo_name, 255).toLowerCase();
+    const user = string(req.body.user, 255);
+    const from = string(req.body.from, 255);
+    const replyTo = string(req.body.reply_to, 255);
+    const password = typeof req.body.password === 'string' ? req.body.password.slice(0, 500) : '';
+    if (!validMailHost(host)) return res.status(400).json({ message: 'SMTP host must be a hostname or IP address without a protocol.' });
+    if (!validMailHost(heloName)) return res.status(400).json({ message: 'HELO name must be a hostname without a protocol.' });
+    if (!Number.isInteger(port) || port < 1 || port > 65535) return res.status(400).json({ message: 'SMTP port must be between 1 and 65535.' });
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 120000) {
+      return res.status(400).json({ message: 'SMTP timeout must be between 1000 and 120000 milliseconds.' });
+    }
+    if (from && !isEmail(mailboxEmail(from))) return res.status(400).json({ message: 'From address is invalid.' });
+    if (replyTo && !isEmail(mailboxEmail(replyTo))) return res.status(400).json({ message: 'Reply-to address is invalid.' });
+
+    let passwordEncrypted = current.password_encrypted || '';
+    if (req.body.clear_password === true) passwordEncrypted = '';
+    else if (password) passwordEncrypted = encryptSecret(password);
+    else if (!passwordEncrypted && config.mail.pass) passwordEncrypted = encryptSecret(config.mail.pass);
+
+    if (enabled && (!host || !from)) {
+      return res.status(400).json({ message: 'SMTP host and From address are required when mail is enabled.' });
+    }
+    if (enabled && authRequired && (!user || !passwordEncrypted)) {
+      return res.status(400).json({ message: 'SMTP username and password are required when authentication is enabled.' });
+    }
+
+    const stored = {
+      configured: true,
+      enabled,
+      host,
+      port,
+      secure,
+      auth_required: authRequired,
+      timeout_ms: timeoutMs,
+      helo_name: heloName,
+      user,
+      password_encrypted: passwordEncrypted,
+      from,
+      reply_to: replyTo,
+    };
+    await saveSetting('mail_transport', stored);
+    const resolved = await resolveMailConfig();
+    res.json({ settings: publicMailSettings(stored, resolved) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/settings/mail/status', async (_req, res, next) => {
+  try {
+    const [stored, resolved] = await Promise.all([
+      getSetting('mail_transport'),
+      resolveMailConfig(),
+    ]);
+    const settings = publicMailSettings(stored, resolved);
+    res.json({
+      mail: {
+        enabled: settings.ready,
+        host_configured: Boolean(settings.host),
+        auth_required: settings.auth_required,
+        user_configured: Boolean(settings.user),
+        password_configured: settings.password_configured,
+        from: settings.from,
+        source: settings.source,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/settings/mail/test', requireOwner, async (req, res, next) => {
   try {
     const settings = await getSetting('early_access');
     const recipient = settings.notify_email || req.admin.email;

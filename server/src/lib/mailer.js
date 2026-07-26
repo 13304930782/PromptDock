@@ -1,6 +1,8 @@
 const nodemailer = require('nodemailer');
 const db = require('../db');
 const config = require('../config');
+const { getSetting } = require('./settings');
+const { decryptSecret } = require('./secrets');
 const { string } = require('./validation');
 
 function escapeHtml(value) {
@@ -16,42 +18,69 @@ function cleanHeader(value) {
   return String(value || '').replace(/[\r\n]+/g, ' ').trim();
 }
 
-function mailReady() {
+function mailReady(mailConfig = config.mail) {
   return Boolean(
-    config.mail.enabled &&
-    config.mail.host &&
-    config.mail.from &&
+    mailConfig.enabled &&
+    mailConfig.host &&
+    mailConfig.from &&
     (
-      !config.mail.authRequired ||
-      (config.mail.user && config.mail.pass)
+      !mailConfig.authRequired ||
+      (mailConfig.user && mailConfig.pass)
     ),
   );
 }
 
-function smtpTransportOptions() {
+function smtpTransportOptions(mailConfig = config.mail) {
   const options = {
-    host: config.mail.host,
-    port: config.mail.port,
-    secure: config.mail.secure,
-    connectionTimeout: config.mail.timeoutMs,
-    greetingTimeout: config.mail.timeoutMs,
-    socketTimeout: config.mail.timeoutMs,
+    host: mailConfig.host,
+    port: mailConfig.port,
+    secure: mailConfig.secure,
+    connectionTimeout: mailConfig.timeoutMs,
+    greetingTimeout: mailConfig.timeoutMs,
+    socketTimeout: mailConfig.timeoutMs,
   };
-  if (config.mail.heloName) options.name = config.mail.heloName;
-  if (config.mail.authRequired) {
+  if (mailConfig.heloName) options.name = mailConfig.heloName;
+  if (mailConfig.authRequired) {
     options.auth = {
-      user: config.mail.user,
-      pass: config.mail.pass,
+      user: mailConfig.user,
+      pass: mailConfig.pass,
     };
   }
   return options;
 }
 
-function transporter() {
-  if (!mailReady()) {
+async function resolveMailConfig() {
+  const stored = await getSetting('mail_transport');
+  if (!stored.configured) return { ...config.mail, source: 'environment' };
+  let password = '';
+  let configurationError = '';
+  try {
+    password = decryptSecret(stored.password_encrypted);
+  } catch (error) {
+    configurationError = error.message;
+  }
+  return {
+    enabled: stored.enabled === true,
+    host: string(stored.host, 255),
+    port: Number(stored.port) || 587,
+    secure: stored.secure === true,
+    authRequired: stored.auth_required === true,
+    timeoutMs: Number(stored.timeout_ms) || 20000,
+    heloName: string(stored.helo_name, 255),
+    user: string(stored.user, 255),
+    pass: password,
+    from: string(stored.from, 255),
+    replyTo: string(stored.reply_to, 255),
+    source: 'database',
+    configurationError,
+  };
+}
+
+function transporter(mailConfig) {
+  if (!mailReady(mailConfig)) {
     throw new Error('SMTP is disabled or incomplete.');
   }
-  return nodemailer.createTransport(smtpTransportOptions());
+  return nodemailer.createTransport(smtpTransportOptions(mailConfig));
 }
 
 function emailFrame({ locale, title, bodyHtml, actionLabel, actionUrl, footer }) {
@@ -149,10 +178,11 @@ function buildDecisionMessage(application, settings) {
 }
 
 async function sendRaw({ to, subject, text, html }) {
-  const mailer = transporter();
+  const mailConfig = await resolveMailConfig();
+  const mailer = transporter(mailConfig);
   await mailer.sendMail({
-    from: config.mail.from,
-    replyTo: config.mail.replyTo || undefined,
+    from: mailConfig.from,
+    replyTo: mailConfig.replyTo || undefined,
     to,
     subject: cleanHeader(subject),
     text,
@@ -268,6 +298,7 @@ module.exports = {
   emailFrame,
   escapeHtml,
   mailReady,
+  resolveMailConfig,
   smtpTransportOptions,
   sendDecisionEmail,
   sendNewApplicationNotification,

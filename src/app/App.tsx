@@ -5,6 +5,7 @@ import { api } from './lib/api';
 import AdminApplicationsPage from './pages/AdminApplicationsPage';
 import { AdminLoginPage, ForgotPasswordPage, ResetPasswordPage } from './pages/AdminAuthPages';
 import AdminSettingsPage from './pages/AdminSettingsPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import PublicSite from './pages/PublicSite';
 import type { AdminUser } from './types';
 
@@ -48,7 +49,8 @@ export default function App() {
       <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/admin/reset-password" element={<ResetPasswordPage />} />
       <Route path="/admin/early-access" element={<ProtectedAdmin user={user} checking={checking}><AdminApplicationsPage /></ProtectedAdmin>} />
-      <Route path="/admin/settings" element={<ProtectedAdmin user={user} checking={checking}><AdminSettingsPage /></ProtectedAdmin>} />
+      <Route path="/admin/settings" element={<ProtectedAdmin user={user} checking={checking}><AdminSettingsPage user={user!} /></ProtectedAdmin>} />
+      <Route path="/admin/users" element={<ProtectedAdmin user={user} checking={checking}>{user?.role === 'owner' ? <AdminUsersPage /> : <Navigate to="/admin/early-access" replace />}</ProtectedAdmin>} />
       <Route path="/admin" element={<Navigate to="/admin/early-access" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

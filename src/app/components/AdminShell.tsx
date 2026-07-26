@@ -1,4 +1,4 @@
-import { LogOut, Settings, Sprout } from 'lucide-react';
+import { LogOut, Settings, Sprout, Users } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { AdminUser } from '../types';
@@ -24,6 +24,11 @@ export default function AdminShell({ user, children }: { user: AdminUser; childr
           <NavLink to="/admin/settings">
             <Settings size={18} /><span>Settings</span>
           </NavLink>
+          {user.role === 'owner' && (
+            <NavLink to="/admin/users">
+              <Users size={18} /><span>Administrators</span>
+            </NavLink>
+          )}
           <button type="button" onClick={logout}>
             <LogOut size={18} /><span>Sign out</span>
           </button>
