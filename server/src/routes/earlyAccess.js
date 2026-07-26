@@ -4,6 +4,7 @@ const db = require('../db');
 const { getSetting } = require('../lib/settings');
 const { sendNewApplicationNotification } = require('../lib/mailer');
 const { validateApplication } = require('../lib/validation');
+const { verifyTurnstile } = require('../lib/turnstile');
 
 const router = express.Router();
 const GENERIC_MESSAGE = 'Thanks. Your application has been received and will be reviewed.';
@@ -22,6 +23,21 @@ router.post('/applications', submissionLimit, async (req, res, next) => {
     if (!result.ok) {
       if (result.silent) return res.status(202).json({ message: GENERIC_MESSAGE });
       return res.status(400).json({ message: result.message });
+    }
+
+    const turnstile = await verifyTurnstile({
+      token: String(req.body['cf-turnstile-response'] || ''),
+      remoteIp: req.ip,
+    });
+    if (!turnstile.success) {
+      if (turnstile.reason === 'missing-secret' || turnstile.reason === 'unavailable') {
+        return res.status(503).json({
+          message: 'Human verification is temporarily unavailable. Please try again later. / 人机验证暂时不可用，请稍后重试。',
+        });
+      }
+      return res.status(403).json({
+        message: 'Human verification failed. Please try again. / 人机验证失败，请重试。',
+      });
     }
 
     const settings = await getSetting('early_access');

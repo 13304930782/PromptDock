@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useReducer, useState } from 'react';
 import { ArrowDown, ArrowRight, Check, Command, FolderHeart, HardDrive, Leaf, Menu, Search, ShieldCheck, Sparkles, X } from 'lucide-react';
 import Plasma from '../components/Plasma';
 import TextType from '../components/TextType';
+import Turnstile from '../components/Turnstile';
 import { api } from '../lib/api';
 import { copy, Locale } from '../content';
 
@@ -46,6 +47,8 @@ export default function PublicSite() {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileKey, setTurnstileKey] = useState(0);
   const t = copy[locale];
 
   useEffect(() => {
@@ -82,19 +85,31 @@ export default function PublicSite() {
       setMessage(t.requiredError);
       return;
     }
+    if (!turnstileToken) {
+      setStatus('error');
+      setMessage(t.turnstileRequired);
+      return;
+    }
 
     setStatus('submitting');
     setMessage('');
     try {
       await api('/early-access/applications', {
         method: 'POST',
-        body: JSON.stringify({ ...form, locale }),
+        body: JSON.stringify({
+          ...form,
+          locale,
+          'cf-turnstile-response': turnstileToken,
+        }),
       });
       dispatchForm({ type: 'reset' });
+      setTurnstileToken('');
       setStatus('success');
     } catch (error) {
       setStatus('error');
       setMessage(error instanceof Error ? error.message : t.formError);
+      setTurnstileToken('');
+      setTurnstileKey((key) => key + 1);
     }
   };
 
@@ -323,6 +338,9 @@ export default function PublicSite() {
                   <span>{t.consent}</span>
                 </label>
                 <p className="privacy-copy">{t.privacy}</p>
+                <div className="turnstile-field">
+                  <Turnstile key={turnstileKey} onTokenChange={setTurnstileToken} />
+                </div>
                 {status === 'error' && <p className="form-message error" role="alert">{message || t.formError}</p>}
                 <button className="button button-submit" type="submit" disabled={status === 'submitting'}>
                   {status === 'submitting' ? t.submitting : t.submit}<ArrowRight size={18} />

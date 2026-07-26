@@ -43,6 +43,7 @@ module.exports = {
     connectionLimit: int(process.env.DB_CONNECTION_LIMIT, 10),
   },
   jwtSecret: process.env.JWT_SECRET || '',
+  turnstileSecret: process.env.TURNSTILE_SECRET || '',
   cookie: {
     name: process.env.COOKIE_NAME || 'cuegrove_admin',
     secure: bool(process.env.COOKIE_SECURE, process.env.NODE_ENV === 'production'),

@@ -790,6 +790,16 @@ img {
   line-height: 1.5;
 }
 
+.turnstile-field {
+  display: flex;
+  min-height: 65px;
+  align-items: center;
+}
+
+.cf-turnstile {
+  min-height: 65px;
+}
+
 .honeypot {
   position: absolute !important;
   left: -9999px !important;

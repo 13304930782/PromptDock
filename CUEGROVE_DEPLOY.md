@@ -18,11 +18,18 @@ Copy `server/.env.example` to `server/.env` and configure:
 - the production `SITE_URL` and `ALLOWED_ORIGINS`;
 - the isolated database credentials;
 - a random `JWT_SECRET` of at least 32 characters;
+- the existing Cloudflare Turnstile widget secret as `TURNSTILE_SECRET`;
 - a unique secure cookie name and `COOKIE_SECURE=true`;
 - optional initial SMTP host and credentials. After the first owner signs in,
   SMTP can be moved into the encrypted database-backed settings page.
 
 Never commit `server/.env`.
+
+The Turnstile site key is public and embedded in the Early Access form. Its
+secret must exist only in `server/.env` as `TURNSTILE_SECRET`. Submissions fail
+closed if the secret is missing or Cloudflare cannot verify the browser token.
+The application sends the requesting IP to Cloudflare `siteverify` for abuse
+verification but does not store the IP in CueGrove's database.
 
 `DB_PASSWORD`, `JWT_SECRET`, cookie security, and the API port are boot-level
 settings and intentionally remain in `server/.env`. The website never returns
@@ -84,6 +91,9 @@ pm2 save
 ```
 
 Adapt `server/nginx.cuegrove.conf.example`, enable HTTPS, then reload Nginx. The frontend and `/api` must share one origin for the administrator cookie and origin checks.
+If the live site already has a Content Security Policy, allow
+`https://challenges.cloudflare.com` in `script-src`, `connect-src`, and
+`frame-src` so the Turnstile widget can load and complete verification.
 
 ## 4. Finish setup in the administrator UI
 
