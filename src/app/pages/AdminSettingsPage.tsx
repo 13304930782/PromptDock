@@ -153,6 +153,8 @@ export default function AdminSettingsPage({ user }: { user: AdminUser }) {
                         value={mail.password}
                         onChange={(event) => setMail({ ...mail, password: event.target.value, clear_password: false })}
                         autoComplete="new-password"
+                        autoCapitalize="none"
+                        spellCheck={false}
                         placeholder={mail.password_configured ? 'Saved — leave blank to keep' : 'Enter SMTP password'}
                       />
                     </label>

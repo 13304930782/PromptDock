@@ -56,7 +56,7 @@ export function AdminLoginPage({ onLogin }: { onLogin: (user: AdminUser) => void
         {message && <div className="admin-alert error" role="alert">{message}</div>}
         <form className="auth-form" onSubmit={submit}>
           <label>Email<input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
-          <label>Password<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+          <label>Password<input type="password" autoComplete="current-password" autoCapitalize="none" spellCheck={false} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
           <button className="button button-submit" type="submit" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign in'}<ArrowRight size={18} />
           </button>
@@ -147,8 +147,8 @@ export function ResetPasswordPage() {
         {message && <div className={`admin-alert${done ? '' : ' error'}`}>{message}</div>}
         {!done && (
           <form className="auth-form" onSubmit={submit}>
-            <label>New password<input type="password" autoComplete="new-password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-            <label>Confirm password<input type="password" autoComplete="new-password" minLength={8} value={confirm} onChange={(event) => setConfirm(event.target.value)} required /></label>
+            <label>New password<input type="password" autoComplete="new-password" autoCapitalize="none" spellCheck={false} minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+            <label>Confirm password<input type="password" autoComplete="new-password" autoCapitalize="none" spellCheck={false} minLength={8} value={confirm} onChange={(event) => setConfirm(event.target.value)} required /></label>
             <button className="button button-submit" type="submit" disabled={loading || !token}>{loading ? 'Updating…' : 'Update password'}</button>
           </form>
         )}
