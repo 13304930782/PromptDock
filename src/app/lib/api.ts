@@ -1,4 +1,9 @@
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+const DEFAULT_TIMEOUT_MS = 15_000;
+
+export type ApiRequestInit = RequestInit & {
+  timeoutMs?: number;
+};
 
 export class ApiError extends Error {
   status: number;
@@ -9,27 +14,53 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers = new Headers(init.headers);
-  if (init.body && !headers.has('Content-Type')) {
+export async function api<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, signal: callerSignal, ...fetchInit } = init;
+  const headers = new Headers(fetchInit.headers);
+  if (fetchInit.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
   headers.set('X-Requested-With', 'XMLHttpRequest');
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers,
-    credentials: 'include',
-  });
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = () => controller.abort(callerSignal?.reason);
+  if (callerSignal?.aborted) abortFromCaller();
+  else callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
 
-  const contentType = response.headers.get('content-type') || '';
-  const data = contentType.includes('application/json')
-    ? await response.json()
-    : { message: await response.text() };
+  const timer = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
 
-  if (!response.ok) {
-    throw new ApiError(data.message || 'Request failed.', response.status);
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...fetchInit,
+      headers,
+      credentials: 'include',
+      signal: controller.signal,
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json')
+      ? await response.json()
+      : { message: await response.text() };
+
+    if (!response.ok) {
+      throw new ApiError(data.message || 'Request failed.', response.status);
+    }
+
+    return data as T;
+  } catch (error) {
+    if (timedOut) {
+      throw new ApiError(
+        'Request timed out. Please check your connection and try again. / 请求超时，请检查网络后重试。',
+        408,
+      );
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+    callerSignal?.removeEventListener('abort', abortFromCaller);
   }
-
-  return data as T;
 }

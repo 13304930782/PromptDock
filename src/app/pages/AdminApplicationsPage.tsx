@@ -78,6 +78,7 @@ export default function AdminApplicationsPage() {
           internal_note: internalNote,
           applicant_message: applicantMessage,
         }),
+        timeoutMs: 130_000,
       });
       setNotice(`${result.message}${result.email_status === 'failed' ? ' The email failed and can be retried.' : ''}`);
       setSelected(null);
@@ -93,7 +94,10 @@ export default function AdminApplicationsPage() {
     if (!selected) return;
     setWorking(true);
     try {
-      const result = await api<{ message: string }>(`/admin/early-access/${selected.id}/retry-email`, { method: 'POST' });
+      const result = await api<{ message: string }>(`/admin/early-access/${selected.id}/retry-email`, {
+        method: 'POST',
+        timeoutMs: 130_000,
+      });
       setNotice(result.message);
       setSelected(null);
       await load();

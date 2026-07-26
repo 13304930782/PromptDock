@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useReducer, useState } from 'react';
 import { ArrowDown, ArrowRight, Check, Command, FolderHeart, HardDrive, Leaf, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import Plasma from '../components/Plasma';
 import TextType from '../components/TextType';
@@ -25,13 +25,24 @@ const initialForm: FormState = {
   company_website: '',
 };
 
+type FormFieldAction = {
+  [Field in keyof FormState]: { type: 'field'; field: Field; value: FormState[Field] };
+}[keyof FormState];
+
+type FormAction = FormFieldAction | { type: 'reset' };
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  if (action.type === 'reset') return initialForm;
+  return { ...state, [action.field]: action.value };
+}
+
 export default function PublicSite() {
   const [locale, setLocale] = useState<Locale>(() => {
     const saved = window.localStorage.getItem('cuegrove-locale');
     if (saved === 'zh' || saved === 'en') return saved;
     return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en';
   });
-  const [form, setForm] = useState<FormState>(initialForm);
+  const [form, dispatchForm] = useReducer(formReducer, initialForm);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const t = copy[locale];
@@ -65,7 +76,7 @@ export default function PublicSite() {
         method: 'POST',
         body: JSON.stringify({ ...form, locale }),
       });
-      setForm(initialForm);
+      dispatchForm({ type: 'reset' });
       setStatus('success');
     } catch (error) {
       setStatus('error');
@@ -217,7 +228,7 @@ export default function PublicSite() {
                       autoComplete="name"
                       maxLength={80}
                       value={form.full_name}
-                      onChange={(event) => setForm({ ...form, full_name: event.target.value })}
+                      onChange={(event) => dispatchForm({ type: 'field', field: 'full_name', value: event.target.value })}
                       required
                     />
                   </label>
@@ -228,14 +239,14 @@ export default function PublicSite() {
                       autoComplete="email"
                       maxLength={160}
                       value={form.email}
-                      onChange={(event) => setForm({ ...form, email: event.target.value })}
+                      onChange={(event) => dispatchForm({ type: 'field', field: 'email', value: event.target.value })}
                       required
                     />
                   </label>
                 </div>
                 <label>
                   <span>{t.formRole}</span>
-                  <select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })} required>
+                  <select value={form.role} onChange={(event) => dispatchForm({ type: 'field', field: 'role', value: event.target.value })} required>
                     <option value="">{t.formRolePlaceholder}</option>
                     {Object.entries(t.roles).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select>
@@ -247,7 +258,7 @@ export default function PublicSite() {
                     maxLength={1500}
                     placeholder={t.formUseCasePlaceholder}
                     value={form.use_case}
-                    onChange={(event) => setForm({ ...form, use_case: event.target.value })}
+                    onChange={(event) => dispatchForm({ type: 'field', field: 'use_case', value: event.target.value })}
                     required
                   />
                 </label>
@@ -258,7 +269,7 @@ export default function PublicSite() {
                     maxLength={1500}
                     placeholder={t.formReasonPlaceholder}
                     value={form.motivation}
-                    onChange={(event) => setForm({ ...form, motivation: event.target.value })}
+                    onChange={(event) => dispatchForm({ type: 'field', field: 'motivation', value: event.target.value })}
                     required
                   />
                 </label>
@@ -269,14 +280,14 @@ export default function PublicSite() {
                     tabIndex={-1}
                     autoComplete="off"
                     value={form.company_website}
-                    onChange={(event) => setForm({ ...form, company_website: event.target.value })}
+                    onChange={(event) => dispatchForm({ type: 'field', field: 'company_website', value: event.target.value })}
                   />
                 </label>
                 <label className="consent-row">
                   <input
                     type="checkbox"
                     checked={form.consent}
-                    onChange={(event) => setForm({ ...form, consent: event.target.checked })}
+                    onChange={(event) => dispatchForm({ type: 'field', field: 'consent', value: event.target.checked })}
                     required
                   />
                   <span>{t.consent}</span>

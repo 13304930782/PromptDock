@@ -79,6 +79,7 @@ export function ForgotPasswordPage() {
       const data = await api<{ message: string }>('/auth/forgot-password', {
         method: 'POST',
         body: JSON.stringify({ email }),
+        timeoutMs: 130_000,
       });
       setMessage(data.message);
     } catch (error) {

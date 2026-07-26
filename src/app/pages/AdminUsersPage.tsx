@@ -1,9 +1,9 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { KeyRound, Plus, ShieldCheck } from 'lucide-react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus, ShieldCheck } from 'lucide-react';
+import AdminUserCard, { type AdminUserDraft } from '../components/AdminUserCard';
 import { api } from '../lib/api';
 import type { ManagedAdminUser } from '../types';
 
-type UserDraft = Pick<ManagedAdminUser, 'name' | 'email' | 'role' | 'status'>;
 type NewUser = {
   name: string;
   email: string;
@@ -15,26 +15,14 @@ const blankUser: NewUser = { name: '', email: '', role: 'admin', password: '' };
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<ManagedAdminUser[]>([]);
-  const [drafts, setDrafts] = useState<Record<number, UserDraft>>({});
-  const [passwords, setPasswords] = useState<Record<number, string>>({});
   const [newUser, setNewUser] = useState<NewUser>(blankUser);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [working, setWorking] = useState('');
 
-  const applyUsers = (nextUsers: ManagedAdminUser[]) => {
-    setUsers(nextUsers);
-    setDrafts(Object.fromEntries(nextUsers.map((user) => [user.id, {
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-    }])));
-  };
-
   useEffect(() => {
     api<{ users: ManagedAdminUser[] }>('/admin/users')
-      .then((data) => applyUsers(data.users))
+      .then((data) => setUsers(data.users))
       .catch((loadError) => setError(loadError instanceof Error ? loadError.message : 'Unable to load administrators.'));
   }, []);
 
@@ -51,7 +39,7 @@ export default function AdminUsersPage() {
         method: 'POST',
         body: JSON.stringify(newUser),
       });
-      applyUsers([...users, data.user]);
+      setUsers((currentUsers) => [...currentUsers, data.user]);
       setNewUser(blankUser);
       setNotice(`Administrator ${data.user.email} created.`);
       setError('');
@@ -62,16 +50,14 @@ export default function AdminUsersPage() {
     }
   };
 
-  const saveUser = async (id: number) => {
-    const draft = drafts[id];
-    if (!draft) return;
+  const saveUser = useCallback(async (id: number, draft: AdminUserDraft) => {
     setWorking(`save-${id}`);
     try {
       const data = await api<{ user: ManagedAdminUser }>(`/admin/users/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(draft),
       });
-      applyUsers(users.map((user) => user.id === id ? data.user : user));
+      setUsers((currentUsers) => currentUsers.map((user) => user.id === id ? data.user : user));
       setNotice(`Administrator ${data.user.email} updated.`);
       setError('');
     } catch (saveError) {
@@ -79,25 +65,25 @@ export default function AdminUsersPage() {
     } finally {
       setWorking('');
     }
-  };
+  }, []);
 
-  const resetPassword = async (id: number) => {
-    const password = passwords[id] || '';
+  const resetPassword = useCallback(async (id: number, password: string) => {
     setWorking(`password-${id}`);
     try {
       const data = await api<{ message: string }>(`/admin/users/${id}/reset-password`, {
         method: 'POST',
         body: JSON.stringify({ password }),
       });
-      setPasswords({ ...passwords, [id]: '' });
       setNotice(data.message);
       setError('');
+      return true;
     } catch (resetError) {
       setError(resetError instanceof Error ? resetError.message : 'Unable to reset password.');
+      return false;
     } finally {
       setWorking('');
     }
-  };
+  }, []);
 
   return (
     <>
@@ -126,48 +112,15 @@ export default function AdminUsersPage() {
       </section>
 
       <div className="admin-users-grid">
-        {users.map((user) => {
-          const draft = drafts[user.id];
-          if (!draft) return null;
-          return (
-            <article className="admin-card admin-user-card" key={user.id}>
-              <div className="admin-user-summary">
-                <div>
-                  <strong>{user.name}</strong>
-                  <span>{user.email}</span>
-                </div>
-                <span className={`status-badge ${user.status === 'active' ? 'approved' : 'rejected'}`}>{user.status}</span>
-              </div>
-              <div className="settings-form admin-user-form">
-                <label>Name<input value={draft.name} onChange={(event) => setDrafts({ ...drafts, [user.id]: { ...draft, name: event.target.value } })} /></label>
-                <label>Email<input type="email" value={draft.email} onChange={(event) => setDrafts({ ...drafts, [user.id]: { ...draft, email: event.target.value } })} /></label>
-                <div className="settings-form-grid">
-                  <label>Role
-                    <select value={draft.role} onChange={(event) => setDrafts({ ...drafts, [user.id]: { ...draft, role: event.target.value as 'owner' | 'admin' } })}>
-                      <option value="owner">Owner</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </label>
-                  <label>Status
-                    <select value={draft.status} onChange={(event) => setDrafts({ ...drafts, [user.id]: { ...draft, status: event.target.value as 'active' | 'disabled' } })}>
-                      <option value="active">Active</option>
-                      <option value="disabled">Disabled</option>
-                    </select>
-                  </label>
-                </div>
-                <button className="button button-secondary" type="button" disabled={Boolean(working)} onClick={() => saveUser(user.id)}>Save account</button>
-                <div className="password-reset-row">
-                  <label>New password<input type="password" value={passwords[user.id] || ''} onChange={(event) => setPasswords({ ...passwords, [user.id]: event.target.value })} minLength={8} autoComplete="new-password" autoCapitalize="none" spellCheck={false} placeholder="8+ characters" /></label>
-                  <button className="button button-secondary" type="button" disabled={Boolean(working) || !(passwords[user.id] || '')} onClick={() => resetPassword(user.id)}><KeyRound size={15} />Reset</button>
-                </div>
-                <p className="admin-user-meta">
-                  Last sign-in: {user.last_login_at ? new Date(user.last_login_at).toLocaleString() : 'Never'}
-                  {user.locked_until ? ` · Locked until ${new Date(user.locked_until).toLocaleString()}` : ''}
-                </p>
-              </div>
-            </article>
-          );
-        })}
+        {users.map((user) => (
+          <AdminUserCard
+            key={user.id}
+            user={user}
+            disabled={Boolean(working)}
+            onSave={saveUser}
+            onResetPassword={resetPassword}
+          />
+        ))}
       </div>
     </>
   );

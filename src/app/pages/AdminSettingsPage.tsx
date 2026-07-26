@@ -70,7 +70,10 @@ export default function AdminSettingsPage({ user }: { user: AdminUser }) {
   const testMail = async () => {
     setWorking('test-mail');
     try {
-      const data = await api<{ message: string }>('/admin/settings/mail/test', { method: 'POST' });
+      const data = await api<{ message: string }>('/admin/settings/mail/test', {
+        method: 'POST',
+        timeoutMs: Math.max(15_000, (mail?.timeout_ms ?? 20_000) + 5_000),
+      });
       setNotice(data.message);
       setError('');
     } catch (mailError) {
