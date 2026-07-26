@@ -143,12 +143,12 @@ export function ResetPasswordPage() {
       <div className="auth-card">
         <Link to="/admin/login">← Back to sign in</Link>
         <h2>Choose a password.</h2>
-        <p>Use at least 10 characters with both letters and numbers.</p>
+        <p>Use at least 8 characters with both letters and numbers.</p>
         {message && <div className={`admin-alert${done ? '' : ' error'}`}>{message}</div>}
         {!done && (
           <form className="auth-form" onSubmit={submit}>
-            <label>New password<input type="password" autoComplete="new-password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-            <label>Confirm password<input type="password" autoComplete="new-password" minLength={10} value={confirm} onChange={(event) => setConfirm(event.target.value)} required /></label>
+            <label>New password<input type="password" autoComplete="new-password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+            <label>Confirm password<input type="password" autoComplete="new-password" minLength={8} value={confirm} onChange={(event) => setConfirm(event.target.value)} required /></label>
             <button className="button button-submit" type="submit" disabled={loading || !token}>{loading ? 'Updating…' : 'Update password'}</button>
           </form>
         )}

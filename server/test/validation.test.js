@@ -42,8 +42,9 @@ test('silently catches honeypot submissions', () => {
 });
 
 test('requires a strong administrator password', () => {
+  assert.match(passwordError('cuegro1'), /between 8 and 200/i);
   assert.match(passwordError('onlyletters'), /letters and numbers/i);
-  assert.equal(passwordError('forestgrove2026'), '');
+  assert.equal(passwordError('cuegro12'), '');
 });
 
 test('only accepts HTTP URLs', () => {

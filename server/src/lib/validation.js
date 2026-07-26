@@ -23,8 +23,8 @@ function isHttpUrl(value, allowEmpty = true) {
 }
 
 function passwordError(password) {
-  if (typeof password !== 'string' || password.length < 10 || password.length > 200) {
-    return 'Password must be between 10 and 200 characters.';
+  if (typeof password !== 'string' || password.length < 8 || password.length > 200) {
+    return 'Password must be between 8 and 200 characters.';
   }
   if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
     return 'Password must include both letters and numbers.';

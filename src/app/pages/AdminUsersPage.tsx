@@ -119,10 +119,10 @@ export default function AdminUsersPage() {
               <option value="owner">Owner</option>
             </select>
           </label>
-          <label>Temporary password<input type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} minLength={10} autoComplete="new-password" required /></label>
+          <label>Temporary password<input type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} minLength={8} autoComplete="new-password" required /></label>
           <button className="button button-approve" type="submit" disabled={Boolean(working)}><Plus size={16} />Create</button>
         </form>
-        <p className="settings-hint">Passwords need at least 10 characters with letters and numbers. The user can change it later through “Forgot password”.</p>
+        <p className="settings-hint">Passwords need at least 8 characters with letters and numbers. The user can change it later through “Forgot password”.</p>
       </section>
 
       <div className="admin-users-grid">
@@ -157,7 +157,7 @@ export default function AdminUsersPage() {
                 </div>
                 <button className="button button-secondary" type="button" disabled={Boolean(working)} onClick={() => saveUser(user.id)}>Save account</button>
                 <div className="password-reset-row">
-                  <label>New password<input type="password" value={passwords[user.id] || ''} onChange={(event) => setPasswords({ ...passwords, [user.id]: event.target.value })} minLength={10} autoComplete="new-password" placeholder="10+ characters" /></label>
+                  <label>New password<input type="password" value={passwords[user.id] || ''} onChange={(event) => setPasswords({ ...passwords, [user.id]: event.target.value })} minLength={8} autoComplete="new-password" placeholder="8+ characters" /></label>
                   <button className="button button-secondary" type="button" disabled={Boolean(working) || !(passwords[user.id] || '')} onClick={() => resetPassword(user.id)}><KeyRound size={15} />Reset</button>
                 </div>
                 <p className="admin-user-meta">
