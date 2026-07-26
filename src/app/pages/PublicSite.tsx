@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useReducer, useState } from 'react';
-import { ArrowDown, ArrowRight, Check, Command, FolderHeart, HardDrive, Leaf, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowDown, ArrowRight, Check, Command, FolderHeart, HardDrive, Leaf, Menu, Search, ShieldCheck, Sparkles, X } from 'lucide-react';
 import Plasma from '../components/Plasma';
 import TextType from '../components/TextType';
 import { api } from '../lib/api';
@@ -45,6 +45,7 @@ export default function PublicSite() {
   const [form, dispatchForm] = useReducer(formReducer, initialForm);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const t = copy[locale];
 
   useEffect(() => {
@@ -52,7 +53,20 @@ export default function PublicSite() {
     window.localStorage.setItem('cuegrove-locale', locale);
   }, [locale]);
 
-  const toggleLocale = () => setLocale((value) => (value === 'zh' ? 'en' : 'zh'));
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [mobileMenuOpen]);
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
+  const toggleLocale = () => {
+    setLocale((value) => (value === 'zh' ? 'en' : 'zh'));
+    closeMobileMenu();
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -87,16 +101,32 @@ export default function PublicSite() {
   return (
     <main>
       <header className="site-header">
-        <a className="brand-lockup" href="#top" aria-label="CueGrove home">
+        <a className="brand-lockup" href="#top" aria-label="CueGrove home" onClick={closeMobileMenu}>
           <img src="/cuegrove-logo.png" alt="" />
           <span>CueGrove</span>
         </a>
-        <nav className="main-nav" aria-label="Primary">
-          <a href="#philosophy">{t.navStory}</a>
-          <a href="#promptdock">{t.navProduct}</a>
-          <a className="nav-apply" href="#early-access">{t.navApply}</a>
+        <nav className={`main-nav${mobileMenuOpen ? ' mobile-menu-open' : ''}`} aria-label="Primary">
+          <div className="mobile-menu-links" id="mobile-site-navigation">
+            <a href="#philosophy" onClick={closeMobileMenu}>{t.navStory}</a>
+            <a href="#promptdock" onClick={closeMobileMenu}>{t.navProduct}</a>
+          </div>
+          <a className="nav-apply" href="#early-access" onClick={closeMobileMenu}>{t.navApply}</a>
           <button type="button" className="language-button" onClick={toggleLocale} aria-label="Switch language">
             {t.languageName}
+          </button>
+          <button
+            type="button"
+            className="mobile-menu-button"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-site-navigation"
+            aria-label={
+              mobileMenuOpen
+                ? (locale === 'zh' ? '关闭导航菜单' : 'Close navigation menu')
+                : (locale === 'zh' ? '打开导航菜单' : 'Open navigation menu')
+            }
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            {mobileMenuOpen ? <X size={19} /> : <Menu size={19} />}
           </button>
         </nav>
       </header>
