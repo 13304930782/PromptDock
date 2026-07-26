@@ -184,6 +184,17 @@ img {
   line-height: 0.98;
 }
 
+.hero .hero-type-title {
+  display: block;
+  min-height: 1.96em;
+}
+
+.hero-type-cursor {
+  color: var(--gold-400);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
 .hero-copy > p {
   max-width: 580px;
   margin: 28px 0 0;

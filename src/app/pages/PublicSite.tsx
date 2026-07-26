@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { ArrowDown, ArrowRight, Check, Command, FolderHeart, HardDrive, Leaf, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import Plasma from '../components/Plasma';
+import TextType from '../components/TextType';
 import { api } from '../lib/api';
 import { copy, Locale } from '../content';
 
@@ -92,7 +93,20 @@ export default function PublicSite() {
       <section className="hero shell" id="top">
         <div className="hero-copy">
           <div className="eyebrow"><Leaf size={15} />{t.eyebrow}</div>
-          <h1>{t.headline}</h1>
+          <TextType
+            key={locale}
+            as="h1"
+            text={t.headline}
+            typingSpeed={72}
+            initialDelay={260}
+            loop={false}
+            showCursor
+            cursorCharacter="|"
+            cursorBlinkDuration={0.7}
+            className="hero-type-title"
+            cursorClassName="hero-type-cursor"
+            aria-label={t.headline.replace(/\n/g, ' ')}
+          />
           <p>{t.heroBody}</p>
           <div className="hero-actions">
             <a className="button button-primary" href="#early-access">
