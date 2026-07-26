@@ -116,7 +116,6 @@ const TextType = ({
           onSentenceComplete?.(textArray[currentTextIndex], currentTextIndex);
           setCurrentTextIndex((previous) => (previous + 1) % textArray.length);
           setCurrentCharIndex(0);
-          timeout = window.setTimeout(() => {}, pauseDuration);
         } else {
           timeout = window.setTimeout(() => {
             setDisplayedText((previous) => previous.slice(0, -1));

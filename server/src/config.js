@@ -31,6 +31,7 @@ const allowedOrigins = new Set(
 module.exports = {
   env: process.env.NODE_ENV || 'development',
   port: int(process.env.PORT, 3001),
+  trustProxyHops: int(process.env.TRUST_PROXY_HOPS, 1),
   siteUrl: cleanOrigin(siteUrl) || 'http://localhost:5173',
   allowedOrigins,
   db: {

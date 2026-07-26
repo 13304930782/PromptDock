@@ -5,6 +5,12 @@ server {
     root /www/wwwroot/cuegrove/dist;
     index index.html;
 
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+
     location /api/ {
         proxy_pass http://127.0.0.1:3001;
         proxy_http_version 1.1;
@@ -19,7 +25,20 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
+    location /assets/ {
+        expires 1y;
+        try_files $uri =404;
+    }
+
+    location ~* \.(png|jpe?g|webp|ico)$ {
+        expires 7d;
+        try_files $uri =404;
+    }
+
     location ~ /\.(?!well-known) {
         deny all;
     }
+
+    # Add on the HTTPS server only:
+    # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 }

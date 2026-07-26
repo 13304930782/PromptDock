@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { AdminUser } from '../types';
 
@@ -105,8 +105,12 @@ export function ForgotPasswordPage() {
 }
 
 export function ResetPasswordPage() {
-  const [params] = useSearchParams();
-  const token = params.get('token') || '';
+  const location = useLocation();
+  const [token] = useState(() => {
+    const fragmentToken = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('token');
+    const legacyQueryToken = new URLSearchParams(window.location.search).get('token');
+    return fragmentToken || legacyQueryToken || '';
+  });
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [message, setMessage] = useState('');
@@ -115,7 +119,10 @@ export function ResetPasswordPage() {
 
   useEffect(() => {
     if (!token) setMessage('This reset link is incomplete.');
-  }, [token]);
+    if (token && (location.hash || location.search)) {
+      window.history.replaceState(window.history.state, '', location.pathname);
+    }
+  }, [location.hash, location.pathname, location.search, token]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

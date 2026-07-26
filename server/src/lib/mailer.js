@@ -256,8 +256,12 @@ async function sendNewApplicationNotification(application, settings) {
   });
 }
 
+function buildPasswordResetUrl(token) {
+  return `${config.siteUrl}/admin/reset-password#token=${encodeURIComponent(token)}`;
+}
+
 async function sendPasswordReset(admin, token) {
-  const resetUrl = `${config.siteUrl}/admin/reset-password?token=${encodeURIComponent(token)}`;
+  const resetUrl = buildPasswordResetUrl(token);
   const subject = '[CueGrove] Reset your administrator password';
   const text = `Use this link to reset your CueGrove administrator password. It expires in ${config.passwordResetMinutes} minutes.\n\n${resetUrl}`;
   const html = emailFrame({
@@ -293,6 +297,7 @@ async function sendTestEmail(to) {
 }
 
 module.exports = {
+  buildPasswordResetUrl,
   buildDecisionMessage,
   cleanHeader,
   emailFrame,

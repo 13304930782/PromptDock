@@ -5,13 +5,22 @@ const authRoutes = require('./routes/auth');
 const earlyAccessRoutes = require('./routes/earlyAccess');
 const adminRoutes = require('./routes/admin');
 const { requireSameOrigin } = require('./middleware/security');
+const config = require('./config');
 
 function createApp() {
   const app = express();
-  app.set('trust proxy', 1);
+  app.set('trust proxy', config.trustProxyHops);
   app.use(helmet({
     crossOriginResourcePolicy: { policy: 'same-site' },
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: {
+        defaultSrc: ["'none'"],
+        baseUri: ["'none'"],
+        formAction: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
   }));
   app.use(express.json({ limit: '32kb' }));
   app.use(cookieParser());

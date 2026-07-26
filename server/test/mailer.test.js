@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const config = require('../src/config');
 const {
+  buildPasswordResetUrl,
   buildDecisionMessage,
   escapeHtml,
   mailReady,
@@ -53,6 +54,12 @@ test('escapes applicant-provided HTML in branded mail', () => {
   }, settings);
   assert.doesNotMatch(message.html, /<script>/);
   assert.doesNotMatch(message.html, /<b>hello<\/b>/);
+});
+
+test('keeps password reset tokens out of request URLs and referrer logs', () => {
+  const resetUrl = buildPasswordResetUrl('secret token');
+  assert.match(resetUrl, /\/admin\/reset-password#token=secret%20token$/);
+  assert.doesNotMatch(resetUrl, /\?token=/);
 });
 
 test('supports Google Workspace relay authenticated by server IP', () => {
