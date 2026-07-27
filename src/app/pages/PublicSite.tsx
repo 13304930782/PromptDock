@@ -368,6 +368,7 @@ export default function PublicSite() {
         </div>
         <div className="footer-links">
           <Link to="/privacy-promise">{t.footerPrivacy}</Link>
+          <Link to="/security">{t.footerSecurity}</Link>
           <a href="/admin/login">{t.footerAdmin}</a>
           <span>© {new Date().getFullYear()} CueGrove</span>
         </div>

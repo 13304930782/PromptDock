@@ -65,6 +65,7 @@ export const copy = {
     turnstileRequired: '请先完成人机验证。',
     footerLine: '安静、可靠、尊重隐私的个人工具',
     footerPrivacy: '隐私承诺',
+    footerSecurity: '安全承诺',
     footerAdmin: '管理入口',
   },
   en: {
@@ -131,6 +132,7 @@ export const copy = {
     turnstileRequired: 'Please complete the human verification.',
     footerLine: 'Calm, dependable tools that respect your privacy',
     footerPrivacy: 'Privacy Promise',
+    footerSecurity: 'Security Commitment',
     footerAdmin: 'Admin',
   },
 } as const;

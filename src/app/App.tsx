@@ -8,6 +8,7 @@ import AdminSettingsPage from './pages/AdminSettingsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import PrivacyPromisePage from './pages/PrivacyPromisePage';
 import PublicSite from './pages/PublicSite';
+import SecurityCommitmentPage from './pages/SecurityCommitmentPage';
 import type { AdminUser } from './types';
 
 function ProtectedAdmin({
@@ -47,6 +48,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<PublicSite />} />
       <Route path="/privacy-promise" element={<PrivacyPromisePage />} />
+      <Route path="/security" element={<SecurityCommitmentPage />} />
       <Route path="/admin/login" element={user ? <Navigate to="/admin/early-access" replace /> : <AdminLoginPage onLogin={setUser} />} />
       <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/admin/reset-password" element={<ResetPasswordPage />} />

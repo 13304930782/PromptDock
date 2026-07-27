@@ -101,6 +101,7 @@ const privacyCopy = {
     changesBody:
       '如果未来加入账号、同步、分析或其他会改变数据边界的功能，我们会在启用前更新说明；实质性变化会标明新版本和生效日期。',
     homeFooter: '首页',
+    security: '安全承诺',
     github: 'GitHub',
     copyrightLine: '安静、可靠、尊重隐私的个人工具',
   },
@@ -191,6 +192,7 @@ const privacyCopy = {
     changesBody:
       'If we introduce accounts, sync, analytics, or another feature that changes a data boundary, we will update this explanation before enabling it. Material changes will receive a new version and effective date.',
     homeFooter: 'Home',
+    security: 'Security Commitment',
     github: 'GitHub',
     copyrightLine: 'Calm, dependable tools that respect your privacy',
   },
@@ -363,6 +365,7 @@ export default function PrivacyPromisePage() {
         </div>
         <div className="footer-links">
           <Link to="/">{t.homeFooter}</Link>
+          <Link to="/security">{t.security}</Link>
           <a href="https://github.com/13304930782/PromptDock" target="_blank" rel="noreferrer">{t.github}</a>
           <span>© {new Date().getFullYear()} CueGrove</span>
         </div>
