@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useReducer, useState } from 'react';
 import { ArrowDown, ArrowRight, Check, Command, FolderHeart, HardDrive, Leaf, Menu, Search, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Plasma from '../components/Plasma';
 import TextType from '../components/TextType';
 import Turnstile from '../components/Turnstile';
@@ -53,6 +54,9 @@ export default function PublicSite() {
 
   useEffect(() => {
     document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
+    document.title = locale === 'zh'
+      ? 'CueGrove — 让灵感扎根，让工具生长'
+      : 'CueGrove — Where ideas take root';
     window.localStorage.setItem('cuegrove-locale', locale);
   }, [locale]);
 
@@ -337,7 +341,10 @@ export default function PublicSite() {
                   />
                   <span>{t.consent}</span>
                 </label>
-                <p className="privacy-copy">{t.privacy}</p>
+                <p className="privacy-copy">
+                  {t.privacy}{' '}
+                  <Link to="/privacy-promise">{t.privacyLink}</Link>
+                </p>
                 <div className="turnstile-field">
                   <Turnstile key={turnstileKey} onTokenChange={setTurnstileToken} />
                 </div>
@@ -360,7 +367,7 @@ export default function PublicSite() {
           <p>{t.footerLine}</p>
         </div>
         <div className="footer-links">
-          <a href="#early-access">{t.footerPrivacy}</a>
+          <Link to="/privacy-promise">{t.footerPrivacy}</Link>
           <a href="/admin/login">{t.footerAdmin}</a>
           <span>© {new Date().getFullYear()} CueGrove</span>
         </div>

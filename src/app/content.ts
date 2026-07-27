@@ -55,6 +55,7 @@ export const copy = {
     formReasonPlaceholder: '简单告诉我们你的期待，以及你愿意提供怎样的反馈。',
     consent: '我同意 CueGrove 使用以上信息审核本次申请并通过邮件联系我。',
     privacy: '我们只将申请信息用于 PromptDock Early Access 审核和联系，不出售信息，也不用于广告画像。',
+    privacyLink: '阅读隐私承诺',
     submit: '提交申请',
     submitting: '正在提交…',
     successTitle: '申请已经种下。',
@@ -63,7 +64,7 @@ export const copy = {
     requiredError: '请完整填写所有字段并同意隐私说明。',
     turnstileRequired: '请先完成人机验证。',
     footerLine: '安静、可靠、尊重隐私的个人工具',
-    footerPrivacy: '隐私说明',
+    footerPrivacy: '隐私承诺',
     footerAdmin: '管理入口',
   },
   en: {
@@ -120,6 +121,7 @@ export const copy = {
     formReasonPlaceholder: 'Tell us what you hope for and the kind of feedback you would share.',
     consent: 'I agree that CueGrove may use this information to review my application and contact me by email.',
     privacy: 'We only use application data to review and contact PromptDock Early Access applicants. We never sell it or use it for ad profiling.',
+    privacyLink: 'Read our Privacy Promise',
     submit: 'Submit application',
     submitting: 'Submitting…',
     successTitle: 'Your application is planted.',
@@ -128,7 +130,7 @@ export const copy = {
     requiredError: 'Please complete every field and accept the privacy notice.',
     turnstileRequired: 'Please complete the human verification.',
     footerLine: 'Calm, dependable tools that respect your privacy',
-    footerPrivacy: 'Privacy note',
+    footerPrivacy: 'Privacy Promise',
     footerAdmin: 'Admin',
   },
 } as const;
