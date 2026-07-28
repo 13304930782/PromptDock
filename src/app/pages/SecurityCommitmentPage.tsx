@@ -25,8 +25,8 @@ const securityCopy = {
     title: '让安全成为默认，\n而不是用户的负担。',
     intro:
       '我们把安全视为产品质量和用户责任的一部分。这份公开承诺说明 CueGrove 当前已经实施的保护、仍需完成的工作，以及发现问题时如何联系我们。',
-    status: '公开承诺 · 版本 1.0',
-    effective: '生效日期：2026 年 7 月 27 日',
+    status: '公开承诺 · 版本 1.1',
+    effective: '更新日期：2026 年 7 月 29 日',
     disclosure: '负责任披露已开放',
     noticeTitle: '关于 CISA 承诺',
     noticeBody:
@@ -72,6 +72,7 @@ const securityCopy = {
     servicePoints: [
       '管理员密码使用自适应哈希存储，不保存明文密码',
       '会话 Cookie 使用 HttpOnly、Secure 与 SameSite 属性',
+      '管理员可启用基于认证器的多因素认证，并获得一次性恢复码',
       '登录锁定、接口限流、同源检查和 Cloudflare Turnstile 抵御常见滥用',
       'owner/admin 权限在服务端验证，密钥只通过服务器环境配置',
     ],
@@ -86,9 +87,9 @@ const securityCopy = {
         body: '发布 SECURITY.md 和标准 security.txt，建立私下报告与协调披露流程。',
       },
       {
-        state: '计划中',
+        state: '已完成',
         title: '管理员多因素认证',
-        body: '为 CueGrove 管理后台加入 MFA，并优先保护 owner 权限与敏感设置。',
+        body: '管理后台支持 TOTP 认证器、短时登录挑战、代码防重放和一次性恢复码。',
       },
       {
         state: '计划中',
@@ -131,7 +132,7 @@ const securityCopy = {
     limitsKicker: '诚实说明',
     limitsTitle: '我们不会把路线图写成已经完成的认证。',
     limitsBody:
-      '当前管理后台尚未提供多因素认证，供应链扫描和正式安全更新政策仍在路线图中。任何系统都无法保证绝对安全；我们的责任是降低默认风险、及时响应并公开可以验证的进展。',
+      '多因素认证现已可用；供应链扫描、正式安全更新政策及发布可验证性仍在路线图中。任何系统都无法保证绝对安全；我们的责任是降低默认风险、及时响应并公开可以验证的进展。',
     repoTitle: '公开仓库与披露政策',
     repoBody: '查看源代码、构建检查和仓库级漏洞报告说明。',
     repoAction: '打开 GitHub',
@@ -147,8 +148,8 @@ const securityCopy = {
     title: 'Make security the default,\nnot the user’s burden.',
     intro:
       'We treat security as part of product quality and our responsibility to users. This public commitment explains the protections CueGrove has implemented, the work still ahead, and how to contact us when something goes wrong.',
-    status: 'Public commitment · Version 1.0',
-    effective: 'Effective July 27, 2026',
+    status: 'Public commitment · Version 1.1',
+    effective: 'Updated July 29, 2026',
     disclosure: 'Responsible disclosure is open',
     noticeTitle: 'About the CISA pledge',
     noticeBody:
@@ -194,6 +195,7 @@ const securityCopy = {
     servicePoints: [
       'Administrator passwords use an adaptive hash and are never stored in plaintext',
       'Session cookies use HttpOnly, Secure, and SameSite attributes',
+      'Administrators can enable authenticator-based MFA with one-time recovery codes',
       'Login lockout, API rate limits, same-origin checks, and Cloudflare Turnstile address common abuse',
       'owner/admin permissions are enforced server-side and secrets are configured only on the server',
     ],
@@ -208,9 +210,9 @@ const securityCopy = {
         body: 'Publish SECURITY.md and a standard security.txt with a private reporting and coordinated disclosure process.',
       },
       {
-        state: 'Planned',
+        state: 'Complete',
         title: 'Multi-factor authentication for administrators',
-        body: 'Add MFA to CueGrove administration, prioritizing owner access and sensitive settings.',
+        body: 'Administration supports TOTP authenticators, short-lived login challenges, code replay protection, and one-time recovery codes.',
       },
       {
         state: 'Planned',
@@ -253,7 +255,7 @@ const securityCopy = {
     limitsKicker: 'Honest limits',
     limitsTitle: 'We will not present a roadmap as a completed certification.',
     limitsBody:
-      'The current admin console does not yet offer multi-factor authentication, and supply-chain scanning and a formal security update policy remain on the roadmap. No system can be guaranteed absolutely secure; our responsibility is to reduce default risk, respond promptly, and publish verifiable progress.',
+      'Multi-factor authentication is now available; supply-chain scanning, a formal security update policy, and verifiable releases remain on the roadmap. No system can be guaranteed absolutely secure; our responsibility is to reduce default risk, respond promptly, and publish verifiable progress.',
     repoTitle: 'Public repository and disclosure policy',
     repoBody: 'Review source code, build checks, and repository-level vulnerability reporting guidance.',
     repoAction: 'Open GitHub',
@@ -389,7 +391,7 @@ export default function SecurityCommitmentPage() {
         </div>
         <div className="security-roadmap-grid">
           {t.roadmap.map((item, index) => (
-            <article key={item.title} className={index === 0 ? 'complete' : ''}>
+            <article key={item.title} className={item.state === '已完成' || item.state === 'Complete' ? 'complete' : ''}>
               <div className="security-roadmap-meta">
                 <span>{String(index + 1).padStart(2, '0')}</span>
                 <strong>{item.state}</strong>

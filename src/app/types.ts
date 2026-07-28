@@ -3,6 +3,7 @@ export type AdminUser = {
   name: string;
   email: string;
   role: 'owner' | 'admin';
+  mfa_enabled: boolean;
 };
 
 export type EarlyAccessSettings = {

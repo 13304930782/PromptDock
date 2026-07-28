@@ -30,6 +30,7 @@ function publicAdmin(user) {
     name: user.name,
     email: user.email,
     role: user.role,
+    mfa_enabled: Boolean(user.mfa_enabled_at),
   };
 }
 
@@ -52,7 +53,7 @@ async function requireAdmin(req, res, next) {
     if (!token) return res.status(401).json({ message: 'Administrator sign-in is required.' });
     const payload = jwt.verify(token, config.jwtSecret);
     const [rows] = await db.query(
-      'SELECT id, name, email, role, status FROM admin_users WHERE id=? LIMIT 1',
+      'SELECT id, name, email, role, status, mfa_enabled_at FROM admin_users WHERE id=? LIMIT 1',
       [payload.id],
     );
     const admin = rows[0];

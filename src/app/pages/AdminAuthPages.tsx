@@ -25,23 +25,58 @@ function AuthLayout({ children }: { children: React.ReactNode }) {
 export function AdminLoginPage({ onLogin }: { onLogin: (user: AdminUser) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [challengeToken, setChallengeToken] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const submit = async (event: FormEvent) => {
+  const finishLogin = (user: AdminUser) => {
+    onLogin(user);
+    navigate('/admin/early-access', { replace: true });
+  };
+
+  const submitPassword = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setMessage('');
     try {
-      const data = await api<{ user: AdminUser }>('/auth/login', {
+      const data = await api<
+        { user: AdminUser; mfa_required?: false }
+        | { mfa_required: true; challenge_token: string }
+      >('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
-      onLogin(data.user);
-      navigate('/admin/early-access', { replace: true });
+      if ('mfa_required' in data && data.mfa_required) {
+        setChallengeToken(data.challenge_token);
+        setPassword('');
+        return;
+      }
+      finishLogin(data.user);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to sign in.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitMfa = async (event: FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setMessage('');
+    try {
+      const data = await api<{
+        user: AdminUser;
+        recovery_code_used?: boolean;
+        recovery_codes_remaining?: number;
+      }>('/auth/mfa/verify-login', {
+        method: 'POST',
+        body: JSON.stringify({ challenge_token: challengeToken, code: mfaCode }),
+      });
+      finishLogin(data.user);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to verify this code.');
     } finally {
       setLoading(false);
     }
@@ -51,17 +86,59 @@ export function AdminLoginPage({ onLogin }: { onLogin: (user: AdminUser) => void
     <AuthLayout>
       <div className="auth-card">
         <Link to="/">← Back to CueGrove</Link>
-        <h2>Welcome back.</h2>
-        <p>Sign in with an owner or administrator account.</p>
+        <h2>{challengeToken ? 'Verify it’s you.' : 'Welcome back.'}</h2>
+        <p>
+          {challengeToken
+            ? 'Enter the six-digit code from your authenticator, or use one recovery code.'
+            : 'Sign in with an owner or administrator account.'}
+        </p>
         {message && <div className="admin-alert error" role="alert">{message}</div>}
-        <form className="auth-form" onSubmit={submit}>
-          <label>Email<input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
-          <label>Password<input type="password" autoComplete="current-password" autoCapitalize="none" spellCheck={false} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-          <button className="button button-submit" type="submit" disabled={loading}>
-            {loading ? 'Signing in…' : 'Sign in'}<ArrowRight size={18} />
-          </button>
-        </form>
-        <div className="auth-links"><Link to="/admin/forgot-password">Forgot password?</Link></div>
+        {challengeToken ? (
+          <>
+            <form className="auth-form" onSubmit={submitMfa}>
+              <label>
+                Authenticator or recovery code
+                <input
+                  type="text"
+                  autoComplete="one-time-code"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  value={mfaCode}
+                  onChange={(event) => setMfaCode(event.target.value)}
+                  required
+                  autoFocus
+                />
+              </label>
+              <button className="button button-submit" type="submit" disabled={loading}>
+                {loading ? 'Verifying…' : 'Verify and sign in'}<ArrowRight size={18} />
+              </button>
+            </form>
+            <div className="auth-links">
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => {
+                  setChallengeToken('');
+                  setMfaCode('');
+                  setMessage('');
+                }}
+              >
+                Use a different account
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <form className="auth-form" onSubmit={submitPassword}>
+              <label>Email<input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
+              <label>Password<input type="password" autoComplete="current-password" autoCapitalize="none" spellCheck={false} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+              <button className="button button-submit" type="submit" disabled={loading}>
+                {loading ? 'Signing in…' : 'Sign in'}<ArrowRight size={18} />
+              </button>
+            </form>
+            <div className="auth-links"><Link to="/admin/forgot-password">Forgot password?</Link></div>
+          </>
+        )}
       </div>
     </AuthLayout>
   );

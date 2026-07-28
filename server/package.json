@@ -8,6 +8,7 @@
     "start": "node src/index.js",
     "migrate": "node src/scripts/migrate.js",
     "create-admin": "node src/scripts/create-admin.js",
+    "reset-mfa": "node src/scripts/reset-mfa.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
@@ -19,6 +20,7 @@
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.12.0",
-    "nodemailer": "^6.9.16"
+    "nodemailer": "^6.9.16",
+    "qrcode": "^1.5.4"
   }
 }

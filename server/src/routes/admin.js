@@ -22,6 +22,7 @@ function publicManagedAdmin(user) {
     locked_until: user.locked_until,
     last_login_at: user.last_login_at,
     created_at: user.created_at,
+    mfa_enabled: Boolean(user.mfa_enabled_at),
   };
 }
 
@@ -58,7 +59,7 @@ function publicMailSettings(stored, resolved) {
 router.get('/users', requireOwner, async (_req, res, next) => {
   try {
     const [rows] = await db.query(
-      `SELECT id, name, email, role, status, failed_login_count, locked_until, last_login_at, created_at
+      `SELECT id, name, email, role, status, failed_login_count, locked_until, last_login_at, created_at, mfa_enabled_at
        FROM admin_users ORDER BY CASE WHEN role='owner' THEN 0 ELSE 1 END, created_at ASC`,
     );
     res.json({ users: rows.map(publicManagedAdmin) });
@@ -84,7 +85,7 @@ router.post('/users', requireOwner, async (req, res, next) => {
       [name, email, passwordHash, role],
     );
     const [rows] = await db.query(
-      `SELECT id, name, email, role, status, failed_login_count, locked_until, last_login_at, created_at
+      `SELECT id, name, email, role, status, failed_login_count, locked_until, last_login_at, created_at, mfa_enabled_at
        FROM admin_users WHERE id=? LIMIT 1`,
       [result.insertId],
     );
@@ -140,7 +141,7 @@ router.patch('/users/:id', requireOwner, async (req, res, next) => {
     );
     await connection.commit();
     const [updatedRows] = await db.query(
-      `SELECT id, name, email, role, status, failed_login_count, locked_until, last_login_at, created_at
+      `SELECT id, name, email, role, status, failed_login_count, locked_until, last_login_at, created_at, mfa_enabled_at
        FROM admin_users WHERE id=? LIMIT 1`,
       [id],
     );

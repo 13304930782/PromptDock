@@ -44,7 +44,10 @@ const AdminUserCard = memo(function AdminUserCard({
           <strong>{user.name}</strong>
           <span>{user.email}</span>
         </div>
-        <span className={`status-badge ${user.status === 'active' ? 'approved' : 'rejected'}`}>{user.status}</span>
+        <div className="admin-user-badges">
+          {user.mfa_enabled && <span className="status-badge approved">MFA</span>}
+          <span className={`status-badge ${user.status === 'active' ? 'approved' : 'rejected'}`}>{user.status}</span>
+        </div>
       </div>
       <div className="settings-form admin-user-form">
         <label>Name<input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label>
