@@ -26,12 +26,15 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Block newly introduced high-risk dependencies
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
+          # RSC/server actions are not present in this static client-only site.
+          # Time-limited exception: SUPPLY_CHAIN_SECURITY.md (review 2026-08-29).
+          allow-ghsas: GHSA-qwww-vcr4-c8h2
 
   production-audit:
     name: Audit production dependencies
@@ -40,15 +43,15 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 11.9.0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -66,7 +69,7 @@ jobs:
 
     steps:
       - name: Check out full repository history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
