@@ -8,7 +8,7 @@ Thank you for helping keep CueGrove, PromptDock, and their users safe.
 
 Please report suspected vulnerabilities privately by email:
 
-- **Contact:** [mooncci@cuegroveapp.com](mailto:mooncci@cuegroveapp.com?subject=%5BSecurity%5D%20)
+- **Contact:** [security@cuegroveapp.com](mailto:security@cuegroveapp.com?subject=%5BSecurity%5D%20)
 - **Subject:** `[Security] Short description`
 - **Scope:** PromptDock, `cuegroveapp.com`, the CueGrove Early Access API, and the administrator console
 
@@ -47,7 +47,7 @@ The public [CueGrove Security Commitment](https://cuegroveapp.com/security) docu
 
 请通过电子邮件私下报告疑似漏洞：
 
-- **联系邮箱：** [mooncci@cuegroveapp.com](mailto:mooncci@cuegroveapp.com?subject=%5BSecurity%5D%20)
+- **联系邮箱：** [security@cuegroveapp.com](mailto:security@cuegroveapp.com?subject=%5BSecurity%5D%20)
 - **邮件主题：** `[Security] 简短问题描述`
 - **适用范围：** PromptDock、`cuegroveapp.com`、CueGrove Early Access API 和管理后台
 
