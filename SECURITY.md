@@ -39,6 +39,13 @@ PromptDock is currently in Early Access. Security fixes are provided in the late
 
 The public [CueGrove Security Commitment](https://cuegroveapp.com/security) documents current controls, known gaps, and the one-year security roadmap.
 
+## Supply-chain controls
+
+Dependency review, production dependency auditing, repository history secret
+scanning, and scheduled update proposals run through GitHub. Blocking thresholds,
+finding handling, and any time-limited exception are documented in
+[SUPPLY_CHAIN_SECURITY.md](SUPPLY_CHAIN_SECURITY.md).
+
 ---
 
 ## 报告安全问题
@@ -75,3 +82,8 @@ The public [CueGrove Security Commitment](https://cuegroveapp.com/security) docu
 PromptDock 目前处于 Early Access 阶段，安全修复会提供在最新可用构建中。开始公开版本化发布后，本节会列出受支持版本和更新渠道。
 
 公开的 [CueGrove 安全承诺](https://cuegroveapp.com/security) 会持续说明当前保护、已知差距和一年安全路线图。
+
+## 软件供应链保护
+
+GitHub 会自动执行依赖变更审查、生产依赖漏洞审计、完整仓库历史凭据扫描和定期更新建议。阻断标准、问题处理方式和任何有期限的例外均记录在
+[SUPPLY_CHAIN_SECURITY.md](SUPPLY_CHAIN_SECURITY.md)。

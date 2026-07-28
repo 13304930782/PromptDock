@@ -25,7 +25,7 @@ const securityCopy = {
     title: '让安全成为默认，\n而不是用户的负担。',
     intro:
       '我们把安全视为产品质量和用户责任的一部分。这份公开承诺说明 CueGrove 当前已经实施的保护、仍需完成的工作，以及发现问题时如何联系我们。',
-    status: '公开承诺 · 版本 1.1',
+    status: '公开承诺 · 版本 1.2',
     effective: '更新日期：2026 年 7 月 29 日',
     disclosure: '负责任披露已开放',
     noticeTitle: '关于 CISA 承诺',
@@ -74,6 +74,7 @@ const securityCopy = {
       '会话 Cookie 使用 HttpOnly、Secure 与 SameSite 属性',
       '管理员可启用基于认证器的多因素认证，并获得一次性恢复码',
       '登录锁定、接口限流、同源检查和 Cloudflare Turnstile 抵御常见滥用',
+      'GitHub 自动审查高危依赖、扫描泄露凭据并提出定期更新',
       'owner/admin 权限在服务端验证，密钥只通过服务器环境配置',
     ],
     roadmapKicker: '一年路线图',
@@ -92,9 +93,9 @@ const securityCopy = {
         body: '管理后台支持 TOTP 认证器、短时登录挑战、代码防重放和一次性恢复码。',
       },
       {
-        state: '计划中',
+        state: '已完成',
         title: '软件供应链检查',
-        body: '在持续集成中加入依赖漏洞、凭据泄露和敏感信息扫描，并记录处置规则。',
+        body: '持续集成会阻止新增高危依赖、审计生产依赖、扫描完整仓库历史中的凭据，并公开处置规则与有期限的例外。',
       },
       {
         state: '计划中',
@@ -132,9 +133,9 @@ const securityCopy = {
     limitsKicker: '诚实说明',
     limitsTitle: '我们不会把路线图写成已经完成的认证。',
     limitsBody:
-      '多因素认证现已可用；供应链扫描、正式安全更新政策及发布可验证性仍在路线图中。任何系统都无法保证绝对安全；我们的责任是降低默认风险、及时响应并公开可以验证的进展。',
+      '多因素认证和供应链检查现已可用；正式安全更新政策及发布可验证性仍在路线图中。任何系统都无法保证绝对安全；我们的责任是降低默认风险、及时响应并公开可以验证的进展。',
     repoTitle: '公开仓库与披露政策',
-    repoBody: '查看源代码、构建检查和仓库级漏洞报告说明。',
+    repoBody: '查看源代码、构建检查、供应链安全规则和仓库级漏洞报告说明。',
     repoAction: '打开 GitHub',
     homeFooter: '首页',
     privacy: '隐私承诺',
@@ -148,7 +149,7 @@ const securityCopy = {
     title: 'Make security the default,\nnot the user’s burden.',
     intro:
       'We treat security as part of product quality and our responsibility to users. This public commitment explains the protections CueGrove has implemented, the work still ahead, and how to contact us when something goes wrong.',
-    status: 'Public commitment · Version 1.1',
+    status: 'Public commitment · Version 1.2',
     effective: 'Updated July 29, 2026',
     disclosure: 'Responsible disclosure is open',
     noticeTitle: 'About the CISA pledge',
@@ -197,6 +198,7 @@ const securityCopy = {
       'Session cookies use HttpOnly, Secure, and SameSite attributes',
       'Administrators can enable authenticator-based MFA with one-time recovery codes',
       'Login lockout, API rate limits, same-origin checks, and Cloudflare Turnstile address common abuse',
+      'GitHub automatically reviews high-risk dependencies, scans leaked credentials, and proposes updates',
       'owner/admin permissions are enforced server-side and secrets are configured only on the server',
     ],
     roadmapKicker: 'One-year roadmap',
@@ -215,9 +217,9 @@ const securityCopy = {
         body: 'Administration supports TOTP authenticators, short-lived login challenges, code replay protection, and one-time recovery codes.',
       },
       {
-        state: 'Planned',
+        state: 'Complete',
         title: 'Software supply-chain checks',
-        body: 'Add dependency vulnerability, credential leak, and sensitive-data scans to continuous integration with documented handling rules.',
+        body: 'Continuous integration blocks newly introduced high-risk dependencies, audits production packages, scans full repository history for credentials, and publishes handling rules and time-limited exceptions.',
       },
       {
         state: 'Planned',
@@ -255,9 +257,9 @@ const securityCopy = {
     limitsKicker: 'Honest limits',
     limitsTitle: 'We will not present a roadmap as a completed certification.',
     limitsBody:
-      'Multi-factor authentication is now available; supply-chain scanning, a formal security update policy, and verifiable releases remain on the roadmap. No system can be guaranteed absolutely secure; our responsibility is to reduce default risk, respond promptly, and publish verifiable progress.',
+      'Multi-factor authentication and supply-chain checks are now available; a formal security update policy and verifiable releases remain on the roadmap. No system can be guaranteed absolutely secure; our responsibility is to reduce default risk, respond promptly, and publish verifiable progress.',
     repoTitle: 'Public repository and disclosure policy',
-    repoBody: 'Review source code, build checks, and repository-level vulnerability reporting guidance.',
+    repoBody: 'Review source code, build checks, supply-chain rules, and repository-level vulnerability reporting guidance.',
     repoAction: 'Open GitHub',
     homeFooter: 'Home',
     privacy: 'Privacy Promise',
