@@ -29,6 +29,10 @@ as human-authored changes.
 4. Exposed credentials are revoked or rotated before the finding is marked
    resolved. Removing a secret from the latest commit alone is not sufficient.
 
+Secret-scan false positives may only be ignored by their exact Gitleaks
+fingerprint. The current ignore is the public RFC 6238 SHA-1 test vector in the
+MFA test suite; broad rule or directory exclusions are not permitted.
+
 Reports containing exploitable detail should be sent privately to
 [security@cuegroveapp.com](mailto:security@cuegroveapp.com?subject=%5BSecurity%5D%20).
 
