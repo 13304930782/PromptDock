@@ -5,7 +5,8 @@ import Plasma from '../components/Plasma';
 import TextType from '../components/TextType';
 import Turnstile from '../components/Turnstile';
 import { api } from '../lib/api';
-import { copy, Locale } from '../content';
+import { usePublicLocale } from '../lib/locale';
+import { copy } from '../content';
 
 type FormState = {
   full_name: string;
@@ -39,11 +40,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
 }
 
 export default function PublicSite() {
-  const [locale, setLocale] = useState<Locale>(() => {
-    const saved = window.localStorage.getItem('cuegrove-locale');
-    if (saved === 'zh' || saved === 'en') return saved;
-    return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en';
-  });
+  const [locale, setLocale] = usePublicLocale();
   const [form, dispatchForm] = useReducer(formReducer, initialForm);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -57,7 +54,6 @@ export default function PublicSite() {
     document.title = locale === 'zh'
       ? 'CueGrove — 让灵感扎根，让工具生长'
       : 'CueGrove — Where ideas take root';
-    window.localStorage.setItem('cuegrove-locale', locale);
   }, [locale]);
 
   useEffect(() => {

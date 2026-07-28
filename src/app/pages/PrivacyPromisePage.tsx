@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -11,7 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { Locale } from '../content';
+import { usePublicLocale } from '../lib/locale';
 
 const privacyCopy = {
   zh: {
@@ -201,11 +201,7 @@ const privacyCopy = {
 const principleIcons = [HardDrive, EyeOff, Database, RefreshCcw];
 
 export default function PrivacyPromisePage() {
-  const [locale, setLocale] = useState<Locale>(() => {
-    const saved = window.localStorage.getItem('cuegrove-locale');
-    if (saved === 'zh' || saved === 'en') return saved;
-    return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en';
-  });
+  const [locale, setLocale] = usePublicLocale();
   const t = privacyCopy[locale];
 
   useEffect(() => {
@@ -213,7 +209,6 @@ export default function PrivacyPromisePage() {
     document.title = locale === 'zh'
       ? '隐私承诺 — CueGrove'
       : 'Privacy Promise — CueGrove';
-    window.localStorage.setItem('cuegrove-locale', locale);
   }, [locale]);
 
   useEffect(() => {

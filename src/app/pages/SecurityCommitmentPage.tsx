@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -15,7 +15,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { Locale } from '../content';
+import { usePublicLocale } from '../lib/locale';
 
 const securityCopy = {
   zh: {
@@ -269,11 +269,7 @@ const securityCopy = {
 const principleIcons = [LockKeyhole, Radar, KeyRound, FileCheck2];
 
 export default function SecurityCommitmentPage() {
-  const [locale, setLocale] = useState<Locale>(() => {
-    const saved = window.localStorage.getItem('cuegrove-locale');
-    if (saved === 'zh' || saved === 'en') return saved;
-    return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en';
-  });
+  const [locale, setLocale] = usePublicLocale();
   const t = securityCopy[locale];
 
   useEffect(() => {
@@ -281,7 +277,6 @@ export default function SecurityCommitmentPage() {
     document.title = locale === 'zh'
       ? '安全承诺 — CueGrove'
       : 'Security Commitment — CueGrove';
-    window.localStorage.setItem('cuegrove-locale', locale);
   }, [locale]);
 
   useEffect(() => {
