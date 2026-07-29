@@ -259,7 +259,10 @@ export default function PublicSite() {
               <div className="success-state" role="status">
                 <div className="success-icon"><Leaf size={30} /></div>
                 <h3>{t.successTitle}</h3>
-                <p>{t.successBody}</p>
+                <p>
+                  {t.successBody}
+                  <span className="success-spam-hint">{t.successSpamHint}</span>
+                </p>
                 <button type="button" className="button button-secondary" onClick={() => setStatus('idle')}>
                   {locale === 'zh' ? '提交另一份申请' : 'Submit another application'}
                 </button>

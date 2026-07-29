@@ -870,6 +870,11 @@ img {
   line-height: 1.75;
 }
 
+.success-spam-hint {
+  display: block;
+  color: #b42318;
+}
+
 .button-secondary {
   border: 1px solid var(--cream-200);
   color: var(--forest-800);
