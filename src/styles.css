@@ -1897,6 +1897,15 @@ input[type='password']::-webkit-caps-lock-indicator {
   text-align: center;
 }
 
+.route-loading {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  color: #607269;
+  background: var(--cream-50);
+  font-size: 14px;
+}
+
 .drawer-backdrop {
   position: fixed;
   z-index: 60;
