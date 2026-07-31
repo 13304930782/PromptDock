@@ -20,8 +20,8 @@ const privacyCopy = {
     title: '隐私不是设置，\n而是产品的边界',
     intro:
       '我们用尽量少的数据提供安静、可靠的个人工具。这份承诺用清楚的语言说明什么留在你的设备上、网站会处理什么，以及你始终拥有的选择。',
-    status: '公开承诺 · 版本 1.0',
-    effective: '生效日期：2026 年 7 月 27 日',
+    status: '公开承诺 · 版本 1.1',
+    effective: '生效日期：2026 年 8 月 1 日',
     principlesLabel: '我们的原则',
     principles: [
       {
@@ -46,11 +46,14 @@ const privacyCopy = {
     boundaryIntro:
       '“本地优先”描述的是 PromptDock 产品内容。Early Access 申请需要经过 CueGrove 网站提交，因此会由网站服务器处理。',
     productLabel: 'PromptDock 应用',
-    productTitle: '你的内容留在你的 Mac',
+    productTitle: '你的资料库默认留在你的 Mac',
     productBody:
-      '当前版本不包含账号、广告、分析、网络上传或云同步。PromptDock 不会主动上传你的提示词或分类资料。',
+      '当前版本不包含产品账号、广告、分析、跟踪或云同步。只有你明确确认调用 AI 时，当前输入的需求和模板语法手册才会发送给你选择的服务商。',
     productPoints: [
       '提示词、分类、Emoji、分类图片与小组件快照保存在本机',
+      'API Key 保存在 macOS 钥匙串中，不写入 PromptDock 备份',
+      '已保存的提示词库、分类和本地图片不会随 AI 请求发送',
+      'AI 请求受你选择的服务商的隐私、数据保留和计费规则约束',
       '导入和导出的 JSON 备份由你选择保存位置',
       'Time Machine、磁盘同步或其他系统备份由你的 macOS 设置决定',
     ],
@@ -111,8 +114,8 @@ const privacyCopy = {
     title: 'Privacy is not a setting\nIt is a product boundary',
     intro:
       'We use as little data as possible to provide calm, dependable personal tools. This promise explains what stays on your device, what the website processes, and the choices that remain yours.',
-    status: 'Public commitment · Version 1.0',
-    effective: 'Effective July 27, 2026',
+    status: 'Public commitment · Version 1.1',
+    effective: 'Effective August 1, 2026',
     principlesLabel: 'Our principles',
     principles: [
       {
@@ -137,11 +140,14 @@ const privacyCopy = {
     boundaryIntro:
       '“Local first” describes content inside PromptDock. An Early Access application is submitted through the CueGrove website and therefore must be processed by the website server.',
     productLabel: 'PromptDock app',
-    productTitle: 'Your content stays on your Mac',
+    productTitle: 'Your library stays on your Mac by default',
     productBody:
-      'The current app has no account, advertising, analytics, network upload, or cloud sync. PromptDock does not actively upload your prompts or category data.',
+      'The current app has no product account, advertising, analytics, tracking, or cloud sync. Only when you explicitly confirm an AI request are the current requirement and template syntax guide sent to the provider you choose.',
     productPoints: [
       'Prompts, categories, emoji, category images, and widget snapshots are stored locally',
+      'API keys are stored in the macOS Keychain and are not written to PromptDock backups',
+      'Saved prompt libraries, categories, and local images are excluded from AI requests',
+      'AI requests are subject to the provider’s privacy, retention, and billing terms',
       'You choose where exported and imported JSON backups are kept',
       'Time Machine, disk sync, and other system backups are controlled by your macOS settings',
     ],
