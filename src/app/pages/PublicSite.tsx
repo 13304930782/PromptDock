@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useReducer, useState } from 'react';
-import { ArrowDown, ArrowRight, Check, Command, FolderHeart, HardDrive, Leaf, Menu, Search, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { ArrowDown, ArrowRight, Check, FolderHeart, Leaf, Menu, Search, ShieldCheck, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Plasma from '../components/Plasma';
 import TextType from '../components/TextType';
@@ -185,35 +185,26 @@ export default function PublicSite() {
           <div className="hero-mark">
             <img src="/cuegrove-logo.png" alt="" />
           </div>
-          <div className="floating-note note-one"><Sparkles size={16} />Ideas, kept close.</div>
-          <div className="floating-note note-two"><ShieldCheck size={16} />Private by default.</div>
         </div>
       </section>
 
       <section className="story-section" id="philosophy">
         <div className="shell story-intro">
           <div>
-            <span className="section-kicker">{t.storyKicker}</span>
             <h2>{t.storyTitle}</h2>
           </div>
           <p>{t.storyBody}</p>
         </div>
         <div className="shell values-grid">
           <article>
-            <div className="value-number">01</div>
-            <div className="value-icon"><HardDrive size={22} /></div>
             <h3>{t.valueOneTitle}</h3>
             <p>{t.valueOneBody}</p>
           </article>
           <article>
-            <div className="value-number">02</div>
-            <div className="value-icon"><Command size={22} /></div>
             <h3>{t.valueTwoTitle}</h3>
             <p>{t.valueTwoBody}</p>
           </article>
           <article>
-            <div className="value-number">03</div>
-            <div className="value-icon"><Leaf size={22} /></div>
             <h3>{t.valueThreeTitle}</h3>
             <p>{t.valueThreeBody}</p>
           </article>
@@ -229,11 +220,8 @@ export default function PublicSite() {
             <span>Search prompts…</span>
             <kbd>⇧⌘P</kbd>
           </div>
-          <div className="category-chip chip-one">✍️ Writing</div>
-          <div className="category-chip chip-two">💻 Development</div>
         </div>
         <div className="product-copy">
-          <span className="section-kicker">{t.productKicker}</span>
           <h2>{t.productTitle}</h2>
           <p className="product-lead">{t.productLead}</p>
           <p className="product-body">{t.productBody}</p>
@@ -242,7 +230,7 @@ export default function PublicSite() {
             <div><FolderHeart size={20} /><span><strong>{t.featureOrganize}</strong>{t.featureOrganizeBody}</span></div>
             <div><ShieldCheck size={20} /><span><strong>{t.featurePrivacy}</strong>{t.featurePrivacyBody}</span></div>
           </div>
-          <div className="requirement-pill"><span className="status-dot" />{t.macRequirement}</div>
+          <p className="requirement-note">{t.macRequirement}</p>
         </div>
       </section>
 

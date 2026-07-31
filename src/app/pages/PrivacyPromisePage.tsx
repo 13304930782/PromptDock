@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Check,
   Database,
-  EyeOff,
   HardDrive,
   Leaf,
   Mail,
@@ -18,7 +17,7 @@ const privacyCopy = {
     languageName: 'EN',
     home: '返回首页',
     eyebrow: 'CueGrove Privacy Promise',
-    title: '隐私不是设置，\n而是产品的边界。',
+    title: '隐私不是设置，\n而是产品的边界',
     intro:
       '我们用尽量少的数据提供安静、可靠的个人工具。这份承诺用清楚的语言说明什么留在你的设备上、网站会处理什么，以及你始终拥有的选择。',
     status: '公开承诺 · 版本 1.0',
@@ -43,7 +42,7 @@ const privacyCopy = {
       },
     ],
     boundaryKicker: '数据边界',
-    boundaryTitle: '本机产品与网站服务，边界不同。',
+    boundaryTitle: '本机产品与网站服务，边界不同',
     boundaryIntro:
       '“本地优先”描述的是 PromptDock 产品内容。Early Access 申请需要经过 CueGrove 网站提交，因此会由网站服务器处理。',
     productLabel: 'PromptDock 应用',
@@ -86,7 +85,7 @@ const privacyCopy = {
       },
     ],
     choicesKicker: '你的选择',
-    choicesTitle: '你的资料，由你决定。',
+    choicesTitle: '你的资料，由你决定',
     choicesBody:
       '你可以要求我们确认是否持有你的申请资料，并在适用情况下请求更正或删除。你也可以随时要求停止与 Early Access 相关的非必要联系。',
     choicePoints: ['查询或更正申请信息', '请求删除申请记录', '撤回后续非必要邮件联系'],
@@ -94,7 +93,7 @@ const privacyCopy = {
     contactEmail: 'mooncci@cuegroveapp.com',
     responseNote: '请从申请时使用的邮箱联系我们，以便核验请求。',
     limitsKicker: '诚实说明',
-    limitsTitle: '我们不会把承诺写得比产品更大。',
+    limitsTitle: '我们不会把承诺写得比产品更大',
     limitsBody:
       '这是一份公开的产品承诺，不替代适用法律要求的正式隐私政策。链接到其他网站、你选择的备份位置以及 macOS 自身服务，适用其各自的隐私规则。我们也无法保证任何系统绝对安全，但会持续减少数据、限制访问并及时修复已知问题。',
     changesTitle: '这是一份持续维护的承诺',
@@ -109,7 +108,7 @@ const privacyCopy = {
     languageName: '中文',
     home: 'Back home',
     eyebrow: 'CueGrove Privacy Promise',
-    title: 'Privacy is not a setting.\nIt is a product boundary.',
+    title: 'Privacy is not a setting\nIt is a product boundary',
     intro:
       'We use as little data as possible to provide calm, dependable personal tools. This promise explains what stays on your device, what the website processes, and the choices that remain yours.',
     status: 'Public commitment · Version 1.0',
@@ -134,7 +133,7 @@ const privacyCopy = {
       },
     ],
     boundaryKicker: 'Data boundaries',
-    boundaryTitle: 'The local app and the website have different boundaries.',
+    boundaryTitle: 'The local app and the website have different boundaries',
     boundaryIntro:
       '“Local first” describes content inside PromptDock. An Early Access application is submitted through the CueGrove website and therefore must be processed by the website server.',
     productLabel: 'PromptDock app',
@@ -177,7 +176,7 @@ const privacyCopy = {
       },
     ],
     choicesKicker: 'Your choices',
-    choicesTitle: 'Your information remains yours.',
+    choicesTitle: 'Your information remains yours',
     choicesBody:
       'You may ask whether we hold your application data and, where applicable, request correction or deletion. You may also ask us to stop non-essential Early Access communication at any time.',
     choicePoints: ['Access or correct application information', 'Request deletion of an application record', 'Withdraw from non-essential follow-up email'],
@@ -185,7 +184,7 @@ const privacyCopy = {
     contactEmail: 'mooncci@cuegroveapp.com',
     responseNote: 'Please contact us from the address used in your application so we can verify the request.',
     limitsKicker: 'Honest limits',
-    limitsTitle: 'We will not make this promise broader than the product.',
+    limitsTitle: 'We will not make this promise broader than the product',
     limitsBody:
       'This is a public product commitment and does not replace a formal privacy policy where one is required by law. Other websites, backup locations you choose, and macOS services follow their own privacy terms. No system can be guaranteed absolutely secure, but we will keep reducing data, limiting access, and fixing known issues promptly.',
     changesTitle: 'A promise we maintain',
@@ -197,8 +196,6 @@ const privacyCopy = {
     copyrightLine: 'Calm, dependable tools that respect your privacy',
   },
 } as const;
-
-const principleIcons = [HardDrive, EyeOff, Database, RefreshCcw];
 
 export default function PrivacyPromisePage() {
   const [locale, setLocale] = usePublicLocale();
@@ -255,25 +252,20 @@ export default function PrivacyPromisePage() {
       </section>
 
       <section className="privacy-principles shell" aria-labelledby="privacy-principles-title">
-        <span className="section-kicker" id="privacy-principles-title">{t.principlesLabel}</span>
+        <h2 className="visually-hidden" id="privacy-principles-title">{t.principlesLabel}</h2>
         <div className="privacy-principles-grid">
-          {t.principles.map((principle, index) => {
-            const PrincipleIcon = principleIcons[index];
-            return (
-              <article key={principle.title}>
-                <div className="privacy-card-icon"><PrincipleIcon size={21} /></div>
-                <h2>{principle.title}</h2>
-                <p>{principle.body}</p>
-              </article>
-            );
-          })}
+          {t.principles.map((principle) => (
+            <article key={principle.title}>
+              <h2>{principle.title}</h2>
+              <p>{principle.body}</p>
+            </article>
+          ))}
         </div>
       </section>
 
       <section className="privacy-boundary-section">
         <div className="shell">
           <div className="privacy-section-heading">
-            <span className="section-kicker">{t.boundaryKicker}</span>
             <h2>{t.boundaryTitle}</h2>
             <p>{t.boundaryIntro}</p>
           </div>
@@ -300,7 +292,6 @@ export default function PrivacyPromisePage() {
 
       <section className="privacy-practices shell">
         <div className="privacy-section-heading">
-          <span className="section-kicker">{t.practiceKicker}</span>
           <h2>{t.practiceTitle}</h2>
         </div>
         <div className="privacy-practice-list">
@@ -319,7 +310,6 @@ export default function PrivacyPromisePage() {
       <section className="privacy-choice-section">
         <div className="shell privacy-choice-grid">
           <div>
-            <span className="section-kicker light">{t.choicesKicker}</span>
             <h2>{t.choicesTitle}</h2>
             <p>{t.choicesBody}</p>
             <ul>
@@ -337,7 +327,6 @@ export default function PrivacyPromisePage() {
 
       <section className="privacy-honesty shell">
         <article>
-          <span className="section-kicker">{t.limitsKicker}</span>
           <h2>{t.limitsTitle}</h2>
           <p>{t.limitsBody}</p>
         </article>
