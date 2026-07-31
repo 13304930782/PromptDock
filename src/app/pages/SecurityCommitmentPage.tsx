@@ -21,8 +21,8 @@ const securityCopy = {
     title: '让安全成为默认，\n而不是用户的负\u2060担',
     intro:
       '我们把安全视为产品质量和用户责任的一部分。这份公开承诺说明 CueGrove 当前已经实施的保护、仍需完成的工作，以及发现问题时如何联系我们。',
-    status: '公开承诺 · 版本 1.2',
-    effective: '更新日期：2026 年 7 月 29 日',
+    status: '公开承诺 · 版本 1.3',
+    effective: '更新日期：2026 年 8 月 1 日',
     disclosure: '负责任披露已开放',
     noticeTitle: '关于 CISA 承诺',
     noticeBody:
@@ -54,9 +54,11 @@ const securityCopy = {
     appLabel: 'PromptDock macOS 应用',
     appTitle: '从更小的攻击面开始',
     appBody:
-      '当前版本无需产品账号，不包含广告、分析、网络上传或云同步。生产构建启用 macOS App Sandbox 和 Hardened Runtime，并在持续集成中检查关键安全配置。',
+      '当前版本无需产品账号，不包含广告、分析、跟踪或云同步。可选 AI 功能只在用户确认后联网，并只发送当前需求与模板语法手册。生产构建启用 macOS App Sandbox 和 Hardened Runtime，并在持续集成中检查关键安全配置。',
     appPoints: [
       '提示词和分类资料默认保存在用户设备上',
+      'API Key 保存在 macOS 钥匙串中，不进入备份或普通偏好设置',
+      'AI 请求不附带已保存的提示词库、分类或本地图片',
       '没有共享默认密码，也没有远程管理入口',
       '发布构建检查应用沙箱、App Group 与隐私清单',
       '开源代码和构建流程可在 GitHub 审查',
@@ -144,8 +146,8 @@ const securityCopy = {
     title: 'Make security the default,\nnot the user’s burden',
     intro:
       'We treat security as part of product quality and our responsibility to users. This public commitment explains the protections CueGrove has implemented, the work still ahead, and how to contact us when something goes wrong.',
-    status: 'Public commitment · Version 1.2',
-    effective: 'Updated July 29, 2026',
+    status: 'Public commitment · Version 1.3',
+    effective: 'Updated August 1, 2026',
     disclosure: 'Responsible disclosure is open',
     noticeTitle: 'About the CISA pledge',
     noticeBody:
@@ -177,9 +179,11 @@ const securityCopy = {
     appLabel: 'PromptDock for macOS',
     appTitle: 'Starting with a smaller attack surface',
     appBody:
-      'The current release requires no product account and has no advertising, analytics, network upload, or cloud sync. Production builds use the macOS App Sandbox and Hardened Runtime, with key security settings checked in continuous integration.',
+      'The current release requires no product account and has no advertising, analytics, tracking, or cloud sync. Optional AI features connect only after user confirmation and send only the current requirement and template syntax guide. Production builds use the macOS App Sandbox and Hardened Runtime, with key security settings checked in continuous integration.',
     appPoints: [
       'Prompts and category data stay on the user’s device by default',
+      'API keys are stored in the macOS Keychain, not in backups or ordinary preferences',
+      'AI requests exclude saved prompt libraries, categories, and local images',
       'There are no shared default passwords or remote administration endpoints',
       'Release builds check the app sandbox, App Group, and privacy manifest',
       'Source code and build checks are open for review on GitHub',
