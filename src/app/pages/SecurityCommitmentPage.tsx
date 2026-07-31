@@ -5,13 +5,9 @@ import {
   CircleAlert,
   Code2,
   ExternalLink,
-  FileCheck2,
   Flag,
-  KeyRound,
   LockKeyhole,
   Mail,
-  Radar,
-  Route,
   ShieldCheck,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -22,7 +18,7 @@ const securityCopy = {
     languageName: 'EN',
     home: '返回首页',
     eyebrow: 'CueGrove Secure by Design Commitment',
-    title: '让安全成为默认，\n而不是用户的负担。',
+    title: '让安全成为默认，\n而不是用户的负\u2060担',
     intro:
       '我们把安全视为产品质量和用户责任的一部分。这份公开承诺说明 CueGrove 当前已经实施的保护、仍需完成的工作，以及发现问题时如何联系我们。',
     status: '公开承诺 · 版本 1.2',
@@ -52,7 +48,7 @@ const securityCopy = {
       },
     ],
     scopeKicker: '当前范围',
-    scopeTitle: '一份承诺，覆盖产品与服务。',
+    scopeTitle: '一份承诺，覆盖产品与服务',
     scopeIntro:
       '不同组件面临不同风险，因此我们分别说明 PromptDock 本地应用和 CueGrove 网站服务的安全边界。',
     appLabel: 'PromptDock macOS 应用',
@@ -65,17 +61,16 @@ const securityCopy = {
       '发布构建检查应用沙箱、App Group 与隐私清单',
       '开源代码和构建流程可在 GitHub 审查',
     ],
-    serviceLabel: 'CueGrove 网站与管理后台',
-    serviceTitle: '保护申请与管理边界',
+    serviceLabel: 'CueGrove 网站',
+    serviceTitle: '认真对待你交给我们的信息',
     serviceBody:
-      '网站仅收集 Early Access 所需资料。管理功能使用服务端授权，并在应用、网络和基础设施层采取相互补充的保护。',
+      '申请 PromptDock Early Access 不需要创建公众账号。你提交的资料只用于审核申请、发送结果，以及与你参与内测直接相关的必要联系。',
     servicePoints: [
-      '管理员密码使用自适应哈希存储，不保存明文密码',
-      '会话 Cookie 使用 HttpOnly、Secure 与 SameSite 属性',
-      '管理员可启用基于认证器的多因素认证，并获得一次性恢复码',
-      '登录锁定、接口限流、同源检查和 Cloudflare Turnstile 抵御常见滥用',
-      'GitHub 自动审查高危依赖、扫描泄露凭据并提出定期更新',
-      'owner/admin 权限在服务端验证，密钥只通过服务器环境配置',
+      '不出售申请资料，也不用于广告画像',
+      '只有经过授权的 CueGrove 管理人员可以处理申请',
+      '审核结果会按照申请时选择的语言发送到你的邮箱',
+      '不要求上传身份证件、付款资料或与申请无关的敏感信息',
+      '如果收到可疑邮件或发现安全问题，可以直接联系安全报告邮箱',
     ],
     roadmapKicker: '一年路线图',
     roadmapTitle: '截至 2027 年 7 月 27 日的工作',
@@ -114,7 +109,7 @@ const securityCopy = {
       },
     ],
     reportKicker: '报告漏洞',
-    reportTitle: '请先私下告诉我们。',
+    reportTitle: '请先私下告诉我们',
     reportBody:
       '如果你认为 PromptDock、cuegroveapp.com 或相关服务存在安全问题，请不要在公开 Issue 中披露可利用细节。发送邮件时尽量包含受影响组件和版本、复现步骤、潜在影响及必要证据。',
     reportPoints: [
@@ -131,9 +126,9 @@ const securityCopy = {
     safeHarborBody:
       '对于遵守上述边界、以避免伤害为目的并及时报告的善意安全研究，我们不会因为该研究本身采取法律行动。该说明不授权违反法律、侵犯第三方权益或破坏服务的行为。',
     limitsKicker: '诚实说明',
-    limitsTitle: '我们不会把路线图写成已经完成的认证。',
+    limitsTitle: '当前安全工作的范围',
     limitsBody:
-      '多因素认证和供应链检查现已可用；正式安全更新政策及发布可验证性仍在路线图中。任何系统都无法保证绝对安全；我们的责任是降低默认风险、及时响应并公开可以验证的进展。',
+      '管理员多因素认证与供应链检查已经启用。安全更新政策和发布验证仍在推进，完成后会更新到本页。收到安全报告后，我们会确认问题、安排修复，并公布可以验证的进展。',
     repoTitle: '公开仓库与披露政策',
     repoBody: '查看源代码、构建检查、供应链安全规则和仓库级漏洞报告说明。',
     repoAction: '打开 GitHub',
@@ -146,7 +141,7 @@ const securityCopy = {
     languageName: '中文',
     home: 'Back home',
     eyebrow: 'CueGrove Secure by Design Commitment',
-    title: 'Make security the default,\nnot the user’s burden.',
+    title: 'Make security the default,\nnot the user’s burden',
     intro:
       'We treat security as part of product quality and our responsibility to users. This public commitment explains the protections CueGrove has implemented, the work still ahead, and how to contact us when something goes wrong.',
     status: 'Public commitment · Version 1.2',
@@ -176,7 +171,7 @@ const securityCopy = {
       },
     ],
     scopeKicker: 'Current scope',
-    scopeTitle: 'One commitment across product and service.',
+    scopeTitle: 'One commitment across product and service',
     scopeIntro:
       'Different components face different risks, so we describe the security boundaries of the local PromptDock app and the CueGrove website separately.',
     appLabel: 'PromptDock for macOS',
@@ -189,17 +184,16 @@ const securityCopy = {
       'Release builds check the app sandbox, App Group, and privacy manifest',
       'Source code and build checks are open for review on GitHub',
     ],
-    serviceLabel: 'CueGrove website and admin',
-    serviceTitle: 'Protecting application and admin boundaries',
+    serviceLabel: 'CueGrove website',
+    serviceTitle: 'Taking care of what you share with us',
     serviceBody:
-      'The website collects only what is needed for Early Access. Administrative actions are authorized server-side, with complementary application, network, and infrastructure protections.',
+      'Applying for PromptDock Early Access does not require a public account. We use the information you submit only to review your application, send the outcome, and contact you when it directly relates to the early-access program.',
     servicePoints: [
-      'Administrator passwords use an adaptive hash and are never stored in plaintext',
-      'Session cookies use HttpOnly, Secure, and SameSite attributes',
-      'Administrators can enable authenticator-based MFA with one-time recovery codes',
-      'Login lockout, API rate limits, same-origin checks, and Cloudflare Turnstile address common abuse',
-      'GitHub automatically reviews high-risk dependencies, scans leaked credentials, and proposes updates',
-      'owner/admin permissions are enforced server-side and secrets are configured only on the server',
+      'Application data is never sold or used for advertising profiles',
+      'Only authorized CueGrove administrators can review applications',
+      'We send the decision in the language selected on the application',
+      'We do not ask for identity documents, payment details, or unrelated sensitive information',
+      'Suspicious messages and security concerns can be reported directly to our security mailbox',
     ],
     roadmapKicker: 'One-year roadmap',
     roadmapTitle: 'Work through July 27, 2027',
@@ -238,7 +232,7 @@ const securityCopy = {
       },
     ],
     reportKicker: 'Report a vulnerability',
-    reportTitle: 'Please tell us privately first.',
+    reportTitle: 'Please tell us privately first',
     reportBody:
       'If you believe PromptDock, cuegroveapp.com, or a related service has a security issue, please do not disclose exploitable details in a public issue. Include the affected component and version, reproduction steps, potential impact, and only the evidence needed to understand the report.',
     reportPoints: [
@@ -255,9 +249,9 @@ const securityCopy = {
     safeHarborBody:
       'For good-faith security research that follows these boundaries, seeks to avoid harm, and is reported promptly, we will not pursue legal action based on that research alone. This statement does not authorize illegal activity, infringement of third-party rights, or service disruption.',
     limitsKicker: 'Honest limits',
-    limitsTitle: 'We will not present a roadmap as a completed certification.',
+    limitsTitle: 'Where the security work stands',
     limitsBody:
-      'Multi-factor authentication and supply-chain checks are now available; a formal security update policy and verifiable releases remain on the roadmap. No system can be guaranteed absolutely secure; our responsibility is to reduce default risk, respond promptly, and publish verifiable progress.',
+      'Administrator MFA and supply-chain checks are in place. The security update policy and release verification work are still underway and will be reflected here as they are completed. When we receive a security report, we confirm the issue, schedule the fix, and publish progress that can be verified.',
     repoTitle: 'Public repository and disclosure policy',
     repoBody: 'Review source code, build checks, supply-chain rules, and repository-level vulnerability reporting guidance.',
     repoAction: 'Open GitHub',
@@ -267,8 +261,6 @@ const securityCopy = {
     copyrightLine: 'Calm, dependable tools that are secure by default',
   },
 } as const;
-
-const principleIcons = [LockKeyhole, Radar, KeyRound, FileCheck2];
 
 export default function SecurityCommitmentPage() {
   const [locale, setLocale] = usePublicLocale();
@@ -337,25 +329,20 @@ export default function SecurityCommitmentPage() {
       </section>
 
       <section className="privacy-principles shell" aria-labelledby="security-principles-title">
-        <span className="section-kicker" id="security-principles-title">{t.principlesLabel}</span>
+        <h2 className="visually-hidden" id="security-principles-title">{t.principlesLabel}</h2>
         <div className="privacy-principles-grid">
-          {t.principles.map((principle, index) => {
-            const PrincipleIcon = principleIcons[index];
-            return (
-              <article key={principle.title}>
-                <div className="privacy-card-icon"><PrincipleIcon size={21} /></div>
-                <h2>{principle.title}</h2>
-                <p>{principle.body}</p>
-              </article>
-            );
-          })}
+          {t.principles.map((principle) => (
+            <article key={principle.title}>
+              <h2>{principle.title}</h2>
+              <p>{principle.body}</p>
+            </article>
+          ))}
         </div>
       </section>
 
       <section className="privacy-boundary-section">
         <div className="shell">
           <div className="privacy-section-heading">
-            <span className="section-kicker">{t.scopeKicker}</span>
             <h2>{t.scopeTitle}</h2>
             <p>{t.scopeIntro}</p>
           </div>
@@ -382,7 +369,6 @@ export default function SecurityCommitmentPage() {
 
       <section className="security-roadmap shell">
         <div className="privacy-section-heading">
-          <span className="section-kicker"><Route size={15} />{t.roadmapKicker}</span>
           <h2>{t.roadmapTitle}</h2>
           <p>{t.roadmapIntro}</p>
         </div>
@@ -429,7 +415,6 @@ export default function SecurityCommitmentPage() {
           </div>
         </article>
         <article className="security-limit-card">
-          <span className="section-kicker">{t.limitsKicker}</span>
           <h2>{t.limitsTitle}</h2>
           <p>{t.limitsBody}</p>
         </article>

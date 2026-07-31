@@ -32,9 +32,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   min-height: 100dvh;
-  background:
-    radial-gradient(circle at 8% 0%, rgba(244, 191, 79, 0.09), transparent 30%),
-    var(--cream-50);
+  background: var(--cream-50);
 }
 
 main {
@@ -64,6 +62,17 @@ img {
   max-width: 100%;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .shell {
   width: min(1320px, calc(100% - 56px));
   margin-inline: auto;
@@ -83,9 +92,8 @@ img {
   border: 1px solid rgba(13, 75, 59, 0.08);
   border-top: 0;
   border-radius: 0 0 24px 24px;
-  background: rgba(253, 251, 245, 0.86);
-  box-shadow: 0 10px 35px rgba(24, 57, 45, 0.06);
-  backdrop-filter: blur(18px);
+  background: var(--cream-50);
+  box-shadow: 0 4px 14px rgba(24, 57, 45, 0.05);
 }
 
 .brand-lockup {
@@ -189,7 +197,7 @@ img {
   font-family: Iowan Old Style, Baskerville, "Songti SC", "Noto Serif CJK SC", Georgia, serif;
   color: var(--forest-950);
   font-weight: 600;
-  letter-spacing: -0.055em;
+  letter-spacing: -0.035em;
 }
 
 .hero h1 {
@@ -326,7 +334,7 @@ img {
   width: 43%;
   transform: translate(-50%, -50%);
   border-radius: 32%;
-  box-shadow: 0 25px 60px rgba(1, 24, 19, 0.34);
+  box-shadow: 0 12px 28px rgba(1, 24, 19, 0.22);
 }
 
 .hero-mark img {
@@ -352,33 +360,6 @@ img {
   width: 91%;
   height: 68%;
   transform: translate(-50%, -50%) rotate(32deg);
-}
-
-.floating-note {
-  position: absolute;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 12px 15px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 16px;
-  color: white;
-  background: rgba(8, 47, 39, 0.58);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.16);
-  font-size: 12px;
-  font-weight: 600;
-  backdrop-filter: blur(12px);
-}
-
-.note-one {
-  top: 18%;
-  right: 7%;
-}
-
-.note-two {
-  bottom: 16%;
-  left: 7%;
 }
 
 .story-section {
@@ -415,43 +396,13 @@ img {
 }
 
 .values-grid article {
-  position: relative;
-  min-height: 268px;
-  padding: 32px;
-  overflow: hidden;
-  border: 1px solid rgba(13, 75, 59, 0.08);
-  border-radius: 28px;
-  background: rgba(255, 254, 249, 0.7);
-  transition: transform 180ms ease, box-shadow 180ms ease;
-}
-
-.values-grid article:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 50px rgba(23, 62, 48, 0.08);
-}
-
-.value-number {
-  position: absolute;
-  top: 19px;
-  right: 24px;
-  color: rgba(13, 75, 59, 0.18);
-  font-family: Iowan Old Style, Baskerville, Georgia, serif;
-  font-size: 54px;
-  font-style: italic;
-}
-
-.value-icon {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  border-radius: 16px;
-  color: var(--forest-800);
-  background: #e4efd9;
+  min-height: 0;
+  padding: 28px 12px 0 0;
+  border-top: 1px solid rgba(13, 75, 59, 0.22);
 }
 
 .values-grid h3 {
-  margin: 40px 0 10px;
+  margin: 0 0 10px;
   color: var(--forest-950);
   font-size: 22px;
 }
@@ -498,7 +449,7 @@ img {
   z-index: 2;
   width: 43%;
   border-radius: 25%;
-  box-shadow: 0 35px 70px rgba(28, 82, 60, 0.27);
+  box-shadow: 0 14px 32px rgba(28, 82, 60, 0.18);
 }
 
 .quick-search-card {
@@ -533,30 +484,8 @@ img {
   font-size: 11px;
 }
 
-.category-chip {
-  position: absolute;
-  z-index: 3;
-  padding: 10px 13px;
-  border-radius: 999px;
-  color: var(--forest-900);
-  background: rgba(255, 254, 249, 0.9);
-  box-shadow: 0 12px 30px rgba(32, 71, 56, 0.11);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.chip-one {
-  top: 17%;
-  right: 7%;
-}
-
-.chip-two {
-  top: 30%;
-  left: 7%;
-}
-
 .product-copy h2 {
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 .product-lead {
@@ -564,7 +493,7 @@ img {
   color: var(--forest-700);
   font-family: Iowan Old Style, Baskerville, "Songti SC", Georgia, serif;
   font-size: 27px;
-  font-style: italic;
+  font-style: normal;
 }
 
 .product-body {
@@ -609,24 +538,10 @@ img {
   font-size: 15px;
 }
 
-.requirement-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
+.requirement-note {
   margin-top: 32px;
-  padding: 10px 14px;
-  border: 1px solid var(--cream-200);
-  border-radius: 999px;
   color: #5f756b;
   font-size: 12px;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--leaf-500);
-  box-shadow: 0 0 0 4px rgba(112, 188, 91, 0.15);
 }
 
 .apply-section {
@@ -634,10 +549,7 @@ img {
   overflow: hidden;
   padding: 96px 0;
   color: white;
-  background:
-    radial-gradient(circle at 10% 15%, rgba(112, 188, 91, 0.22), transparent 27%),
-    radial-gradient(circle at 95% 85%, rgba(244, 191, 79, 0.14), transparent 26%),
-    var(--forest-950);
+  background: var(--forest-950);
 }
 
 .apply-grid {
@@ -704,7 +616,7 @@ img {
   border-radius: 32px;
   color: var(--ink);
   background: var(--white);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.14);
 }
 
 .application-card form {
@@ -921,10 +833,7 @@ img {
 .privacy-promise-page {
   min-height: 100vh;
   min-height: 100dvh;
-  background:
-    radial-gradient(circle at 90% 8%, rgba(112, 188, 91, 0.11), transparent 27%),
-    radial-gradient(circle at 10% 18%, rgba(244, 191, 79, 0.08), transparent 25%),
-    var(--cream-50);
+  background: var(--cream-50);
 }
 
 .policy-header {
@@ -972,7 +881,7 @@ img {
   font-family: Iowan Old Style, Baskerville, "Songti SC", Georgia, serif;
   font-size: clamp(52px, 6.6vw, 92px);
   font-weight: 500;
-  letter-spacing: -0.055em;
+  letter-spacing: -0.04em;
   line-height: 0.98;
   white-space: pre-line;
 }
@@ -1018,7 +927,7 @@ img {
   background:
     radial-gradient(circle at 30% 20%, rgba(112, 188, 91, 0.48), transparent 30%),
     linear-gradient(145deg, #155d47, #082f27 72%);
-  box-shadow: 0 32px 65px rgba(8, 47, 39, 0.18);
+  box-shadow: 0 16px 38px rgba(8, 47, 39, 0.14);
 }
 
 .privacy-hero-mark img {
@@ -1027,7 +936,7 @@ img {
   width: 42%;
   border: 16px solid rgba(255, 254, 249, 0.96);
   border-radius: 30%;
-  box-shadow: 0 18px 50px rgba(4, 31, 25, 0.3);
+  box-shadow: 0 10px 24px rgba(4, 31, 25, 0.22);
 }
 
 .privacy-mark-ring {
@@ -1051,37 +960,20 @@ img {
   padding-block: 22px 110px;
 }
 
-.privacy-principles > .section-kicker {
-  margin-bottom: 25px;
-}
-
 .privacy-principles-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 64px;
 }
 
 .privacy-principles-grid article {
-  min-height: 260px;
-  padding: 26px;
-  border: 1px solid rgba(13, 75, 59, 0.1);
-  border-radius: 25px;
-  background: rgba(255, 254, 249, 0.76);
-  box-shadow: 0 14px 32px rgba(24, 57, 45, 0.04);
-}
-
-.privacy-card-icon {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border-radius: 15px;
-  color: var(--forest-700);
-  background: #e5f2dc;
+  min-height: 0;
+  padding: 28px 0 32px;
+  border-top: 1px solid rgba(13, 75, 59, 0.18);
 }
 
 .privacy-principles-grid h2 {
-  margin: 56px 0 10px;
+  margin: 0 0 10px;
   color: var(--forest-950);
   font-size: 20px;
 }
@@ -1099,7 +991,7 @@ img {
 }
 
 .privacy-section-heading {
-  max-width: 830px;
+  max-width: 1050px;
   margin-bottom: 46px;
 }
 
@@ -1111,8 +1003,12 @@ img {
   font-family: Iowan Old Style, Baskerville, "Songti SC", Georgia, serif;
   font-size: clamp(38px, 4.2vw, 58px);
   font-weight: 500;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.03em;
   line-height: 1.08;
+}
+
+.privacy-section-heading h2 {
+  white-space: pre-line;
 }
 
 .privacy-section-heading > p {
@@ -1232,7 +1128,7 @@ img {
   color: #9aab9f;
   font-family: Iowan Old Style, Baskerville, Georgia, serif;
   font-size: 24px;
-  font-style: italic;
+  font-style: normal;
 }
 
 .privacy-practice-list article > div {
@@ -1258,9 +1154,7 @@ img {
 .privacy-choice-section {
   padding-block: 110px;
   color: white;
-  background:
-    radial-gradient(circle at 15% 100%, rgba(112, 188, 91, 0.32), transparent 30%),
-    var(--forest-950);
+  background: var(--forest-950);
 }
 
 .privacy-choice-grid {
@@ -1291,12 +1185,12 @@ img {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.07);
-  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.1);
 }
 
 .privacy-contact-card .privacy-card-icon {
-  color: var(--forest-900);
-  background: var(--gold-400);
+  display: inline-flex;
+  color: var(--gold-400);
 }
 
 .privacy-contact-card > span {
@@ -1366,10 +1260,7 @@ img {
 
 /* Secure by Design Commitment */
 .security-commitment-page {
-  background:
-    radial-gradient(circle at 86% 5%, rgba(244, 191, 79, 0.1), transparent 25%),
-    radial-gradient(circle at 8% 18%, rgba(112, 188, 91, 0.12), transparent 27%),
-    var(--cream-50);
+  background: var(--cream-50);
 }
 
 .security-disclosure-status {
@@ -1397,7 +1288,7 @@ img {
     radial-gradient(circle at 28% 22%, rgba(112, 188, 91, 0.34), transparent 33%),
     var(--forest-950);
   background-size: 38px 38px, 38px 38px, auto, auto;
-  box-shadow: 0 32px 65px rgba(8, 47, 39, 0.2);
+  box-shadow: 0 16px 38px rgba(8, 47, 39, 0.15);
 }
 
 .security-hero-mark > svg {
@@ -1599,6 +1490,7 @@ img {
   min-height: 330px;
   padding: 36px;
   border-radius: 28px;
+  align-content: start;
 }
 
 .security-safe-harbor {
@@ -1630,12 +1522,9 @@ img {
 }
 
 .security-limit-card {
+  display: grid;
   border: 1px solid rgba(13, 75, 59, 0.1);
   background: var(--white);
-}
-
-.security-limit-card h2 {
-  margin-top: 20px;
 }
 
 .security-repo-card {
@@ -2761,10 +2650,6 @@ input[type='password']::-webkit-caps-lock-indicator {
   .hero-art {
     min-height: 460px;
     border-radius: 38px;
-  }
-
-  .floating-note {
-    display: none;
   }
 
   .story-section,
