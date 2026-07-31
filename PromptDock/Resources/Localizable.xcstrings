@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "" : {
+
+    },
     "%@ · %@" : {
       "localizations" : {
         "en" : {
@@ -11,8 +14,67 @@
         }
       }
     },
+    "%@, item %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, item %2$lld"
+          }
+        }
+      }
+    },
+    "%@，第 %lld 项" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@，第 %2$lld 项"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld variables" : {
+
+    },
+    "%lld variables detected, including %lld repeatable." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld variables detected, including %2$lld repeatable."
+          }
+        }
+      }
+    },
+    "%lld 个变量" : {
+
+    },
+    "%lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
     "↩" : {
 
+    },
+    "A backup includes prompts, favorites, categories, order, emoji, and local category images." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份包含提示词、收藏状态、分类、排序、Emoji 和本地分类图片。"
+          }
+        }
+      }
     },
     "A category with this name already exists." : {
       "localizations" : {
@@ -20,6 +82,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已存在同名分类。"
+          }
+        }
+      }
+    },
+    "A safety backup of the previous data was saved locally." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原有数据的安全备份已保存在本机。"
           }
         }
       }
@@ -35,6 +107,9 @@
         }
       }
     },
+    "Add an item to %@" : {
+
+    },
     "Add Category" : {
       "localizations" : {
         "zh-Hans" : {
@@ -44,6 +119,9 @@
           }
         }
       }
+    },
+    "Add Item" : {
+
     },
     "Add or Remove from Favorites (Shift-Command-F)" : {
       "localizations" : {
@@ -70,7 +148,6 @@
       }
     },
     "AI" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -79,6 +156,34 @@
           }
         }
       }
+    },
+    "AI Settings…" : {
+
+    },
+    "AI credentials in Keychain" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 凭据保存在钥匙串"
+          }
+        }
+      }
+    },
+    "AI Template Assistant" : {
+
+    },
+    "AI 模板助手" : {
+
+    },
+    "AI 生成的模板" : {
+
+    },
+    "AI 设置…" : {
+
+    },
+    "AI-generated template" : {
+
     },
     "All Prompts" : {
       "extractionState" : "stale",
@@ -91,12 +196,37 @@
         }
       }
     },
+    "API Address" : {
+
+    },
+    "API Key or access token (optional)" : {
+
+    },
+    "API Key 或访问令牌（可选）" : {
+
+    },
+    "API 地址" : {
+
+    },
     "Appearance" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "外观"
+          }
+        }
+      }
+    },
+    "Back to Search Results" : {
+
+    },
+    "Backup Exported" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份已导出"
           }
         }
       }
@@ -242,6 +372,9 @@
         }
       }
     },
+    "Complete the variables in “%@”, then copy the finished prompt." : {
+
+    },
     "Conflicts with a macOS system shortcut" : {
       "localizations" : {
         "zh-Hans" : {
@@ -261,6 +394,9 @@
           }
         }
       }
+    },
+    "Connection" : {
+
     },
     "Content" : {
       "localizations" : {
@@ -295,6 +431,16 @@
         }
       }
     },
+    "Copy Error Details" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制错误详情"
+          }
+        }
+      }
+    },
     "Copy faster next time" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -305,6 +451,9 @@
           }
         }
       }
+    },
+    "Copy for AI" : {
+
     },
     "Copy Prompt" : {
       "localizations" : {
@@ -326,6 +475,22 @@
         }
       }
     },
+    "Copy Result" : {
+
+    },
+    "Copy Template" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制模板"
+          }
+        }
+      }
+    },
+    "Copy the guide and requirement for ChatGPT, DeepSeek, or another AI" : {
+
+    },
     "Create a category to organize your prompts." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -346,6 +511,15 @@
           }
         }
       }
+    },
+    "Credential is stored in macOS Keychain" : {
+
+    },
+    "DeepSeek API Key" : {
+
+    },
+    "DeepSeek Key 仅保存在此 Mac 的钥匙串。自定义服务必须兼容 OpenAI 的 /chat/completions 响应格式；仅 localhost 可使用 HTTP。测试连接会发送一条很短的请求。" : {
+
     },
     "Delete" : {
       "localizations" : {
@@ -379,6 +553,9 @@
           }
         }
       }
+    },
+    "Delete Credential" : {
+
     },
     "Delete Prompt" : {
       "localizations" : {
@@ -493,6 +670,9 @@
         }
       }
     },
+    "Enable online AI generation" : {
+
+    },
     "English" : {
       "localizations" : {
         "zh-Hans" : {
@@ -503,12 +683,34 @@
         }
       }
     },
+    "Enter %@" : {
+
+    },
     "Enter a category name." : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "请输入分类名称。"
+          }
+        }
+      }
+    },
+    "Enter a requirement to generate a template with the configured AI, or copy the guide for use in another AI." : {
+
+    },
+    "Enter a value for “%@”." : {
+
+    },
+    "Example: Review these files: {{filename[]}}" : {
+
+    },
+    "Export Backup…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出备份…"
           }
         }
       }
@@ -534,6 +736,12 @@
         }
       }
     },
+    "Fill and Copy" : {
+
+    },
+    "Fill Variables" : {
+
+    },
     "Follow System" : {
       "localizations" : {
         "zh-Hans" : {
@@ -544,6 +752,9 @@
         }
       }
     },
+    "For example: Review a variable number of student essay files…" : {
+
+    },
     "General" : {
       "localizations" : {
         "zh-Hans" : {
@@ -553,6 +764,15 @@
           }
         }
       }
+    },
+    "Generate with AI" : {
+
+    },
+    "Generated Template" : {
+
+    },
+    "Generating template…" : {
+
     },
     "Global Quick Search" : {
       "localizations" : {
@@ -574,6 +794,12 @@
         }
       }
     },
+    "Guide" : {
+
+    },
+    "https://api.example.com/v1" : {
+
+    },
     "Icon" : {
       "localizations" : {
         "zh-Hans" : {
@@ -594,6 +820,46 @@
         }
       }
     },
+    "Import Backup…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入备份…"
+          }
+        }
+      }
+    },
+    "Import Complete" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入完成"
+          }
+        }
+      }
+    },
+    "Import PromptDock Backup?" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入 PromptDock 备份？"
+          }
+        }
+      }
+    },
+    "Imported %lld prompts and %lld categories." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已导入 %1$lld 条提示词和 %2$lld 个分类。"
+          }
+        }
+      }
+    },
     "Include Command, Option, or Control and another key" : {
       "localizations" : {
         "zh-Hans" : {
@@ -603,6 +869,9 @@
           }
         }
       }
+    },
+    "Item %lld" : {
+
     },
     "Language" : {
       "localizations" : {
@@ -624,6 +893,19 @@
         }
       }
     },
+    "Live Preview" : {
+
+    },
+    "Local Backup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本地备份"
+          }
+        }
+      }
+    },
     "Local Image" : {
       "localizations" : {
         "zh-Hans" : {
@@ -633,6 +915,22 @@
           }
         }
       }
+    },
+    "Merge with Current Data" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "与当前数据合并"
+          }
+        }
+      }
+    },
+    "Model" : {
+
+    },
+    "model-name" : {
+
     },
     "Move through search results" : {
       "extractionState" : "stale",
@@ -737,6 +1035,9 @@
         }
       }
     },
+    "No stored credential" : {
+
+    },
     "No system conflict detected" : {
       "localizations" : {
         "zh-Hans" : {
@@ -767,6 +1068,12 @@
         }
       }
     },
+    "Online generation is disabled" : {
+
+    },
+    "Online generation: %@" : {
+
+    },
     "Open at Login" : {
       "localizations" : {
         "zh-Hans" : {
@@ -783,6 +1090,32 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开 PromptDock 并创建提示词，即可在此显示。"
+          }
+        }
+      }
+    },
+    "Open the template variables guide" : {
+
+    },
+    "Opening PromptDock…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在打开 PromptDock…"
+          }
+        }
+      }
+    },
+    "Optional AI Template Assistant" : {
+
+    },
+    "Only after you confirm online generation does PromptDock send the current requirement and template syntax guide to the selected provider. Saved prompts, categories, and local images are not included. The provider’s privacy terms apply." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只有你确认在线生成后，PromptDock 才会把当前需求和模板语法手册发送给所选服务商。已保存的提示词、分类和本地图片不会包含在请求中，且请求适用服务商的隐私条款。"
           }
         }
       }
@@ -859,6 +1192,9 @@
     "Prompt Content" : {
 
     },
+    "Prompt requirement" : {
+
+    },
     "Prompt Title" : {
 
     },
@@ -871,6 +1207,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "PromptDock 会检查 macOS 快捷键和注册冲突，但其他应用可能使用 macOS 未公开的快捷键。"
+          }
+        }
+      }
+    },
+    "PromptDock Could Not Open Its Library" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PromptDock 无法打开资料库"
           }
         }
       }
@@ -899,6 +1245,7 @@
 
     },
     "PromptDock stores this information locally and does not upload it." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -908,12 +1255,31 @@
         }
       }
     },
+    "PromptDock stores this information locally. Your prompt library is not sent to an AI provider." : {
+
+    },
+    "PromptDock will send this requirement and the template syntax guide to %@. Your saved prompt library will not be sent." : {
+
+    },
+    "PromptDock 会把当前需求和模板语法手册发送给 %@。不会发送已保存的提示词资料库。" : {
+
+    },
     "Prompts and categories" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "提示词和分类"
+          }
+        }
+      }
+    },
+    "Prompts, categories, local images, and backups stay on this Mac." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提示词、分类、本地图片和备份保存在这台 Mac 上。"
           }
         }
       }
@@ -949,12 +1315,38 @@
         }
       }
     },
+    "Provider" : {
+
+    },
     "Quick Access" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "快速访问"
+          }
+        }
+      }
+    },
+    "Quit PromptDock" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退出 PromptDock"
+          }
+        }
+      }
+    },
+    "Remove Item" : {
+
+    },
+    "Remove item %lld from %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Remove item %1$lld from %2$@"
           }
         }
       }
@@ -980,6 +1372,19 @@
         }
       }
     },
+    "Repeatable" : {
+
+    },
+    "Replace Current Data" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "替换当前数据"
+          }
+        }
+      }
+    },
     "Replace Image…" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1000,6 +1405,19 @@
         }
       }
     },
+    "Retry" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
+          }
+        }
+      }
+    },
+    "Reuse one prompt with variables" : {
+
+    },
     "Save" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1009,6 +1427,9 @@
           }
         }
       }
+    },
+    "Save to Keychain" : {
+
     },
     "Search Prompts" : {
       "localizations" : {
@@ -1040,6 +1461,12 @@
         }
       }
     },
+    "Send and Generate Template" : {
+
+    },
+    "Send to AI?" : {
+
+    },
     "Shortcut" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1056,6 +1483,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "快捷键"
+          }
+        }
+      }
+    },
+    "Show Data Folder in Finder" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Finder 中显示数据文件夹"
           }
         }
       }
@@ -1113,6 +1550,12 @@
         }
       }
     },
+    "Tab to move · Return to copy · Esc to go back" : {
+
+    },
+    "Tab 切换 · Return 复制 · Esc 返回" : {
+
+    },
     "Teaching" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1124,12 +1567,147 @@
         }
       }
     },
+    "Template copied. Replace its variables before use." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模板已复制，请在使用前替换其中的变量。"
+          }
+        }
+      }
+    },
+    "Template Variables Guide" : {
+
+    },
+    "Test Connection" : {
+
+    },
+    "The backup contains a prompt with a missing title, category, or content." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份中有提示词缺少标题、分类或正文。"
+          }
+        }
+      }
+    },
+    "The backup contains an invalid category." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份中包含无效分类。"
+          }
+        }
+      }
+    },
+    "The backup contains duplicate category identifiers." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份中包含重复的分类标识符。"
+          }
+        }
+      }
+    },
+    "The backup contains duplicate prompt identifiers." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份中包含重复的提示词标识符。"
+          }
+        }
+      }
+    },
+    "The backup contains more items than PromptDock can safely import." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份中的项目过多，PromptDock 无法安全导入。"
+          }
+        }
+      }
+    },
+    "The backup contains more than one category named “%@”." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份中包含多个名为“%1$@”的分类。"
+          }
+        }
+      }
+    },
+    "The backup is larger than 100 MB." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份文件超过 100 MB。"
+          }
+        }
+      }
+    },
+    "The DeepSeek key stays in this Mac’s Keychain. A custom service must support the OpenAI-compatible /chat/completions format; HTTP is allowed only for localhost. Testing sends one short request." : {
+
+    },
+    "The icon for “%@” is not a single emoji or character." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@”的图标不是单个 Emoji 或字符。"
+          }
+        }
+      }
+    },
     "The icon is stored only on this Mac. PromptDock does not upload it." : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "图标仅保存在此 Mac，PromptDock 不会上传。"
+          }
+        }
+      }
+    },
+    "The local image for “%@” is missing or invalid." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@”的本地图片缺失或无效。"
+          }
+        }
+      }
+    },
+    "The result is not saved automatically. Review its variables and fixed instructions before copying it into a new prompt." : {
+
+    },
+    "The selected file is larger than %@." : {
+
+    },
+    "This backup contains %lld prompts and %lld categories. Replacing first saves an automatic safety backup on this Mac." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此备份包含 %1$lld 条提示词和 %2$lld 个分类。替换前会先在这台 Mac 上自动保存一份安全备份。"
+          }
+        }
+      }
+    },
+    "This backup uses unsupported format version %lld." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此备份使用了不支持的格式版本 %1$lld。"
           }
         }
       }
@@ -1210,6 +1788,16 @@
         }
       }
     },
+    "Unable to Complete Backup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法完成备份操作"
+          }
+        }
+      }
+    },
     "Unable to Copy" : {
 
     },
@@ -1257,6 +1845,9 @@
     "Updated %@" : {
 
     },
+    "Use {{name}} for one value, or {{filename[]}} for a repeatable list with an Add button." : {
+
+    },
     "Use Default Emoji" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1266,6 +1857,12 @@
           }
         }
       }
+    },
+    "When you explicitly generate a template, PromptDock sends the requirement and template syntax guide to the provider selected in AI Settings. It does not send your saved prompt library." : {
+
+    },
+    "Write fixed content once, then fill changing parts when you copy. Filling and copying stay on this Mac; only confirmed online AI requests send the current requirement." : {
+
     },
     "Writing" : {
       "extractionState" : "stale",
@@ -1278,52 +1875,15 @@
         }
       }
     },
-    "Local Backup" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "本地备份"
-          }
-        }
-      }
+    "You’ll fill these variables before copying." : {
+
     },
-    "Export Backup…" : {
+    "Your existing data was not changed. Retry, or copy the details if you need help." : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "导出备份…"
-          }
-        }
-      }
-    },
-    "Import Backup…" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "导入备份…"
-          }
-        }
-      }
-    },
-    "A backup includes prompts, favorites, categories, order, emoji, and local category images." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "备份包含提示词、收藏状态、分类、排序、Emoji 和本地分类图片。"
-          }
-        }
-      }
-    },
-    "Backup Exported" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "备份已导出"
+            "value" : "现有数据没有被更改。请重试；如需帮助，可复制错误详情。"
           }
         }
       }
@@ -1338,255 +1898,169 @@
         }
       }
     },
-    "Import PromptDock Backup?" : {
+    "为%@添加一项" : {
+
+    },
+    "使用 AI 生成" : {
+
+    },
+    "例如：根据多个学生作文文件生成逐份批改意见……" : {
+
+    },
+    "凭证已存入 macOS 钥匙串" : {
+
+    },
+    "删除凭证" : {
+
+    },
+    "发送并生成模板" : {
+
+    },
+    "发送给 AI？" : {
+
+    },
+    "取消" : {
+
+    },
+    "可重复" : {
+
+    },
+    "启用在线 AI 生成" : {
+
+    },
+    "固定内容只写一次，复制时再填写会变化的部分。填写与复制在此 Mac 上完成；仅当你确认使用在线 AI 时才会发送当前需求。" : {
+
+    },
+    "在线生成：%@" : {
+
+    },
+    "在线生成尚未启用" : {
+
+    },
+    "填写变量" : {
+
+    },
+    "填写后复制" : {
+
+    },
+    "填写并复制" : {
+
+    },
+    "复制" : {
+
+    },
+    "复制前会请你填写这些变量。" : {
+
+    },
+    "复制手册和需求，然后粘贴到 ChatGPT、DeepSeek 或其他 AI" : {
+
+    },
+    "复制提示词" : {
+
+    },
+    "复制结果" : {
+
+    },
+    "复制给 AI" : {
+
+    },
+    "存入钥匙串" : {
+
+    },
+    "完成“%@”中的变量，然后复制最终提示词。" : {
+
+    },
+    "实时预览" : {
+
+    },
+    "尚未保存凭证" : {
+
+    },
+    "已复制" : {
+
+    },
+    "已识别 %lld 个变量，其中 %lld 个可重复。" : {
       "localizations" : {
-        "zh-Hans" : {
+        "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "导入 PromptDock 备份？"
+            "state" : "new",
+            "value" : "已识别 %1$lld 个变量，其中 %2$lld 个可重复。"
           }
         }
       }
     },
-    "Merge with Current Data" : {
+    "打开模板变量操作手册" : {
+
+    },
+    "提示词需求" : {
+
+    },
+    "操作手册" : {
+
+    },
+    "服务提供方" : {
+
+    },
+    "模型" : {
+
+    },
+    "模板变量操作手册" : {
+
+    },
+    "正在生成模板…" : {
+
+    },
+    "测试连接" : {
+
+    },
+    "添加一项" : {
+
+    },
+    "生成结果" : {
+
+    },
+    "用变量复用一条提示词" : {
+
+    },
+    "示例：请批改这些文件：{{文件名[]}}" : {
+
+    },
+    "移除%@的第 %lld 项" : {
       "localizations" : {
-        "zh-Hans" : {
+        "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "与当前数据合并"
+            "state" : "new",
+            "value" : "移除%1$@的第 %2$lld 项"
           }
         }
       }
     },
-    "Replace Current Data" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "替换当前数据"
-          }
-        }
-      }
+    "移除这一项" : {
+
     },
-    "This backup contains %lld prompts and %lld categories. Replacing first saves an automatic safety backup on this Mac." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此备份包含 %1$lld 条提示词和 %2$lld 个分类。替换前会先在这台 Mac 上自动保存一份安全备份。"
-          }
-        }
-      }
+    "第 %lld 项" : {
+
     },
-    "Import Complete" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "导入完成"
-          }
-        }
-      }
+    "结果不会自动保存。请先检查变量和固定要求，再复制到新提示词中。" : {
+
     },
-    "Unable to Complete Backup" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法完成备份操作"
-          }
-        }
-      }
+    "请填写“%@”。" : {
+
     },
-    "Imported %lld prompts and %lld categories." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已导入 %1$lld 条提示词和 %2$lld 个分类。"
-          }
-        }
-      }
+    "输入 {{名称}} 创建普通变量；输入 {{文件名[]}} 创建可用加号扩展的重复项。" : {
+
     },
-    "A safety backup of the previous data was saved locally." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "原有数据的安全备份已保存在本机。"
-          }
-        }
-      }
+    "输入%@" : {
+
     },
-    "The backup is larger than 100 MB." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "备份文件超过 100 MB。"
-          }
-        }
-      }
+    "输入需求后，可以直接调用已配置的 AI 生成模板，也可以只复制手册，粘贴到其他 AI。" : {
+
     },
-    "This backup uses unsupported format version %lld." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此备份使用了不支持的格式版本 %1$lld。"
-          }
-        }
-      }
+    "返回搜索结果" : {
+
     },
-    "The backup contains more items than PromptDock can safely import." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "备份中的项目过多，PromptDock 无法安全导入。"
-          }
-        }
-      }
-    },
-    "The backup contains duplicate prompt identifiers." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "备份中包含重复的提示词标识符。"
-          }
-        }
-      }
-    },
-    "The backup contains duplicate category identifiers." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "备份中包含重复的分类标识符。"
-          }
-        }
-      }
-    },
-    "The backup contains more than one category named “%@”." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "备份中包含多个名为“%1$@”的分类。"
-          }
-        }
-      }
-    },
-    "The backup contains a prompt with a missing title, category, or content." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "备份中有提示词缺少标题、分类或正文。"
-          }
-        }
-      }
-    },
-    "The backup contains an invalid category." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "备份中包含无效分类。"
-          }
-        }
-      }
-    },
-    "The icon for “%@” is not a single emoji or character." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“%1$@”的图标不是单个 Emoji 或字符。"
-          }
-        }
-      }
-    },
-    "The local image for “%@” is missing or invalid." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“%1$@”的本地图片缺失或无效。"
-          }
-        }
-      }
-    },
-    "Copy Error Details" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "复制错误详情"
-          }
-        }
-      }
-    },
-    "Opening PromptDock…" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在打开 PromptDock…"
-          }
-        }
-      }
-    },
-    "PromptDock Could Not Open Its Library" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PromptDock 无法打开资料库"
-          }
-        }
-      }
-    },
-    "Quit PromptDock" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "退出 PromptDock"
-          }
-        }
-      }
-    },
-    "Retry" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "重试"
-          }
-        }
-      }
-    },
-    "Show Data Folder in Finder" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在 Finder 中显示数据文件夹"
-          }
-        }
-      }
-    },
-    "Your existing data was not changed. Retry, or copy the details if you need help." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "现有数据没有被更改。请重试；如需帮助，可复制错误详情。"
-          }
-        }
-      }
+    "连接设置" : {
+
     }
   },
   "version" : "1.0"

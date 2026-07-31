@@ -18,12 +18,17 @@ struct SettingsView: View {
                     Label("Shortcuts", systemImage: "command")
                 }
 
+            AISettingsView()
+                .tabItem {
+                    Label("AI", systemImage: "sparkles")
+                }
+
             PrivacySettingsView()
                 .tabItem {
                     Label("Privacy", systemImage: "hand.raised")
                 }
         }
-        .frame(width: 580, height: 450)
+        .frame(width: 640, height: 540)
         .onAppear { runtime.start() }
     }
 }
@@ -202,9 +207,10 @@ private struct PrivacySettingsView: View {
             Section("Stored on This Mac") {
                 Label("Prompts and categories", systemImage: "internaldrive")
                 Label("Category emoji and images", systemImage: "photo")
+                Label("AI credentials in Keychain", systemImage: "key")
 
                 Text(
-                    "PromptDock stores this information locally and does not upload it."
+                    "Prompts, categories, local images, and backups stay on this Mac."
                 )
                 .foregroundStyle(.secondary)
             }
@@ -213,6 +219,13 @@ private struct PrivacySettingsView: View {
                 Label("No account", systemImage: "person.crop.circle.badge.xmark")
                 Label("No analytics or advertising", systemImage: "chart.bar.xaxis")
                 Label("No cloud sync", systemImage: "icloud.slash")
+            }
+
+            Section("Optional AI Template Assistant") {
+                Text(
+                    "Only after you confirm online generation does PromptDock send the current requirement and template syntax guide to the selected provider. Saved prompts, categories, and local images are not included. The provider’s privacy terms apply."
+                )
+                .foregroundStyle(.secondary)
             }
 
             Section("System Backups") {
@@ -384,6 +397,302 @@ private struct PrivacySettingsView: View {
             title: String(localized: "Unable to Complete Backup"),
             message: error.localizedDescription
         )
+    }
+}
+
+private struct AISettingsView: View {
+    @Environment(\.locale) private var locale
+
+    @AppStorage(AppPreferences.aiTemplateAssistantEnabled)
+    private var isEnabled = false
+    @AppStorage(AppPreferences.aiProvider)
+    private var providerRawValue = AIProviderKind.deepSeek.rawValue
+    @AppStorage(AppPreferences.aiDeepSeekModel)
+    private var deepSeekModel =
+        AIProviderConfiguration.defaultDeepSeekModel
+    @AppStorage(AppPreferences.aiCustomBaseURL)
+    private var customBaseURL = ""
+    @AppStorage(AppPreferences.aiCustomModel)
+    private var customModel = ""
+
+    @State private var apiKey = ""
+    @State private var hasStoredAPIKey = false
+    @State private var status: AISettingsStatus?
+    @State private var isTesting = false
+    @State private var testTask: Task<Void, Never>?
+
+    private var usesChinese: Bool {
+        locale.language.languageCode?.identifier == "zh"
+    }
+
+    private var provider: AIProviderKind {
+        AIProviderKind(rawValue: providerRawValue) ?? .deepSeek
+    }
+
+    private var configuration: AIProviderConfiguration {
+        switch provider {
+        case .deepSeek:
+            AIProviderConfiguration(
+                provider: .deepSeek,
+                baseURL: AIProviderConfiguration.deepSeekBaseURL,
+                model: deepSeekModel
+            )
+        case .custom:
+            AIProviderConfiguration(
+                provider: .custom,
+                baseURL: customBaseURL,
+                model: customModel
+            )
+        }
+    }
+
+    var body: some View {
+        Form {
+            Section(
+                usesChinese ? "AI 模板助手" : "AI Template Assistant"
+            ) {
+                Toggle(
+                    usesChinese
+                        ? "启用在线 AI 生成"
+                        : "Enable online AI generation",
+                    isOn: $isEnabled
+                )
+
+                Picker(
+                    usesChinese ? "服务提供方" : "Provider",
+                    selection: $providerRawValue
+                ) {
+                    ForEach(AIProviderKind.allCases) { kind in
+                        Text(
+                            kind.displayName(
+                                usesChinese: usesChinese
+                            )
+                        )
+                        .tag(kind.rawValue)
+                    }
+                }
+                .onChange(of: providerRawValue) { _, _ in
+                    loadAPIKey()
+                    status = nil
+                }
+            }
+
+            Section(
+                usesChinese ? "连接设置" : "Connection"
+            ) {
+                if provider == .deepSeek {
+                    LabeledContent(
+                        usesChinese ? "API 地址" : "API Address",
+                        value: AIProviderConfiguration.deepSeekBaseURL
+                    )
+                    TextField(
+                        usesChinese ? "模型" : "Model",
+                        text: $deepSeekModel
+                    )
+                } else {
+                    TextField(
+                        usesChinese
+                            ? "API 地址"
+                            : "API Address",
+                        text: $customBaseURL,
+                        prompt: Text("https://api.example.com/v1")
+                    )
+                    TextField(
+                        usesChinese ? "模型" : "Model",
+                        text: $customModel,
+                        prompt: Text("model-name")
+                    )
+                }
+
+                SecureField(
+                    provider == .deepSeek
+                        ? "DeepSeek API Key"
+                        : (usesChinese
+                            ? "API Key 或访问令牌（可选）"
+                            : "API Key or access token (optional)"),
+                    text: $apiKey
+                )
+                .textContentType(.password)
+
+                HStack {
+                    Label(
+                        hasStoredAPIKey
+                            ? (usesChinese
+                                ? "凭证已存入 macOS 钥匙串"
+                                : "Credential is stored in macOS Keychain")
+                            : (usesChinese
+                                ? "尚未保存凭证"
+                                : "No stored credential"),
+                        systemImage: hasStoredAPIKey
+                            ? "checkmark.shield"
+                            : "key"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    if hasStoredAPIKey {
+                        Button(
+                            usesChinese ? "删除凭证" : "Delete Credential",
+                            role: .destructive
+                        ) {
+                            deleteAPIKey()
+                        }
+                    }
+
+                    Button(
+                        usesChinese ? "存入钥匙串" : "Save to Keychain"
+                    ) {
+                        saveAPIKey()
+                    }
+                }
+            }
+
+            Section {
+                HStack {
+                    if let status {
+                        Label(
+                            status.message,
+                            systemImage: status.systemImage
+                        )
+                        .font(.caption)
+                        .foregroundStyle(status.color)
+                        .lineLimit(2)
+                    }
+
+                    Spacer()
+
+                    if isTesting {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+
+                    Button(
+                        usesChinese ? "测试连接" : "Test Connection"
+                    ) {
+                        testConnection()
+                    }
+                    .disabled(isTesting)
+                }
+
+                Text(
+                    usesChinese
+                        ? "DeepSeek Key 仅保存在此 Mac 的钥匙串。自定义服务必须兼容 OpenAI 的 /chat/completions 响应格式；仅 localhost 可使用 HTTP。测试连接会发送一条很短的请求。"
+                        : "The DeepSeek key stays in this Mac’s Keychain. A custom service must support the OpenAI-compatible /chat/completions format; HTTP is allowed only for localhost. Testing sends one short request."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
+        .onAppear {
+            loadAPIKey()
+        }
+        .onDisappear {
+            testTask?.cancel()
+        }
+    }
+
+    private func loadAPIKey() {
+        do {
+            let stored = try AIKeychainStore.load(for: provider)
+            apiKey = stored ?? ""
+            hasStoredAPIKey = stored?.isEmpty == false
+        } catch {
+            apiKey = ""
+            hasStoredAPIKey = false
+            status = .failure(error.localizedDescription)
+        }
+    }
+
+    private func saveAPIKey() {
+        do {
+            if provider == .deepSeek,
+               apiKey.trimmingCharacters(
+                   in: .whitespacesAndNewlines
+               ).isEmpty {
+                throw AIServiceError.missingAPIKey
+            }
+            try AIKeychainStore.save(apiKey, for: provider)
+            hasStoredAPIKey = !apiKey.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            ).isEmpty
+            status = .success(
+                usesChinese
+                    ? "连接设置已保存"
+                    : "Connection settings saved"
+            )
+        } catch {
+            status = .failure(error.localizedDescription)
+        }
+    }
+
+    private func deleteAPIKey() {
+        do {
+            try AIKeychainStore.remove(for: provider)
+            apiKey = ""
+            hasStoredAPIKey = false
+            status = .success(
+                usesChinese ? "凭证已删除" : "Credential deleted"
+            )
+        } catch {
+            status = .failure(error.localizedDescription)
+        }
+    }
+
+    private func testConnection() {
+        testTask?.cancel()
+        isTesting = true
+        status = nil
+        let configuration = configuration
+        let key = apiKey
+
+        testTask = Task { @MainActor in
+            defer { isTesting = false }
+            do {
+                try await AITemplateService().testConnection(
+                    configuration: configuration,
+                    apiKey: key
+                )
+                guard !Task.isCancelled else { return }
+                status = .success(
+                    usesChinese ? "连接成功" : "Connection succeeded"
+                )
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                status = .failure(error.localizedDescription)
+            }
+        }
+    }
+}
+
+private enum AISettingsStatus {
+    case success(String)
+    case failure(String)
+
+    var message: String {
+        switch self {
+        case .success(let message), .failure(let message):
+            message
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .success: "checkmark.circle.fill"
+        case .failure: "exclamationmark.triangle.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .success: .green
+        case .failure: .orange
+        }
     }
 }
 

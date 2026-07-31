@@ -16,6 +16,7 @@ struct PromptDetailView: View {
     var body: some View {
         Group {
             if let prompt {
+                let template = PromptTemplate(prompt.content)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         SearchHighlightedText(
@@ -51,6 +52,22 @@ struct PromptDetailView: View {
                             } icon: {
                                 Image(systemName: "clock")
                             }
+                            if template.hasVariables {
+                                Label {
+                                    Text(
+                                        usesChinese
+                                            ? "\(template.variables.count) 个变量"
+                                            : "\(template.variables.count) variables"
+                                    )
+                                } icon: {
+                                    Image(systemName: "curlybraces")
+                                }
+                                .help(
+                                    usesChinese
+                                        ? "复制前会请你填写这些变量。"
+                                        : "You’ll fill these variables before copying."
+                                )
+                            }
                         }
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -59,12 +76,27 @@ struct PromptDetailView: View {
                             Button {
                                 onCopy(prompt)
                             } label: {
-                                Label(
-                                    isCopied ? "Copied" : "Copy",
-                                    systemImage: isCopied
-                                        ? "checkmark"
-                                        : "doc.on.doc"
-                                )
+                                Label {
+                                    Text(
+                                        isCopied
+                                            ? (usesChinese ? "已复制" : "Copied")
+                                            : (template.hasVariables
+                                                ? (usesChinese
+                                                    ? "填写并复制"
+                                                    : "Fill and Copy")
+                                                : (usesChinese
+                                                    ? "复制"
+                                                    : "Copy"))
+                                    )
+                                } icon: {
+                                    Image(
+                                        systemName: isCopied
+                                            ? "checkmark"
+                                            : (template.hasVariables
+                                                ? "curlybraces"
+                                                : "doc.on.doc")
+                                    )
+                                }
                             }
                             .help("Copy Prompt (Shift-Command-C)")
                             .popover(

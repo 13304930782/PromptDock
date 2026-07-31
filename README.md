@@ -4,7 +4,7 @@
 
 ## 简体中文
 
-PromptDock 是一款原生 macOS 提示词资料库。它使用 SwiftUI 和 SwiftData 构建，提供分类管理、精确搜索、菜单栏快搜、全局快捷键、备份导入导出和桌面小组件。
+PromptDock 是一款原生 macOS 提示词资料库。它使用 SwiftUI 和 SwiftData 构建，提供分类管理、精确搜索、菜单栏快搜、模板变量、可选 AI 模板助手、备份导入导出和桌面小组件。
 
 ### 功能
 
@@ -13,8 +13,10 @@ PromptDock 是一款原生 macOS 提示词资料库。它使用 SwiftUI 和 Swif
 - 使用菜单栏或默认全局快捷键 `⇧⌘P` 打开快搜；方向键选择，`Return` 复制，`Esc` 关闭。
 - 自定义分类支持系统 Emoji 和本地图片。图片会裁剪为 128×128 PNG 后保存在本机，不持续访问原文件。
 - 备份采用 JSON 格式，支持合并或替换导入；替换前会先创建安全备份。
+- 在正文中使用 `{{名称}}` 定义普通变量，使用 `{{文件名[]}}` 定义最多 100 项的可重复变量；复制前可填写并实时预览。
+- 可选的 AI 模板助手支持 DeepSeek 和 OpenAI 兼容接口。Early Access 阶段由用户提供 API Key，并保存在 macOS 钥匙串中。
 - Widget 显示可快速复制的最近或收藏提示词。
-- 设置页提供语言、菜单栏、登录启动、全局快捷键和隐私说明。
+- 设置页提供语言、菜单栏、登录启动、全局快捷键、AI 和隐私说明。
 
 ### 系统要求
 
@@ -24,7 +26,9 @@ PromptDock 是一款原生 macOS 提示词资料库。它使用 SwiftUI 和 Swif
 
 ### 隐私设计
 
-PromptDock 当前不包含账号、广告、分析、网络上传或云同步功能。提示词、分类 Emoji、分类图片和 Widget 快照均保存在这台 Mac。PromptDock 不会主动上传这些数据；Time Machine、磁盘同步和其他系统备份由用户的 macOS 设置决定。
+PromptDock 当前不包含账号、广告、分析、跟踪或云同步功能。提示词、分类 Emoji、分类图片和 Widget 快照保存在这台 Mac，API Key 保存在 macOS 钥匙串中。
+
+只有用户主动确认使用在线 AI 模板助手时，PromptDock 才会把当前输入的需求和模板语法手册发送给 AI 设置中选择的服务商。已保存的提示词资料库、分类和本地图片不会随请求发送。AI 请求受所选服务商的隐私条款约束；Time Machine、磁盘同步和其他系统备份由用户的 macOS 设置决定。
 
 ### 在 Xcode 中构建
 
@@ -61,6 +65,7 @@ GitHub Actions 会在 Pull Request 和推送到 `main` 时运行完整 Debug 测
 - 免费 Apple ID / Personal Team 足以在自己的 Mac 上通过 Xcode 运行和测试主应用及 Widget。
 - 可以自行生成 DMG；DMG 只是安装容器，不等于代码签名或公证。
 - 没有付费 Apple Developer Program 时，无法获得用于公开分发的 Developer ID 签名和 Apple 公证。其他用户首次打开未公证应用时可能看到 Gatekeeper 警告。
+- Early Access 用户应将新版本拖入“应用程序”并选择替换。相同 Bundle Identifier 下，提示词、设置和钥匙串凭据会继续保留；安装前仍建议先导出备份。
 - Mac App Store、Developer ID 公证发行仍需要 Apple Developer Program。
 
 ### 许可
@@ -69,7 +74,7 @@ PromptDock 使用 [MIT License](LICENSE)。
 
 ## English
 
-PromptDock is a native macOS prompt library built with SwiftUI and SwiftData. It includes categories, deterministic search, menu-bar quick search, a configurable global shortcut, JSON backups, and a WidgetKit extension.
+PromptDock is a native macOS prompt library built with SwiftUI and SwiftData. It includes categories, deterministic search, menu-bar quick search, template variables, an optional AI template assistant, JSON backups, and a WidgetKit extension.
 
 ### Highlights
 
@@ -78,12 +83,16 @@ PromptDock is a native macOS prompt library built with SwiftUI and SwiftData. It
 - Open Quick Search from the menu bar or with `⇧⌘P`; use arrow keys to select, `Return` to copy, and `Esc` to close.
 - Use system Emoji or imported local images for custom categories. Images are normalized to a local 128×128 PNG and the original file is not accessed afterward.
 - Merge or replace version-1 JSON backups. Replace import creates a safety backup first.
+- Use `{{name}}` for a single value or `{{filename[]}}` for a repeatable list of up to 100 items, with fill-before-copy and live preview.
+- Optionally generate templates with DeepSeek or an OpenAI-compatible endpoint. During Early Access, users provide their own API key, which is stored in macOS Keychain.
 - Show recent or favorite prompts in a macOS widget.
-- Configure language, menu-bar presence, launch at login, the global shortcut, and privacy settings.
+- Configure language, menu-bar presence, launch at login, the global shortcut, AI, and privacy settings.
 
 ### Requirements and privacy
 
-PromptDock requires macOS 14+ and Xcode 16+. It has no third-party runtime dependencies. The current app has no accounts, advertising, analytics, network upload, or cloud sync. Prompts, category icons, and widget snapshots stay on this Mac, subject to the user's system backup and disk-sync settings.
+PromptDock requires macOS 14+ and Xcode 16+. It has no third-party runtime dependencies and no accounts, advertising, analytics, tracking, or cloud sync. Prompts, category icons, and widget snapshots stay on this Mac, and API keys are stored in macOS Keychain.
+
+Only after the user explicitly confirms online AI generation does PromptDock send the current requirement and template syntax guide to the provider selected in AI Settings. The saved prompt library, categories, and local images are not included. AI requests are governed by the selected provider's privacy terms, and macOS backup or disk-sync behavior remains controlled by the user's system settings.
 
 ### Build and run
 
@@ -98,7 +107,7 @@ Run tests with the command in the Chinese section above. CI runs Debug tests and
 
 The backup format and SwiftData schema both remain at version 1. Future model changes must introduce a new schema version and migration stage instead of modifying V1 in place.
 
-A free Personal Team supports local development and widget testing. A DMG can be created without a paid account, but public Developer ID signing, notarization, and Mac App Store distribution require the Apple Developer Program. An unsigned or unnotarized DMG may trigger Gatekeeper warnings on other Macs.
+A free Personal Team supports local development and widget testing. A DMG can be created without a paid account, but public Developer ID signing, notarization, and Mac App Store distribution require the Apple Developer Program. An unsigned or unnotarized DMG may trigger Gatekeeper warnings on other Macs. Early Access updates are installed by dragging the new app into Applications and choosing Replace; exporting a backup first is recommended.
 
 PromptDock is available under the [MIT License](LICENSE).
 

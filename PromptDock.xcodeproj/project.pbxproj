@@ -48,6 +48,11 @@
 		E10000000000000000000002 /* DataSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000002 /* DataSafety.swift */; };
 		F10000000000000000000001 /* AppBootstrapController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* AppBootstrapController.swift */; };
 		F10000000000000000000002 /* StartupFailureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000002 /* StartupFailureView.swift */; };
+		G10000000000000000000001 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = G20000000000000000000001 /* PromptTemplate.swift */; };
+		G10000000000000000000002 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = G20000000000000000000001 /* PromptTemplate.swift */; };
+		G10000000000000000000003 /* PromptTemplateFillView.swift in Sources */ = {isa = PBXBuildFile; fileRef = G20000000000000000000002 /* PromptTemplateFillView.swift */; };
+		G10000000000000000000004 /* TemplateGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = G20000000000000000000003 /* TemplateGuideView.swift */; };
+		H10000000000000000000001 /* AITemplateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = H20000000000000000000001 /* AITemplateService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -128,6 +133,10 @@
 		E20000000000000000000002 /* DataSafety.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataSafety.swift; sourceTree = "<group>"; };
 		F20000000000000000000001 /* AppBootstrapController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBootstrapController.swift; sourceTree = "<group>"; };
 		F20000000000000000000002 /* StartupFailureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupFailureView.swift; sourceTree = "<group>"; };
+		G20000000000000000000001 /* PromptTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplate.swift; sourceTree = "<group>"; };
+		G20000000000000000000002 /* PromptTemplateFillView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplateFillView.swift; sourceTree = "<group>"; };
+		G20000000000000000000003 /* TemplateGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateGuideView.swift; sourceTree = "<group>"; };
+		H20000000000000000000001 /* AITemplateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AITemplateService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -195,6 +204,8 @@
 		A70000000000000000000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				G20000000000000000000003 /* TemplateGuideView.swift */,
+				G20000000000000000000002 /* PromptTemplateFillView.swift */,
 				F20000000000000000000002 /* StartupFailureView.swift */,
 				D20000000000000000000009 /* SettingsView.swift */,
 				D20000000000000000000008 /* QuickSearchView.swift */,
@@ -222,6 +233,7 @@
 		A70000000000000000000006 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				H20000000000000000000001 /* AITemplateService.swift */,
 				F20000000000000000000001 /* AppBootstrapController.swift */,
 				E20000000000000000000001 /* BackupService.swift */,
 				E20000000000000000000002 /* DataSafety.swift */,
@@ -290,6 +302,7 @@
 		B70000000000000000000002 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				G20000000000000000000001 /* PromptTemplate.swift */,
 				B20000000000000000000004 /* WidgetPromptSnapshot.swift */,
 			);
 			path = Shared;
@@ -449,6 +462,10 @@
 				E10000000000000000000002 /* DataSafety.swift in Sources */,
 				F10000000000000000000001 /* AppBootstrapController.swift in Sources */,
 				F10000000000000000000002 /* StartupFailureView.swift in Sources */,
+				G10000000000000000000001 /* PromptTemplate.swift in Sources */,
+				G10000000000000000000003 /* PromptTemplateFillView.swift in Sources */,
+				G10000000000000000000004 /* TemplateGuideView.swift in Sources */,
+				H10000000000000000000001 /* AITemplateService.swift in Sources */,
 				A10000000000000000000001 /* PromptDockApp.swift in Sources */,
 				B10000000000000000000001 /* AppLanguage.swift in Sources */,
 				A1000000000000000000000F /* PromptCommands.swift in Sources */,
@@ -486,6 +503,7 @@
 				B10000000000000000000012 /* PromptDockWidget.swift in Sources */,
 				B10000000000000000000013 /* CopyPromptIntent.swift in Sources */,
 				B10000000000000000000014 /* WidgetPromptSnapshot.swift in Sources */,
+				G10000000000000000000002 /* PromptTemplate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -628,7 +646,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = L96B6KHL5Y;
 				ENABLE_APP_SANDBOX = YES;
@@ -659,7 +677,7 @@
 				CODE_SIGN_ENTITLEMENTS = PromptDock/PromptDockRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = L96B6KHL5Y;
 				ENABLE_APP_SANDBOX = YES;
@@ -687,7 +705,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
@@ -705,7 +723,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
@@ -726,7 +744,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = L96B6KHL5Y;
 				ENABLE_APP_SANDBOX = YES;
@@ -759,7 +777,7 @@
 				CODE_SIGN_ENTITLEMENTS = PromptDockWidget/PromptDockWidgetRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = L96B6KHL5Y;
 				ENABLE_APP_SANDBOX = YES;

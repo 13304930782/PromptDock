@@ -23,6 +23,7 @@ struct MainView: View {
     @State private var actionErrorMessage: String?
     @State private var copiedPromptID: UUID?
     @State private var copyFeedbackToken: UUID?
+    @State private var templateCopyRequest: PromptTemplateCopyRequest?
     @State private var isCopyShortcutGuidePresented = false
     @State private var isSearchShortcutGuidePresented = false
     @State private var copyShortcutGuideToken: UUID?
@@ -289,6 +290,26 @@ struct MainView: View {
                 }
             }
         }
+        .sheet(item: $templateCopyRequest) { request in
+            PromptTemplateFillView(
+                request: request,
+                presentation: .sheet,
+                usesChinese: selectedLanguage.usesChinese,
+                onCancel: {
+                    templateCopyRequest = nil
+                },
+                onCopy: { renderedPrompt in
+                    let copied = copyToClipboard(
+                        renderedPrompt,
+                        promptID: request.promptID
+                    )
+                    if copied {
+                        templateCopyRequest = nil
+                    }
+                    return copied
+                }
+            )
+        }
         .confirmationDialog(
             "Delete Prompt?",
             isPresented: deletionIsPresented,
@@ -474,14 +495,28 @@ struct MainView: View {
     }
 
     private func copy(_ prompt: Prompt) {
-        guard clipboardService.copy(prompt.content) else {
-            actionErrorMessage = "PromptDock could not write to the clipboard."
+        let template = PromptTemplate(prompt.content)
+        guard !template.hasVariables else {
+            templateCopyRequest = PromptTemplateCopyRequest(prompt: prompt)
             return
+        }
+
+        _ = copyToClipboard(prompt.content, promptID: prompt.id)
+    }
+
+    @discardableResult
+    private func copyToClipboard(
+        _ content: String,
+        promptID: UUID
+    ) -> Bool {
+        guard clipboardService.copy(content) else {
+            actionErrorMessage = "PromptDock could not write to the clipboard."
+            return false
         }
 
         let feedbackToken = UUID()
         copyFeedbackToken = feedbackToken
-        copiedPromptID = prompt.id
+        copiedPromptID = promptID
 
         if !hasLearnedCopyShortcut {
             presentCopyShortcutGuide()
@@ -493,6 +528,8 @@ struct MainView: View {
             copiedPromptID = nil
             copyFeedbackToken = nil
         }
+
+        return true
     }
 
     private func delete(_ prompt: Prompt) {

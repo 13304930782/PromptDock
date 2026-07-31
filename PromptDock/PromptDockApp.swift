@@ -72,6 +72,19 @@ struct PromptDockApp: App {
             BootstrapSettingsView(bootstrap: bootstrap)
                 .environment(\.locale, selectedLanguage.locale)
         }
+
+        Window(
+            selectedLanguage.text(
+                english: "Template Variables Guide",
+                chinese: "模板变量操作手册"
+            ),
+            id: "template-guide"
+        ) {
+            TemplateGuideView()
+                .environment(\.locale, selectedLanguage.locale)
+        }
+        .defaultSize(width: 720, height: 760)
+        .windowResizability(.contentMinSize)
     }
 }
 

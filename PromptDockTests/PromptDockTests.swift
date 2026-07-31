@@ -380,6 +380,377 @@ final class PromptDockTests: XCTestCase {
         )
     }
 
+    func testPromptTemplateFindsVariablesInFirstAppearanceOrder() {
+        let template = PromptTemplate(
+            "Write about {{ topic }} for {{audience}}. Reuse {{topic}}."
+        )
+
+        XCTAssertEqual(template.variables, ["topic", "audience"])
+        XCTAssertTrue(template.hasVariables)
+    }
+
+    func testPromptTemplateRendersRepeatedVariables() {
+        let template = PromptTemplate(
+            "{{greeting}}, {{name}}! {{greeting}} again."
+        )
+
+        XCTAssertEqual(
+            template.render(
+                values: [
+                    "greeting": "Hello",
+                    "name": "Taylor"
+                ]
+            ),
+            "Hello, Taylor! Hello again."
+        )
+        XCTAssertTrue(
+            template.unresolvedVariables(
+                values: ["greeting": "Hello", "name": " "]
+            ) == ["name"]
+        )
+    }
+
+    func testPromptTemplateFindsAndRendersRepeatableListVariables() {
+        let template = PromptTemplate(
+            "Review {{file[]}} for {{teacher}}. Files: {{file[]}}."
+        )
+
+        XCTAssertEqual(template.variables, ["file", "teacher"])
+        XCTAssertEqual(template.repeatableVariables, ["file"])
+        XCTAssertEqual(
+            template.render(
+                values: ["teacher": "Morgan"],
+                repeatableValues: [
+                    "file": ["Essay A.docx", "Essay B.docx"]
+                ],
+                listSeparator: "、"
+            ),
+            "Review Essay A.docx、Essay B.docx for Morgan. "
+                + "Files: Essay A.docx、Essay B.docx."
+        )
+    }
+
+    func testPromptTemplateRequiresEveryAddedRepeatableValue() {
+        let template = PromptTemplate(
+            "批改标题：{{文件名[]}}"
+        )
+
+        XCTAssertEqual(
+            template.unresolvedFields(
+                values: [:],
+                repeatableValues: [
+                    "文件名": ["张三.docx", " "]
+                ]
+            ),
+            [
+                PromptTemplateVariable(
+                    name: "文件名",
+                    kind: .list
+                )
+            ]
+        )
+        XCTAssertTrue(
+            template.unresolvedFields(
+                values: [:],
+                repeatableValues: [
+                    "文件名": ["张三.docx", "李四.docx"]
+                ]
+            ).isEmpty
+        )
+        XCTAssertEqual(
+            PromptTemplate.maximumRepeatableValueCount,
+            100
+        )
+    }
+
+    func testPromptTemplateIgnoresMalformedAndEscapedPlaceholders() {
+        let template = PromptTemplate(
+            #"Keep \{{literal}}, \{{files[]}}, and {{ }} unchanged; fill {{valid}}."#
+        )
+
+        XCTAssertEqual(template.variables, ["valid"])
+        XCTAssertEqual(
+            template.render(values: ["valid": "done"]),
+            "Keep {{literal}}, {{files[]}}, and {{ }} unchanged; fill done."
+        )
+    }
+
+    func testPromptWithoutVariablesKeepsImmediateCopyBehavior() {
+        let template = PromptTemplate("A regular reusable prompt.")
+
+        XCTAssertFalse(template.hasVariables)
+        XCTAssertEqual(
+            template.render(values: [:]),
+            "A regular reusable prompt."
+        )
+    }
+
+    func testTemplateGuideAIRequestIncludesSyntaxAndRequirement() {
+        let request = TemplateGuideContent.requestForAI(
+            requirement: "批改数量不固定的作文文件",
+            usesChinese: true
+        )
+
+        XCTAssertTrue(request.contains("{{名称}}"))
+        XCTAssertTrue(request.contains("{{名称[]}}"))
+        XCTAssertTrue(request.contains("PromptDock 模板语法手册"))
+        XCTAssertTrue(request.contains("可重复变量"))
+        XCTAssertTrue(request.contains("批改数量不固定的作文文件"))
+        XCTAssertTrue(request.contains("只输出最终提示词"))
+    }
+
+    func testTemplateGuideAIRequestProvidesPlaceholderWhenEmpty() {
+        let request = TemplateGuideContent.requestForAI(
+            requirement: "  ",
+            usesChinese: false
+        )
+
+        XCTAssertTrue(request.contains("{{name}}"))
+        XCTAssertTrue(request.contains("{{name[]}}"))
+        XCTAssertTrue(
+            request.contains("(Add your prompt requirements here.)")
+        )
+    }
+
+    func testAIProviderBuildsCompatibleChatCompletionURLs() throws {
+        let deepSeek = AIProviderConfiguration(
+            provider: .deepSeek,
+            baseURL: "https://api.deepseek.com",
+            model: "deepseek-v4-flash"
+        )
+        XCTAssertEqual(
+            try deepSeek.chatCompletionsURL().absoluteString,
+            "https://api.deepseek.com/chat/completions"
+        )
+
+        let custom = AIProviderConfiguration(
+            provider: .custom,
+            baseURL: "https://example.com/v1/",
+            model: "custom-model"
+        )
+        XCTAssertEqual(
+            try custom.chatCompletionsURL().absoluteString,
+            "https://example.com/v1/chat/completions"
+        )
+
+        let fullEndpoint = AIProviderConfiguration(
+            provider: .custom,
+            baseURL: "https://example.com/api/chat/completions",
+            model: "custom-model"
+        )
+        XCTAssertEqual(
+            try fullEndpoint.chatCompletionsURL().absoluteString,
+            "https://example.com/api/chat/completions"
+        )
+    }
+
+    func testAIProviderRejectsRemotePlainHTTPButAllowsLocalhost() throws {
+        let remote = AIProviderConfiguration(
+            provider: .custom,
+            baseURL: "http://example.com/v1",
+            model: "model"
+        )
+        XCTAssertThrowsError(try remote.chatCompletionsURL()) { error in
+            XCTAssertEqual(error as? AIServiceError, .insecureBaseURL)
+        }
+
+        let local = AIProviderConfiguration(
+            provider: .custom,
+            baseURL: "http://localhost:11434/v1",
+            model: "model"
+        )
+        XCTAssertEqual(
+            try local.chatCompletionsURL().absoluteString,
+            "http://localhost:11434/v1/chat/completions"
+        )
+    }
+
+    func testAIServiceCleansMarkdownCodeFence() {
+        XCTAssertEqual(
+            AITemplateService.cleanGeneratedTemplate(
+                "```text\nWrite about {{topic}}.\n```"
+            ),
+            "Write about {{topic}}."
+        )
+        XCTAssertEqual(
+            AITemplateService.cleanGeneratedTemplate(
+                "Write about {{topic}}."
+            ),
+            "Write about {{topic}}."
+        )
+    }
+
+    func testAIServiceSendsOnlyExplicitRequestAndAuthorization() async throws {
+        let session = makeAIStubSession()
+        defer { session.invalidateAndCancel() }
+        AIStubURLProtocol.requestHandler = { request in
+            XCTAssertEqual(
+                request.url?.absoluteString,
+                "https://api.deepseek.com/chat/completions"
+            )
+            XCTAssertEqual(
+                request.value(forHTTPHeaderField: "Authorization"),
+                "Bearer test-key"
+            )
+
+            return .init(
+                statusCode: 200,
+                data: Data(
+                    #"{"choices":[{"message":{"content":"Write {{topic}}."}}]}"#
+                        .utf8
+                )
+            )
+        }
+        defer { AIStubURLProtocol.requestHandler = nil }
+
+        let service = AITemplateService(session: session)
+        let configuration = AIProviderConfiguration(
+            provider: .deepSeek,
+            baseURL: AIProviderConfiguration.deepSeekBaseURL,
+            model: AIProviderConfiguration.defaultDeepSeekModel
+        )
+        let builtRequest = try service.makeRequest(
+            request: "CURRENT REQUIREMENT",
+            configuration: configuration,
+            apiKey: "test-key"
+        )
+        let body = try XCTUnwrap(builtRequest.httpBody)
+        let bodyText = try XCTUnwrap(String(data: body, encoding: .utf8))
+        XCTAssertTrue(bodyText.contains("CURRENT REQUIREMENT"))
+        XCTAssertFalse(bodyText.contains("PRIVATE SAVED PROMPT"))
+        XCTAssertFalse(bodyText.contains("test-key"))
+
+        let result = try await service.generateTemplate(
+            request: "CURRENT REQUIREMENT",
+            configuration: configuration,
+            apiKey: "test-key"
+        )
+
+        XCTAssertEqual(result, "Write {{topic}}.")
+    }
+
+    func testAIServiceRejectsMissingDeepSeekKeyBeforeNetwork() async {
+        let session = makeAIStubSession()
+        defer { session.invalidateAndCancel() }
+        AIStubURLProtocol.requestHandler = { _ in
+            XCTFail("A request must not start without a DeepSeek API key.")
+            return .init(statusCode: 200, data: Data())
+        }
+        defer { AIStubURLProtocol.requestHandler = nil }
+
+        do {
+            _ = try await AITemplateService(session: session)
+                .generateTemplate(
+                    request: "Requirement",
+                    configuration: .init(
+                        provider: .deepSeek,
+                        baseURL: AIProviderConfiguration.deepSeekBaseURL,
+                        model: AIProviderConfiguration.defaultDeepSeekModel
+                    ),
+                    apiKey: nil
+                )
+            XCTFail("Expected a missing API key error.")
+        } catch {
+            XCTAssertEqual(error as? AIServiceError, .missingAPIKey)
+        }
+    }
+
+    func testAIServiceReportsHTTPFailureAndOversizedResponse() async throws {
+        let session = makeAIStubSession()
+        defer { session.invalidateAndCancel() }
+        let configuration = AIProviderConfiguration(
+            provider: .deepSeek,
+            baseURL: AIProviderConfiguration.deepSeekBaseURL,
+            model: AIProviderConfiguration.defaultDeepSeekModel
+        )
+        let service = AITemplateService(session: session)
+
+        AIStubURLProtocol.requestHandler = { _ in
+            .init(
+                statusCode: 401,
+                data: Data(#"{"error":{"message":"Invalid key"}}"#.utf8)
+            )
+        }
+        do {
+            _ = try await service.generateTemplate(
+                request: "Requirement",
+                configuration: configuration,
+                apiKey: "bad-key"
+            )
+            XCTFail("Expected an HTTP error.")
+        } catch {
+            XCTAssertEqual(
+                error as? AIServiceError,
+                .http(statusCode: 401, message: "Invalid key")
+            )
+        }
+
+        AIStubURLProtocol.requestHandler = { _ in
+            .init(
+                statusCode: 200,
+                data: Data(
+                    repeating: 0,
+                    count: AITemplateService.maximumResponseByteCount + 1
+                )
+            )
+        }
+        do {
+            _ = try await service.generateTemplate(
+                request: "Requirement",
+                configuration: configuration,
+                apiKey: "test-key"
+            )
+            XCTFail("Expected an oversized response error.")
+        } catch {
+            XCTAssertEqual(error as? AIServiceError, .responseTooLarge)
+        }
+        AIStubURLProtocol.requestHandler = nil
+    }
+
+    func testAIServicePreservesTaskCancellation() async throws {
+        let session = makeAIStubSession()
+        defer { session.invalidateAndCancel() }
+        AIStubURLProtocol.requestHandler = { _ in
+            .init(
+                statusCode: 200,
+                data: Data(
+                    #"{"choices":[{"message":{"content":"Late"}}]}"#.utf8
+                ),
+                delay: 5
+            )
+        }
+        defer { AIStubURLProtocol.requestHandler = nil }
+
+        let task = Task {
+            try await AITemplateService(session: session).generateTemplate(
+                request: "Requirement",
+                configuration: .init(
+                    provider: .deepSeek,
+                    baseURL: AIProviderConfiguration.deepSeekBaseURL,
+                    model: AIProviderConfiguration.defaultDeepSeekModel
+                ),
+                apiKey: "test-key"
+            )
+        }
+        try await Task.sleep(nanoseconds: 20_000_000)
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            XCTFail("Expected cancellation.")
+        } catch is CancellationError {
+            // Expected.
+        } catch {
+            XCTFail("Expected CancellationError, received: \(error)")
+        }
+    }
+
+    private func makeAIStubSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AIStubURLProtocol.self]
+        return URLSession(configuration: configuration)
+    }
+
     func testLanguageDefaultsAndManualSelection() {
         XCTAssertEqual(AppLanguage.english.locale.identifier, "en")
         XCTAssertTrue(AppLanguage.simplifiedChinese.usesChinese)
@@ -1098,4 +1469,89 @@ private final class FakeGlobalHotKeyRegistrar: GlobalHotKeyRegistering {
     }
 
     func unregister() {}
+}
+
+private final class AIStubURLProtocol: URLProtocol {
+    struct Stub {
+        let statusCode: Int
+        let data: Data
+        let delay: TimeInterval
+
+        init(
+            statusCode: Int,
+            data: Data,
+            delay: TimeInterval = 0
+        ) {
+            self.statusCode = statusCode
+            self.data = data
+            self.delay = delay
+        }
+    }
+
+    static var requestHandler: ((URLRequest) throws -> Stub)?
+
+    private var delivery: DispatchWorkItem?
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(
+        for request: URLRequest
+    ) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let requestHandler = Self.requestHandler else {
+            client?.urlProtocol(
+                self,
+                didFailWithError: URLError(.resourceUnavailable)
+            )
+            return
+        }
+
+        do {
+            let stub = try requestHandler(request)
+            guard let url = request.url,
+                  let response = HTTPURLResponse(
+                    url: url,
+                    statusCode: stub.statusCode,
+                    httpVersion: "HTTP/1.1",
+                    headerFields: ["Content-Type": "application/json"]
+                  )
+            else {
+                throw URLError(.badServerResponse)
+            }
+
+            let delivery = DispatchWorkItem { [weak self] in
+                guard let self, self.delivery?.isCancelled == false else {
+                    return
+                }
+                self.client?.urlProtocol(
+                    self,
+                    didReceive: response,
+                    cacheStoragePolicy: .notAllowed
+                )
+                self.client?.urlProtocol(self, didLoad: stub.data)
+                self.client?.urlProtocolDidFinishLoading(self)
+            }
+            self.delivery = delivery
+            if stub.delay > 0 {
+                DispatchQueue.global().asyncAfter(
+                    deadline: .now() + stub.delay,
+                    execute: delivery
+                )
+            } else {
+                delivery.perform()
+            }
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {
+        delivery?.cancel()
+        delivery = nil
+    }
 }

@@ -24,6 +24,13 @@ struct CopyPromptIntent: AppIntent {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(promptContent, forType: .string)
+
+        if PromptTemplate(promptContent).hasVariables {
+            return .result(
+                dialog: "Template copied. Replace its variables before use."
+            )
+        }
+
         return .result(dialog: "Copied")
     }
 }

@@ -1,5 +1,4 @@
 import AppKit
-import Carbon
 import SwiftData
 import SwiftUI
 
@@ -135,7 +134,7 @@ final class QuickSearchPanelController: NSObject, NSWindowDelegate {
         to requestedHeight: CGFloat,
         animated: Bool
     ) {
-        let height = min(max(requestedHeight, 88), 351)
+        let height = min(max(requestedHeight, 88), 480)
         guard abs(panel.frame.height - height) > 0.5 else { return }
 
         let frame = NSRect(
@@ -180,7 +179,6 @@ final class QuickSearchPanelController: NSObject, NSWindowDelegate {
 
         eventMonitor = NSEvent.addLocalMonitorForEvents(
             matching: [
-                .keyDown,
                 .leftMouseDown,
                 .rightMouseDown,
                 .otherMouseDown
@@ -191,13 +189,7 @@ final class QuickSearchPanelController: NSObject, NSWindowDelegate {
                   panel.isVisible
             else { return event }
 
-            if event.type == .keyDown,
-               event.keyCode == UInt16(kVK_Escape) {
-                panel.orderOut(nil)
-                return nil
-            }
-
-            if event.type != .keyDown, event.window !== panel {
+            if event.window !== panel {
                 panel.orderOut(nil)
             }
             return event

@@ -15,6 +15,7 @@ struct QuickSearchView: View {
     @State private var copiedPromptID: UUID?
     @State private var errorMessage: String?
     @State private var results: [Prompt] = []
+    @State private var templateCopyRequest: PromptTemplateCopyRequest?
     @FocusState private var isSearchFocused: Bool
 
     private let clipboardService = ClipboardService()
@@ -38,6 +39,10 @@ struct QuickSearchView: View {
     }
 
     private var preferredHeight: CGFloat {
+        if templateCopyRequest != nil {
+            return 480
+        }
+
         let trimmedQuery = query.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
@@ -52,61 +57,78 @@ struct QuickSearchView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-
-                TextField("Search Prompts", text: $query)
-                    .textFieldStyle(.plain)
-                    .focused($isSearchFocused)
-                    .accessibilityLabel("Search Prompts")
-
-                if !query.isEmpty {
-                    Button {
-                        query = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
+        Group {
+            if let request = templateCopyRequest {
+                PromptTemplateFillView(
+                    request: request,
+                    presentation: .compact,
+                    usesChinese: usesChinese,
+                    onCancel: cancelTemplateCopy,
+                    onCopy: { renderedPrompt in
+                        finishCopy(
+                            renderedPrompt,
+                            promptID: request.promptID
+                        )
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Clear Search")
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 13)
-
-            if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Divider()
-                Text("Type to search · ↑↓ to move · Return to copy")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else if results.isEmpty {
-                Divider()
-                ContentUnavailableView(
-                    "No Results",
-                    systemImage: "magnifyingglass",
-                    description: Text("Try a title, category, or phrase from the prompt.")
                 )
-                .frame(height: 170)
             } else {
-                Divider()
-                ScrollView {
-                    LazyVStack(spacing: 2) {
-                        ForEach(results) { prompt in
+                VStack(spacing: 0) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+
+                        TextField("Search Prompts", text: $query)
+                            .textFieldStyle(.plain)
+                            .focused($isSearchFocused)
+                            .accessibilityLabel("Search Prompts")
+
+                        if !query.isEmpty {
                             Button {
-                                copyAndClose(prompt)
+                                query = ""
                             } label: {
-                                quickSearchRow(prompt)
+                                Image(systemName: "xmark.circle.fill")
                             }
                             .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("Clear Search")
                         }
                     }
-                    .padding(6)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 13)
+
+                    if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Divider()
+                        Text("Type to search · ↑↓ to move · Return to copy")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else if results.isEmpty {
+                        Divider()
+                        ContentUnavailableView(
+                            "No Results",
+                            systemImage: "magnifyingglass",
+                            description: Text("Try a title, category, or phrase from the prompt.")
+                        )
+                        .frame(height: 170)
+                    } else {
+                        Divider()
+                        ScrollView {
+                            LazyVStack(spacing: 2) {
+                                ForEach(results) { prompt in
+                                    Button {
+                                        beginCopy(prompt)
+                                    } label: {
+                                        quickSearchRow(prompt)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(6)
+                        }
+                        .frame(maxHeight: 300)
+                    }
                 }
-                .frame(maxHeight: 300)
             }
         }
         .frame(width: 410)
@@ -123,6 +145,7 @@ struct QuickSearchView: View {
             query = ""
             results = []
             selectedPromptID = nil
+            templateCopyRequest = nil
             onPreferredHeightChange(preferredHeight)
             Task { @MainActor in
                 await Task.yield()
@@ -142,19 +165,28 @@ struct QuickSearchView: View {
             onPreferredHeightChange(height)
         }
         .onKeyPress(.downArrow) {
+            guard templateCopyRequest == nil else { return .ignored }
             moveSelection(offset: 1)
             return .handled
         }
         .onKeyPress(.upArrow) {
+            guard templateCopyRequest == nil else { return .ignored }
             moveSelection(offset: -1)
             return .handled
         }
         .onKeyPress(.return) {
+            guard templateCopyRequest == nil else { return .ignored }
             guard let selectedPrompt else { return .ignored }
-            copyAndClose(selectedPrompt)
+            beginCopy(selectedPrompt)
             return .handled
         }
-        .onExitCommand(perform: onClose)
+        .onExitCommand {
+            if templateCopyRequest != nil {
+                cancelTemplateCopy()
+            } else {
+                onClose()
+            }
+        }
         .alert("Unable to Copy", isPresented: errorIsPresented) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -165,6 +197,10 @@ struct QuickSearchView: View {
     private var selectedPrompt: Prompt? {
         guard let selectedPromptID else { return results.first }
         return results.first { $0.id == selectedPromptID }
+    }
+
+    private var usesChinese: Bool {
+        locale.identifier.lowercased().hasPrefix("zh")
     }
 
     private var errorIsPresented: Binding<Bool> {
@@ -210,6 +246,23 @@ struct QuickSearchView: View {
 
             Spacer(minLength: 8)
 
+            let templateVariableCount = PromptTemplate(
+                prompt.content
+            ).variables.count
+            if templateVariableCount > 0 {
+                Label(
+                    "\(templateVariableCount)",
+                    systemImage: "curlybraces"
+                )
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(
+                    usesChinese
+                        ? "\(templateVariableCount) 个变量"
+                        : "\(templateVariableCount) variables"
+                )
+            }
+
             if selectedPromptID == prompt.id {
                 Text("↩")
                     .font(.caption)
@@ -249,17 +302,43 @@ struct QuickSearchView: View {
         selectedPromptID = results.first?.id
     }
 
-    private func copyAndClose(_ prompt: Prompt) {
-        guard clipboardService.copy(prompt.content) else {
-            errorMessage = "PromptDock could not write to the clipboard."
+    private func beginCopy(_ prompt: Prompt) {
+        let request = PromptTemplateCopyRequest(prompt: prompt)
+        guard request.template.hasVariables else {
+            _ = finishCopy(prompt.content, promptID: prompt.id)
             return
         }
 
-        copiedPromptID = prompt.id
+        selectedPromptID = prompt.id
+        isSearchFocused = false
+        templateCopyRequest = request
+    }
+
+    private func cancelTemplateCopy() {
+        templateCopyRequest = nil
+        Task { @MainActor in
+            await Task.yield()
+            isSearchFocused = true
+        }
+    }
+
+    @discardableResult
+    private func finishCopy(
+        _ content: String,
+        promptID: UUID
+    ) -> Bool {
+        guard clipboardService.copy(content) else {
+            errorMessage = "PromptDock could not write to the clipboard."
+            return false
+        }
+
+        templateCopyRequest = nil
+        copiedPromptID = promptID
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 600_000_000)
             onClose()
         }
+        return true
     }
 }
 

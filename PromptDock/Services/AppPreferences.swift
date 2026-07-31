@@ -6,13 +6,70 @@ enum AppPreferences {
     static let launchAtLogin = "preferences.launchAtLogin"
     static let globalQuickSearchEnabled = "preferences.globalQuickSearchEnabled"
     static let globalQuickSearchHotKey = "preferences.globalQuickSearchHotKey"
+    static let aiTemplateAssistantEnabled =
+        "preferences.aiTemplateAssistantEnabled"
+    static let aiProvider = "preferences.aiProvider"
+    static let aiDeepSeekModel = "preferences.aiDeepSeekModel"
+    static let aiCustomBaseURL = "preferences.aiCustomBaseURL"
+    static let aiCustomModel = "preferences.aiCustomModel"
 
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
             showMenuBar: true,
             launchAtLogin: false,
-            globalQuickSearchEnabled: true
+            globalQuickSearchEnabled: true,
+            aiTemplateAssistantEnabled: false,
+            aiProvider: AIProviderKind.deepSeek.rawValue,
+            aiDeepSeekModel:
+                AIProviderConfiguration.defaultDeepSeekModel,
+            aiCustomBaseURL: "",
+            aiCustomModel: ""
         ])
+    }
+
+    static var isAITemplateAssistantEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: aiTemplateAssistantEnabled) }
+        set {
+            UserDefaults.standard.set(
+                newValue,
+                forKey: aiTemplateAssistantEnabled
+            )
+        }
+    }
+
+    static var selectedAIProvider: AIProviderKind {
+        get {
+            guard let rawValue = UserDefaults.standard.string(
+                forKey: aiProvider
+            ) else { return .deepSeek }
+            return AIProviderKind(rawValue: rawValue) ?? .deepSeek
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: aiProvider)
+        }
+    }
+
+    static var aiConfiguration: AIProviderConfiguration {
+        switch selectedAIProvider {
+        case .deepSeek:
+            AIProviderConfiguration(
+                provider: .deepSeek,
+                baseURL: AIProviderConfiguration.deepSeekBaseURL,
+                model: UserDefaults.standard.string(
+                    forKey: aiDeepSeekModel
+                ) ?? AIProviderConfiguration.defaultDeepSeekModel
+            )
+        case .custom:
+            AIProviderConfiguration(
+                provider: .custom,
+                baseURL: UserDefaults.standard.string(
+                    forKey: aiCustomBaseURL
+                ) ?? "",
+                model: UserDefaults.standard.string(
+                    forKey: aiCustomModel
+                ) ?? ""
+            )
+        }
     }
 
     static var selectedLanguage: AppLanguage {

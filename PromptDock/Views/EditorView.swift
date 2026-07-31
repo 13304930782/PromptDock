@@ -3,6 +3,7 @@ import SwiftUI
 struct EditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
+    @Environment(\.openWindow) private var openWindow
 
     private let prompt: Prompt?
     private let categories: [PromptCategory]
@@ -41,6 +42,14 @@ struct EditorView: View {
         )
     }
 
+    private var promptTemplate: PromptTemplate {
+        PromptTemplate(content)
+    }
+
+    private var usesChinese: Bool {
+        locale.identifier.lowercased().hasPrefix("zh")
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -66,6 +75,46 @@ struct EditorView: View {
                         .font(.body)
                         .frame(minHeight: 220)
                         .accessibilityLabel("Prompt Content")
+
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Label {
+                            if promptTemplate.hasVariables {
+                                Text(
+                                    usesChinese
+                                        ? "已识别 \(promptTemplate.fields.count) 个变量，其中 \(promptTemplate.repeatableVariables.count) 个可重复。"
+                                        : "\(promptTemplate.fields.count) variables detected, including \(promptTemplate.repeatableVariables.count) repeatable."
+                                )
+                            } else {
+                                Text(
+                                    usesChinese
+                                        ? "输入 {{名称}} 创建普通变量；输入 {{文件名[]}} 创建可用加号扩展的重复项。"
+                                        : "Use {{name}} for one value, or {{filename[]}} for a repeatable list with an Add button."
+                                )
+                            }
+                        } icon: {
+                            Image(systemName: "curlybraces")
+                        }
+                        .accessibilityElement(children: .combine)
+
+                        Spacer(minLength: 8)
+
+                        Button {
+                            openWindow(id: "template-guide")
+                        } label: {
+                            Label(
+                                usesChinese ? "操作手册" : "Guide",
+                                systemImage: "questionmark.circle"
+                            )
+                        }
+                        .buttonStyle(.link)
+                        .help(
+                            usesChinese
+                                ? "打开模板变量操作手册"
+                                : "Open the template variables guide"
+                        )
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
 
                 Section("Options") {
