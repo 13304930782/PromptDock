@@ -80,6 +80,8 @@ GitHub Actions 会在 Pull Request 和推送到 `main` 时运行完整 Debug 测
 
 PromptDock 使用 [MIT License](LICENSE)。
 
+长期产品规划见 [PromptDock 开发路线](docs/ROADMAP.zh-CN.md)；RC3 的安装、升级、验收与反馈清单统一放在 [RC3 Early Access 发布资料](Releases/PromptDock-1.0.0-rc3/README.md)中。
+
 ## English
 
 PromptDock is a native macOS prompt library built with SwiftUI and SwiftData. It includes categories, deterministic search, menu-bar quick search, template variables, an optional AI template assistant, JSON backups, and a WidgetKit extension.
@@ -118,6 +120,8 @@ The backup format and SwiftData schema both remain at version 1. Future model ch
 A free Personal Team supports local development and widget testing. A DMG can be created without a paid account, but public Developer ID signing, notarization, and Mac App Store distribution require the Apple Developer Program. An unsigned or unnotarized DMG may trigger Gatekeeper warnings on other Macs. Early Access updates are installed by dragging the new app into Applications and choosing Replace; exporting a backup first is recommended.
 
 PromptDock is available under the [MIT License](LICENSE).
+
+See the [PromptDock product roadmap](docs/ROADMAP.zh-CN.md) and the consolidated [RC3 Early Access release package](Releases/PromptDock-1.0.0-rc3/README.md).
 
 ## CueGrove website
 

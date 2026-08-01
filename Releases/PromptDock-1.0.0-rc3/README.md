@@ -86,6 +86,14 @@ Complete this checklist with the packaged app, not only an Xcode build:
 - [ ] RC2-to-RC3 replacement preserves data, preferences, and Keychain entry
 - [x] DMG layout, Applications link, version, architectures, and signatures
 
+### CueGrove delivery flow
+
+- [ ] Confirm the deployed privacy and security pages describe optional online AI accurately
+- [ ] Confirm the Early Access approval flow uses the fixed RC3 HTTPS download URL
+- [ ] Complete one test application, administrator notification, review, approval, and download email
+- [ ] Verify Chinese and English email content, buttons, download URL, and rejection behavior
+- [ ] Remove or clearly mark test applications before using production application counts
+
 Automated release verification completed on 2026-07-31:
 
 - 50 unit tests passed.

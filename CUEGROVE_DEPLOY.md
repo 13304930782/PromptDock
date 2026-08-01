@@ -1,6 +1,6 @@
 # CueGrove website deployment
 
-The CueGrove website is isolated from the PromptDock app and from Mooncci. It uses a Vite static frontend, a PM2-managed Express API, MySQL, and SMTP.
+The CueGrove website is isolated from the PromptDock app and from Mooncci. It uses a Vite static frontend, a BaoTa-managed Node/Express API, MySQL, and SMTP.
 
 ## 1. Prepare isolated services
 
@@ -83,12 +83,10 @@ The owner bootstrap command hashes the password with bcrypt and never writes it 
 
 ## 3. Run behind Nginx
 
-Copy `dist/` to the site root, start the API with:
-
-```bash
-pm2 start server/ecosystem.config.cjs
-pm2 save
-```
+Copy `dist/` to the site root. In BaoTa, create or update the Node project named
+`cuegrove-api` with `/www/wwwroot/cuegrove/server` as its root and
+`src/index.js` as its entry point. Use the production environment and manage all
+process lifecycle operations from the BaoTa panel.
 
 Adapt `server/nginx.cuegrove.conf.example`, enable HTTPS, then reload Nginx. The frontend and `/api` must share one origin for the administrator cookie and origin checks.
 If the live site already has a Content Security Policy, allow
@@ -124,13 +122,15 @@ From the project directory, update the same branch and apply all new migrations:
 
 ```bash
 cd /www/wwwroot/cuegrove
-git pull origin codex/cuegrove-site
+git pull --ff-only origin codex/cuegrove-site
 pnpm install --frozen-lockfile
 pnpm --dir server migrate
+pnpm test
 pnpm build
 ```
 
-Then restart the `cuegrove-api` Node/PM2 project in BaoTa. Nginx should continue
+Then restart the `cuegrove-api` Node project manually in BaoTa. Do not create or
+restart the process from a separate command-line process manager. Nginx should continue
 serving `/www/wwwroot/cuegrove/dist` and proxying `/api/` to
 `http://127.0.0.1:3001`. No new public registration route is required.
 

@@ -1,4 +1,4 @@
-# PromptDock 未来开发路线
+# PromptDock 开发路线
 
 ## 总体方向
 
