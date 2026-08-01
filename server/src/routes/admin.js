@@ -341,6 +341,65 @@ router.post('/early-access/:id/retry-email', async (req, res, next) => {
   }
 });
 
+router.post('/early-access/resend-approved', requireOwner, async (req, res, next) => {
+  if (req.body?.confirm !== true) {
+    return res.status(400).json({ message: 'Explicit confirmation is required before resending approval emails.' });
+  }
+
+  const hasRequestedIds = Array.isArray(req.body.ids);
+  const requestedIds = hasRequestedIds
+    ? [...new Set(req.body.ids.map(Number).filter((id) => Number.isInteger(id) && id > 0))]
+    : null;
+  if (hasRequestedIds && requestedIds.length === 0) {
+    return res.status(400).json({ message: 'Select at least one approved application.' });
+  }
+  if (requestedIds && requestedIds.length > 1000) {
+    return res.status(400).json({ message: 'You can resend at most 1000 approval emails at once.' });
+  }
+
+  try {
+    const settings = await getSetting('early_access');
+    if (!settings.download_url) {
+      return res.status(409).json({ message: 'Configure the PromptDock download URL before resending approval emails.' });
+    }
+
+    const params = requestedIds || [];
+    const [applications] = await db.query(
+      `SELECT * FROM early_access_applications
+       WHERE status='approved' ${requestedIds ? `AND id IN (${requestedIds.map(() => '?').join(',')})` : ''}
+       ORDER BY id ASC
+       LIMIT 1000`,
+      params,
+    );
+
+    const results = [];
+    for (const application of applications) {
+      try {
+        const feedbackToken = await issueFeedbackToken(application.id);
+        const delivery = await sendDecisionEmail(application, {
+          ...settings,
+          feedback_url: `${config.siteUrl}/feedback/${feedbackToken}`,
+        });
+        results.push({ id: application.id, status: delivery.status, error: delivery.error || null });
+      } catch (error) {
+        results.push({ id: application.id, status: 'failed', error: String(error.message || 'Email delivery failed.') });
+      }
+    }
+
+    const sent = results.filter((item) => item.status === 'sent').length;
+    const failed = results.length - sent;
+    return res.json({
+      message: `Resent approval emails: ${sent} sent, ${failed} failed.`,
+      total: results.length,
+      sent,
+      failed,
+      results,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.get('/settings/early-access', async (_req, res, next) => {
   try {
     res.json({ settings: await getSetting('early_access') });

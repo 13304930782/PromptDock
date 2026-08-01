@@ -97,7 +97,7 @@ export default function App() {
         <Route path="/admin/login" element={user ? <Navigate to="/admin/early-access" replace /> : <AdminLoginPage onLogin={setUser} />} />
         <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/admin/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/admin/early-access" element={<ProtectedAdmin user={user} checking={checking}><AdminApplicationsPage /></ProtectedAdmin>} />
+        <Route path="/admin/early-access" element={<ProtectedAdmin user={user} checking={checking}><AdminApplicationsPage user={user!} /></ProtectedAdmin>} />
         <Route path="/admin/settings" element={<ProtectedAdmin user={user} checking={checking}><AdminSettingsPage user={user!} /></ProtectedAdmin>} />
         <Route path="/admin/security" element={<ProtectedAdmin user={user} checking={checking}><AdminSecurityPage user={user!} onUserChange={setUser} /></ProtectedAdmin>} />
         <Route path="/admin/users" element={<ProtectedAdmin user={user} checking={checking}>{user?.role === 'owner' ? <AdminUsersPage /> : <Navigate to="/admin/early-access" replace />}</ProtectedAdmin>} />

@@ -177,6 +177,33 @@ function buildDecisionMessage(application, settings) {
   return { subject, title, html, text, kind: approved ? 'approved' : 'rejected' };
 }
 
+function buildFeedbackNotification({ actor, locale, recipientName, reportTitle, actionUrl, isNewReport = false }) {
+  const zh = locale === 'zh';
+  const fromTester = actor === 'tester';
+  const subject = fromTester
+    ? (zh ? `[CueGrove] PromptDock ${isNewReport ? '收到新反馈' : '测试用户回复了反馈'}` : `[CueGrove] PromptDock ${isNewReport ? 'received new feedback' : 'tester replied'}`)
+    : (zh ? '[CueGrove] PromptDock 开发者回复了你的反馈' : '[CueGrove] PromptDock developer replied');
+  const title = fromTester
+    ? (zh ? (isNewReport ? '收到一条新的测试反馈' : '测试用户发来了回复') : (isNewReport ? 'New tester feedback' : 'A tester replied'))
+    : (zh ? '开发者回复了你的反馈' : 'The developer replied');
+  const greeting = recipientName ? `${zh ? '你好' : 'Hi'} ${recipientName}${zh ? '，' : ', '}` : '';
+  const body = fromTester
+    ? (zh ? `${greeting}反馈会话“${reportTitle}”有新内容，请进入后台查看并回复。` : `${greeting}The feedback conversation “${reportTitle}” has new activity. Open the dashboard to review and reply.`)
+    : (zh ? `${greeting}PromptDock 开发者回复了反馈“${reportTitle}”。打开反馈页面即可查看并继续回复。` : `${greeting}The PromptDock developer replied to “${reportTitle}”. Open the feedback page to read and continue the conversation.`);
+  const actionLabel = fromTester ? (zh ? '查看并回复' : 'Review and reply') : (zh ? '查看开发者回复' : 'View developer reply');
+  const html = emailFrame({
+    locale,
+    title,
+    bodyHtml: `<p style="margin:0">${escapeHtml(body)}</p>`,
+    actionLabel,
+    actionUrl,
+    footer: zh
+      ? '为保护隐私，反馈正文不会显示在通知邮件中。'
+      : 'To protect privacy, the feedback content is not included in this notification email.',
+  });
+  return { subject, html, text: `${body}\n\n${actionUrl}` };
+}
+
 async function sendRaw({ to, subject, text, html }) {
   const mailConfig = await resolveMailConfig();
   const mailer = transporter(mailConfig);
@@ -228,6 +255,17 @@ async function sendDecisionEmail(application, settings) {
     kind: message.kind,
     locale: application.locale,
     to: application.email,
+    ...message,
+  });
+}
+
+async function sendFeedbackNotification({ applicationId, to, actor, locale, recipientName, reportTitle, actionUrl, isNewReport }) {
+  const message = buildFeedbackNotification({ actor, locale, recipientName, reportTitle, actionUrl, isNewReport });
+  return deliverLogged({
+    applicationId,
+    kind: actor === 'tester' ? 'feedback_to_owner' : 'feedback_to_tester',
+    locale,
+    to,
     ...message,
   });
 }
@@ -297,6 +335,7 @@ async function sendTestEmail(to) {
 }
 
 module.exports = {
+  buildFeedbackNotification,
   buildPasswordResetUrl,
   buildDecisionMessage,
   cleanHeader,
@@ -306,6 +345,7 @@ module.exports = {
   resolveMailConfig,
   smtpTransportOptions,
   sendDecisionEmail,
+  sendFeedbackNotification,
   sendNewApplicationNotification,
   sendPasswordReset,
   sendTestEmail,

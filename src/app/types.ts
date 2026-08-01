@@ -78,4 +78,16 @@ export type FeedbackReport = {
   full_name: string;
   email: string;
   cohort: string;
+  locale?: 'zh' | 'en';
+  message_count?: number;
+  messages?: FeedbackMessage[];
+};
+
+export type FeedbackMessage = {
+  id: number;
+  report_id: number;
+  author_type: 'tester' | 'developer';
+  admin_name: string | null;
+  body: string;
+  created_at: string;
 };
