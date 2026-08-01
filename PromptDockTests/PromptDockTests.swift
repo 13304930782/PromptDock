@@ -1453,6 +1453,77 @@ final class PromptDockTests: XCTestCase {
         )
         XCTAssertEqual(migratedPrompts.map(\.id), [promptID])
     }
+    @MainActor
+    func testPhase1HistoryCapturesAndRestores() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = ModelContext(container)
+        let prompt = Prompt(title: "First", category: "Coding", content: "one")
+        context.insert(prompt)
+        try context.save()
+
+        try Phase1Service.captureVersionIfChanged(
+            for: prompt,
+            title: "Second",
+            category: "Coding",
+            content: "two",
+            in: context
+        )
+        prompt.title = "Second"
+        prompt.content = "two"
+        try context.save()
+
+        let versions = try context.fetch(FetchDescriptor<PromptVersion>())
+        XCTAssertEqual(versions.count, 1)
+        XCTAssertEqual(versions[0].title, "First")
+
+        try Phase1Service.restore(versions[0], to: prompt, in: context)
+        XCTAssertEqual(prompt.title, "First")
+        XCTAssertEqual(prompt.content, "one")
+        XCTAssertEqual(try context.fetch(FetchDescriptor<PromptVersion>()).count, 2)
+    }
+
+    @MainActor
+    func testSmartCollectionMatchesFavoriteAndTags() {
+        let prompt = Prompt(title: "Swift", category: "Coding", content: "Actors")
+        prompt.isFavorite = true
+        let tag = PromptTag(name: "Release", color: .blue, promptIDs: [prompt.id])
+        let collection = SmartCollection(
+            name: "Favorite releases",
+            query: "swift",
+            tagIDs: [tag.id],
+            favoriteOnly: true
+        )
+
+        XCTAssertTrue(Phase1Service.matches(prompt, collection: collection, tags: [tag]))
+        prompt.isFavorite = false
+        XCTAssertFalse(Phase1Service.matches(prompt, collection: collection, tags: [tag]))
+    }
+
+    @MainActor
+    func testBackupV2RoundTripPreservesPhase1Records() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = ModelContext(container)
+        let prompt = Prompt(title: "Template", category: "AI", content: "Hello {{name}}")
+        let tag = PromptTag(name: "Reusable", color: .blue, promptIDs: [prompt.id])
+        let collection = SmartCollection(name: "AI templates", query: "template")
+        let definition = TemplateVariableDefinition(promptID: prompt.id, name: "name", order: 0)
+        context.insert(prompt)
+        context.insert(tag)
+        context.insert(collection)
+        context.insert(definition)
+        try context.save()
+
+        let backup = try BackupService.makeBackup(in: context)
+        XCTAssertEqual(backup.formatVersion, PromptDockBackup.currentFormatVersion)
+        XCTAssertEqual(backup.tags.first?.name, "Reusable")
+        XCTAssertEqual(backup.smartCollections.first?.name, "AI templates")
+        XCTAssertEqual(backup.variableDefinitions.first?.name, "name")
+
+        try BackupService.importBackup(backup, mode: .replace, in: context)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<PromptTag>()).count, 1)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<SmartCollection>()).count, 1)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<TemplateVariableDefinition>()).count, 1)
+    }
 }
 
 @MainActor

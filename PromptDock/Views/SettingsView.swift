@@ -23,6 +23,11 @@ struct SettingsView: View {
                     Label("AI", systemImage: "sparkles")
                 }
 
+            ProfessionalSettingsView()
+                .tabItem {
+                    Label("Collections", systemImage: "square.stack.3d.up")
+                }
+
             PrivacySettingsView()
                 .tabItem {
                     Label("Privacy", systemImage: "hand.raised")
@@ -30,6 +35,135 @@ struct SettingsView: View {
         }
         .frame(width: 640, height: 540)
         .onAppear { runtime.start() }
+    }
+}
+
+private struct ProfessionalSettingsView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \PromptTag.createdAt) private var tags: [PromptTag]
+    @Query(sort: \SmartCollection.createdAt) private var collections: [SmartCollection]
+    @Query private var prompts: [Prompt]
+
+    @State private var newTagName = ""
+    @State private var newCollectionName = ""
+    @State private var newCollectionQuery = ""
+    @State private var notice: String?
+
+    var body: some View {
+        Form {
+            Section("Tags") {
+                if tags.isEmpty {
+                    Text("Create tags to organize prompts across categories.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(tags) { tag in
+                        HStack {
+                            Label(tag.name, systemImage: "tag.fill")
+                            Spacer()
+                            Text("\(tag.promptIDs.count) prompts")
+                                .foregroundStyle(.secondary)
+                            Button(role: .destructive) {
+                                modelContext.delete(tag)
+                                try? modelContext.save()
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Delete tag \(tag.name)")
+                        }
+                    }
+                }
+
+                HStack {
+                    TextField("New tag", text: $newTagName)
+                    Button("Add") { addTag() }
+                        .disabled(newTagName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+
+            Section("Smart Collections") {
+                if collections.isEmpty {
+                    Text("Collections save a search, favorite filter, or tag combination.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(collections) { collection in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(collection.name)
+                                if !collection.query.isEmpty {
+                                    Text(collection.query)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            Text("\(prompts.filter { Phase1Service.matches($0, collection: collection, tags: tags) }.count)")
+                                .foregroundStyle(.secondary)
+                            Button(role: .destructive) {
+                                modelContext.delete(collection)
+                                try? modelContext.save()
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Delete collection \(collection.name)")
+                        }
+                    }
+                }
+
+                TextField("Collection name", text: $newCollectionName)
+                TextField("Search text (optional)", text: $newCollectionQuery)
+                Button("Save Smart Collection") { addCollection() }
+                    .disabled(newCollectionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            Section("Version History") {
+                Text("PromptDock keeps up to 50 previous versions per prompt. Open a prompt and choose History to preview or restore one.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
+        .alert("Unable to Save", isPresented: Binding(
+            get: { notice != nil },
+            set: { if !$0 { notice = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(notice ?? "")
+        }
+    }
+
+    private func addTag() {
+        let name = newTagName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        guard !tags.contains(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) else {
+            notice = "A tag with this name already exists."
+            return
+        }
+        modelContext.insert(PromptTag(name: name))
+        do {
+            try modelContext.save()
+            newTagName = ""
+        } catch {
+            notice = error.localizedDescription
+        }
+    }
+
+    private func addCollection() {
+        let name = newCollectionName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        modelContext.insert(SmartCollection(
+            name: name,
+            query: newCollectionQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        ))
+        do {
+            try modelContext.save()
+            newCollectionName = ""
+            newCollectionQuery = ""
+        } catch {
+            notice = error.localizedDescription
+        }
     }
 }
 

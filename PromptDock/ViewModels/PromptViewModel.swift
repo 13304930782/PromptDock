@@ -201,6 +201,14 @@ final class PromptViewModel: ObservableObject {
     ) throws {
         let values = try validatedValues(from: draft)
 
+        try Phase1Service.captureVersionIfChanged(
+            for: prompt,
+            title: values.title,
+            category: values.category,
+            content: values.content,
+            in: context
+        )
+
         prompt.title = values.title
         prompt.category = values.category
         prompt.content = values.content

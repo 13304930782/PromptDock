@@ -1,11 +1,16 @@
+import SwiftData
 import SwiftUI
 
 struct PromptDetailView: View {
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
     let prompt: Prompt?
     let searchText: String
     let isCopied: Bool
     @Binding var isCopyShortcutGuidePresented: Bool
+    @State private var isHistoryPresented = false
+    @State private var history: [PromptVersion] = []
+    @State private var historyError: String?
     let hasLearnedCopyShortcut: Bool
     let usesChinese: Bool
     let onCopy: (Prompt) -> Void
@@ -148,6 +153,13 @@ struct PromptDetailView: View {
                             }
                             .help("Add or Remove from Favorites (Shift-Command-F)")
 
+                            Button {
+                                loadHistory(for: prompt)
+                            } label: {
+                                Label("History", systemImage: "clock.arrow.circlepath")
+                            }
+                            .help("View Prompt History")
+
                             Spacer()
 
                             Button(role: .destructive) {
@@ -181,7 +193,117 @@ struct PromptDetailView: View {
                 )
             }
         }
+        .sheet(isPresented: $isHistoryPresented) {
+            PromptHistoryView(prompt: prompt, versions: history) {
+                isHistoryPresented = false
+            }
+        }
+        .alert("Unable to Load History", isPresented: Binding(
+            get: { historyError != nil },
+            set: { if !$0 { historyError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(historyError ?? "")
+        }
         .frame(minWidth: 360)
+    }
+
+    private func loadHistory(for prompt: Prompt) {
+        do {
+            let promptID = prompt.id
+            history = try modelContext.fetch(FetchDescriptor<PromptVersion>(
+                predicate: #Predicate { $0.promptID == promptID },
+                sortBy: [SortDescriptor(\PromptVersion.createdAt, order: .reverse)]
+            ))
+            isHistoryPresented = true
+        } catch {
+            historyError = error.localizedDescription
+        }
+    }
+}
+
+private struct PromptHistoryView: View {
+    @Environment(\.modelContext) private var modelContext
+    let prompt: Prompt?
+    let versions: [PromptVersion]
+    let onClose: () -> Void
+    @State private var selectedVersion: PromptVersion?
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Version History")
+                    .font(.title2.bold())
+                Spacer()
+                Button("Done", action: onClose)
+            }
+
+            if versions.isEmpty {
+                ContentUnavailableView("No Saved Versions", systemImage: "clock.arrow.circlepath", description: Text("A version appears after you save a change."))
+            } else {
+                List(versions) { version in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(version.title).font(.headline)
+                        Text(version.createdAt, format: .dateTime.year().month().day().hour().minute())
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(version.content)
+                            .font(.caption)
+                            .lineLimit(2)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { selectedVersion = version }
+                    .background {
+                        if selectedVersion?.id == version.id {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.accentColor.opacity(0.12))
+                        }
+                    }
+                }
+                .frame(minHeight: 260)
+
+                if let selectedVersion {
+                    GroupBox("Preview") {
+                        ScrollView {
+                            Text(selectedVersion.content)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .textSelection(.enabled)
+                        }
+                        .frame(minHeight: 120)
+                    }
+
+                    HStack {
+                        Spacer()
+                        Button("Restore This Version") {
+                            restore(selectedVersion)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+            }
+        }
+        .padding(24)
+        .frame(width: 620, height: 560)
+        .alert("Unable to Restore", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
+        }
+    }
+
+    private func restore(_ version: PromptVersion) {
+        guard let prompt else { return }
+        do {
+            try Phase1Service.restore(version, to: prompt, in: modelContext)
+            onClose()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 
