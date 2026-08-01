@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const config = require('../src/config');
 const {
+  buildFeedbackNotification,
   buildPasswordResetUrl,
   buildDecisionMessage,
   escapeHtml,
@@ -54,6 +55,20 @@ test('escapes applicant-provided HTML in branded mail', () => {
   }, settings);
   assert.doesNotMatch(message.html, /<script>/);
   assert.doesNotMatch(message.html, /<b>hello<\/b>/);
+});
+
+test('builds private feedback reply notifications without exposing message content', () => {
+  const message = buildFeedbackNotification({
+    actor: 'developer',
+    locale: 'zh',
+    recipientName: '<测试用户>',
+    reportTitle: '<script>反馈标题</script>',
+    actionUrl: 'https://cuegrove.example/feedback/private-token',
+  });
+  assert.match(message.subject, /开发者回复/);
+  assert.match(message.html, /查看开发者回复/);
+  assert.doesNotMatch(message.html, /<script>/);
+  assert.match(message.text, /https:\/\/cuegrove\.example\/feedback\/private-token/);
 });
 
 test('keeps password reset tokens out of request URLs and referrer logs', () => {
