@@ -37,6 +37,9 @@
     "%lld" : {
 
     },
+    "%lld prompts" : {
+
+    },
     "%lld variables" : {
 
     },
@@ -96,8 +99,17 @@
         }
       }
     },
+    "A version appears after you save a change." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存修改后会出现版本。"
+          }
+        }
+      }
+    },
     "Add" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -157,9 +169,6 @@
         }
       }
     },
-    "AI Settings…" : {
-
-    },
     "AI credentials in Keychain" : {
       "localizations" : {
         "zh-Hans" : {
@@ -169,6 +178,9 @@
           }
         }
       }
+    },
+    "AI Settings…" : {
+
     },
     "AI Template Assistant" : {
 
@@ -372,6 +384,36 @@
         }
       }
     },
+    "Collection name" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "集合名称"
+          }
+        }
+      }
+    },
+    "Collections" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "集合"
+          }
+        }
+      }
+    },
+    "Collections save a search, favorite filter, or tag combination." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "集合可以保存搜索、收藏筛选或标签组合。"
+          }
+        }
+      }
+    },
     "Complete the variables in “%@”, then copy the finished prompt." : {
 
     },
@@ -502,6 +544,16 @@
         }
       }
     },
+    "Create tags to organize prompts across categories." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "创建标签，将提示词组织到不同分类之间。"
+          }
+        }
+      }
+    },
     "Create your first prompt to start building your AI workflow library." : {
       "localizations" : {
         "zh-Hans" : {
@@ -554,6 +606,9 @@
         }
       }
     },
+    "Delete collection %@" : {
+
+    },
     "Delete Credential" : {
 
     },
@@ -576,6 +631,12 @@
           }
         }
       }
+    },
+    "Delete tag %@" : {
+
+    },
+    "Done" : {
+
     },
     "Drag categories to reorder" : {
       "localizations" : {
@@ -797,6 +858,16 @@
     "Guide" : {
 
     },
+    "History" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "历史记录"
+          }
+        }
+      }
+    },
     "https://api.example.com/v1" : {
 
     },
@@ -966,6 +1037,16 @@
     "New Prompt (Command-N)" : {
 
     },
+    "New tag" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建标签"
+          }
+        }
+      }
+    },
     "Next Search Result" : {
 
     },
@@ -1035,6 +1116,16 @@
         }
       }
     },
+    "No Saved Versions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无已保存版本"
+          }
+        }
+      }
+    },
     "No stored credential" : {
 
     },
@@ -1074,6 +1165,16 @@
     "Online generation: %@" : {
 
     },
+    "Only after you confirm online generation does PromptDock send the current requirement and template syntax guide to the selected provider. Saved prompts, categories, and local images are not included. The provider’s privacy terms apply." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只有你确认在线生成后，PromptDock 才会把当前需求和模板语法手册发送给所选服务商。已保存的提示词、分类和本地图片不会包含在请求中，且请求适用服务商的隐私条款。"
+          }
+        }
+      }
+    },
     "Open at Login" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1109,16 +1210,6 @@
     },
     "Optional AI Template Assistant" : {
 
-    },
-    "Only after you confirm online generation does PromptDock send the current requirement and template syntax guide to the selected provider. Saved prompts, categories, and local images are not included. The provider’s privacy terms apply." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "只有你确认在线生成后，PromptDock 才会把当前需求和模板语法手册发送给所选服务商。已保存的提示词、分类和本地图片不会包含在请求中，且请求适用服务商的隐私条款。"
-          }
-        }
-      }
     },
     "Options" : {
       "localizations" : {
@@ -1162,6 +1253,9 @@
           }
         }
       }
+    },
+    "Preview" : {
+
     },
     "Previous Search Result" : {
 
@@ -1241,6 +1335,9 @@
         }
       }
     },
+    "PromptDock keeps up to 50 previous versions per prompt. Open a prompt and choose History to preview or restore one." : {
+
+    },
     "PromptDock Prompt" : {
 
     },
@@ -1255,9 +1352,6 @@
         }
       }
     },
-    "PromptDock stores this information locally. Your prompt library is not sent to an AI provider." : {
-
-    },
     "PromptDock will send this requirement and the template syntax guide to %@. Your saved prompt library will not be sent." : {
 
     },
@@ -1270,16 +1364,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "提示词和分类"
-          }
-        }
-      }
-    },
-    "Prompts, categories, local images, and backups stay on this Mac." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "提示词、分类、本地图片和备份保存在这台 Mac 上。"
           }
         }
       }
@@ -1311,6 +1395,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "此区域中的提示词会显示在这里。"
+          }
+        }
+      }
+    },
+    "Prompts, categories, local images, and backups stay on this Mac." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提示词、分类、本地图片和备份保存在这台 Mac 上。"
           }
         }
       }
@@ -1405,6 +1499,16 @@
         }
       }
     },
+    "Restore This Version" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复此版本"
+          }
+        }
+      }
+    },
     "Retry" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1428,6 +1532,16 @@
         }
       }
     },
+    "Save Smart Collection" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存智能集合"
+          }
+        }
+      }
+    },
     "Save to Keychain" : {
 
     },
@@ -1447,6 +1561,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Search result %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "Search text (optional)" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索文本（可选）"
           }
         }
       }
@@ -1520,6 +1644,16 @@
         }
       }
     },
+    "Smart Collections" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "智能集合"
+          }
+        }
+      }
+    },
     "Status" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1555,6 +1689,16 @@
     },
     "Tab 切换 · Return 复制 · Esc 返回" : {
 
+    },
+    "Tags" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标签"
+          }
+        }
+      }
     },
     "Teaching" : {
       "extractionState" : "stale",
@@ -1801,6 +1945,29 @@
     "Unable to Copy" : {
 
     },
+    "Unable to Load History" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法加载历史记录"
+          }
+        }
+      }
+    },
+    "Unable to Restore" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法恢复"
+          }
+        }
+      }
+    },
+    "Unable to Save" : {
+
+    },
     "Unable to Save Prompt" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1858,8 +2025,25 @@
         }
       }
     },
-    "When you explicitly generate a template, PromptDock sends the requirement and template syntax guide to the provider selected in AI Settings. It does not send your saved prompt library." : {
-
+    "Version History" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "版本历史"
+          }
+        }
+      }
+    },
+    "View Prompt History" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看提示词历史记录"
+          }
+        }
+      }
     },
     "Write fixed content once, then fill changing parts when you copy. Filling and copying stay on this Mac; only confirmed online AI requests send the current requirement." : {
 

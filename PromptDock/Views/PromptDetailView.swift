@@ -285,7 +285,7 @@ private struct PromptHistoryView: View {
             }
         }
         .padding(24)
-        .frame(width: 620, height: 560)
+        .frame(width: 560, height: versions.isEmpty ? 360 : 560)
         .alert("Unable to Restore", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
