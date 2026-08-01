@@ -2,6 +2,14 @@
 
 [English](#english) · [简体中文](#简体中文)
 
+[![CI](https://github.com/13304930782/PromptDock/actions/workflows/ci.yml/badge.svg?branch=codex%2Fpromptdock-1.0.0-rc3)](https://github.com/13304930782/PromptDock/actions/workflows/ci.yml?query=branch%3Acodex%2Fpromptdock-1.0.0-rc3)
+[![Supply Chain](https://github.com/13304930782/PromptDock/actions/workflows/supply-chain.yml/badge.svg?branch=codex%2Fpromptdock-1.0.0-rc3)](https://github.com/13304930782/PromptDock/actions/workflows/supply-chain.yml?query=branch%3Acodex%2Fpromptdock-1.0.0-rc3)
+[![Release](https://img.shields.io/badge/release-1.0.0%20RC3-0A84FF)](Releases/PromptDock-1.0.0-rc3/README.md)
+[![macOS](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple)](#系统要求)
+[![Swift](https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white)](https://www.swift.org/)
+[![License](https://img.shields.io/badge/license-MIT-2EA44F)](LICENSE)
+[![CueGrove](https://img.shields.io/website?url=https%3A%2F%2Fcuegroveapp.com&label=CueGrove&up_message=live&down_message=offline)](https://cuegroveapp.com/)
+
 ## 简体中文
 
 PromptDock 是一款原生 macOS 提示词资料库。它使用 SwiftUI 和 SwiftData 构建，提供分类管理、精确搜索、菜单栏快搜、模板变量、可选 AI 模板助手、备份导入导出和桌面小组件。
