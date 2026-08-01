@@ -15,17 +15,13 @@ enum PromptDockMigrationPlan: SchemaMigrationPlan {
     }
 
     static var stages: [MigrationStage] {
+        // Add a new VersionedSchema and an explicit MigrationStage before
+        // changing persisted model fields. V1 intentionally needs no stage.
         []
     }
 }
 
 enum DataService {
-    // Keep app data and widget snapshots in the same Team-ID App Group.
-    // This form is supported by macOS without a separately registered
-    // portal App Group and works with a Personal Team.
-    private static let dataContainerIdentifier =
-        "L96B6KHL5Y.PromptDock"
-
     static func makeModelContainer(
         isStoredInMemoryOnly: Bool = false,
         storeURL: URL? = nil
@@ -59,21 +55,27 @@ enum DataService {
         )
     }
 
-    private static func persistentStoreURL() throws -> URL {
+    static func dataDirectoryURLIfAvailable() -> URL? {
         guard let containerURL = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: dataContainerIdentifier
+            forSecurityApplicationGroupIdentifier:
+                WidgetSharedStore.appGroupIdentifier
         ) else {
+            return nil
+        }
+        return containerURL
+            .appendingPathComponent("Library", isDirectory: true)
+            .appendingPathComponent("Application Support", isDirectory: true)
+    }
+
+    private static func persistentStoreURL() throws -> URL {
+        guard let applicationSupportURL = dataDirectoryURLIfAvailable() else {
             throw CocoaError(
                 .fileNoSuchFile,
                 userInfo: [
-                    NSFilePathErrorKey: dataContainerIdentifier
+                    NSFilePathErrorKey: WidgetSharedStore.appGroupIdentifier
                 ]
             )
         }
-
-        let applicationSupportURL = containerURL
-            .appendingPathComponent("Library", isDirectory: true)
-            .appendingPathComponent("Application Support", isDirectory: true)
 
         try FileManager.default.createDirectory(
             at: applicationSupportURL,

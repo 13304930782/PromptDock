@@ -1,6 +1,12 @@
+import OSLog
 import WidgetKit
 
 enum WidgetSnapshotService {
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "PromptDock",
+        category: "WidgetSnapshot"
+    )
+
     static func refresh(from prompts: [Prompt]) {
         let snapshots = prompts
             .sorted { first, second in
@@ -21,9 +27,15 @@ enum WidgetSnapshotService {
                 )
             }
 
-        try? WidgetSharedStore.save(Array(snapshots))
-        WidgetCenter.shared.reloadTimelines(
-            ofKind: WidgetSharedStore.widgetKind
-        )
+        do {
+            try WidgetSharedStore.save(Array(snapshots))
+            WidgetCenter.shared.reloadTimelines(
+                ofKind: WidgetSharedStore.widgetKind
+            )
+        } catch {
+            logger.error(
+                "Unable to save widget snapshots: \(error.localizedDescription, privacy: .public)"
+            )
+        }
     }
 }

@@ -45,6 +45,14 @@
 		D10000000000000000000008 /* QuickSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000008 /* QuickSearchView.swift */; };
 		D10000000000000000000009 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000009 /* SettingsView.swift */; };
 		E10000000000000000000001 /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000001 /* BackupService.swift */; };
+		E10000000000000000000002 /* DataSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000000000000000000002 /* DataSafety.swift */; };
+		F10000000000000000000001 /* AppBootstrapController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* AppBootstrapController.swift */; };
+		F10000000000000000000002 /* StartupFailureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000002 /* StartupFailureView.swift */; };
+		G10000000000000000000001 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = G20000000000000000000001 /* PromptTemplate.swift */; };
+		G10000000000000000000002 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = G20000000000000000000001 /* PromptTemplate.swift */; };
+		G10000000000000000000003 /* PromptTemplateFillView.swift in Sources */ = {isa = PBXBuildFile; fileRef = G20000000000000000000002 /* PromptTemplateFillView.swift */; };
+		G10000000000000000000004 /* TemplateGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = G20000000000000000000003 /* TemplateGuideView.swift */; };
+		H10000000000000000000001 /* AITemplateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = H20000000000000000000001 /* AITemplateService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -122,6 +130,13 @@
 		D20000000000000000000008 /* QuickSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickSearchView.swift; sourceTree = "<group>"; };
 		D20000000000000000000009 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		E20000000000000000000001 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
+		E20000000000000000000002 /* DataSafety.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataSafety.swift; sourceTree = "<group>"; };
+		F20000000000000000000001 /* AppBootstrapController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBootstrapController.swift; sourceTree = "<group>"; };
+		F20000000000000000000002 /* StartupFailureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupFailureView.swift; sourceTree = "<group>"; };
+		G20000000000000000000001 /* PromptTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplate.swift; sourceTree = "<group>"; };
+		G20000000000000000000002 /* PromptTemplateFillView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplateFillView.swift; sourceTree = "<group>"; };
+		G20000000000000000000003 /* TemplateGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateGuideView.swift; sourceTree = "<group>"; };
+		H20000000000000000000001 /* AITemplateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AITemplateService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -189,6 +204,9 @@
 		A70000000000000000000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				G20000000000000000000003 /* TemplateGuideView.swift */,
+				G20000000000000000000002 /* PromptTemplateFillView.swift */,
+				F20000000000000000000002 /* StartupFailureView.swift */,
 				D20000000000000000000009 /* SettingsView.swift */,
 				D20000000000000000000008 /* QuickSearchView.swift */,
 				D20000000000000000000007 /* CategoryEditorView.swift */,
@@ -215,7 +233,10 @@
 		A70000000000000000000006 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				H20000000000000000000001 /* AITemplateService.swift */,
+				F20000000000000000000001 /* AppBootstrapController.swift */,
 				E20000000000000000000001 /* BackupService.swift */,
+				E20000000000000000000002 /* DataSafety.swift */,
 				D20000000000000000000001 /* AppPreferences.swift */,
 				D20000000000000000000002 /* PromptSearchService.swift */,
 				D20000000000000000000003 /* GlobalHotKeyService.swift */,
@@ -281,6 +302,7 @@
 		B70000000000000000000002 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				G20000000000000000000001 /* PromptTemplate.swift */,
 				B20000000000000000000004 /* WidgetPromptSnapshot.swift */,
 			);
 			path = Shared;
@@ -437,6 +459,13 @@
 				D10000000000000000000008 /* QuickSearchView.swift in Sources */,
 				D10000000000000000000009 /* SettingsView.swift in Sources */,
 				E10000000000000000000001 /* BackupService.swift in Sources */,
+				E10000000000000000000002 /* DataSafety.swift in Sources */,
+				F10000000000000000000001 /* AppBootstrapController.swift in Sources */,
+				F10000000000000000000002 /* StartupFailureView.swift in Sources */,
+				G10000000000000000000001 /* PromptTemplate.swift in Sources */,
+				G10000000000000000000003 /* PromptTemplateFillView.swift in Sources */,
+				G10000000000000000000004 /* TemplateGuideView.swift in Sources */,
+				H10000000000000000000001 /* AITemplateService.swift in Sources */,
 				A10000000000000000000001 /* PromptDockApp.swift in Sources */,
 				B10000000000000000000001 /* AppLanguage.swift in Sources */,
 				A1000000000000000000000F /* PromptCommands.swift in Sources */,
@@ -474,6 +503,7 @@
 				B10000000000000000000012 /* PromptDockWidget.swift in Sources */,
 				B10000000000000000000013 /* CopyPromptIntent.swift in Sources */,
 				B10000000000000000000014 /* WidgetPromptSnapshot.swift in Sources */,
+				G10000000000000000000002 /* PromptTemplate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -616,16 +646,14 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = L96B6KHL5Y;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = PromptDock;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 PromptDock. All rights reserved.";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PromptDock/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -634,6 +662,7 @@
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.promptdock.PromptDock;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROMPTDOCK_APP_GROUP_IDENTIFIER = "$(DEVELOPMENT_TEAM).PromptDock";
 				REGISTER_APP_GROUPS = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -648,16 +677,14 @@
 				CODE_SIGN_ENTITLEMENTS = PromptDock/PromptDockRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = L96B6KHL5Y;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = PromptDock;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 PromptDock. All rights reserved.";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PromptDock/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -666,6 +693,7 @@
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.promptdock.PromptDock;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROMPTDOCK_APP_GROUP_IDENTIFIER = "$(DEVELOPMENT_TEAM).PromptDock";
 				REGISTER_APP_GROUPS = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -677,12 +705,13 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.promptdock.PromptDockTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROMPTDOCK_APP_GROUP_IDENTIFIER = "$(DEVELOPMENT_TEAM).PromptDock";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromptDock.app/Contents/MacOS/PromptDock";
@@ -694,12 +723,13 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.promptdock.PromptDockTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROMPTDOCK_APP_GROUP_IDENTIFIER = "$(DEVELOPMENT_TEAM).PromptDock";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromptDock.app/Contents/MacOS/PromptDock";
@@ -714,7 +744,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = L96B6KHL5Y;
 				ENABLE_APP_SANDBOX = YES;
@@ -732,6 +762,7 @@
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.promptdock.PromptDock.Widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROMPTDOCK_APP_GROUP_IDENTIFIER = "$(DEVELOPMENT_TEAM).PromptDock";
 				REGISTER_APP_GROUPS = NO;
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -746,7 +777,7 @@
 				CODE_SIGN_ENTITLEMENTS = PromptDockWidget/PromptDockWidgetRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = L96B6KHL5Y;
 				ENABLE_APP_SANDBOX = YES;
@@ -764,6 +795,7 @@
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.promptdock.PromptDock.Widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROMPTDOCK_APP_GROUP_IDENTIFIER = "$(DEVELOPMENT_TEAM).PromptDock";
 				REGISTER_APP_GROUPS = NO;
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;

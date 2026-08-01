@@ -1,0 +1,84 @@
+const jwt = require('jsonwebtoken');
+const db = require('../db');
+const config = require('../config');
+
+const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+function ensureJwtConfigured() {
+  if (!config.jwtSecret || config.jwtSecret.length < 32) {
+    const error = new Error('JWT_SECRET must contain at least 32 characters.');
+    error.code = 'AUTH_NOT_CONFIGURED';
+    throw error;
+  }
+}
+
+function cookieOptions() {
+  const options = {
+    httpOnly: true,
+    secure: config.cookie.secure,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: COOKIE_MAX_AGE,
+  };
+  if (config.cookie.domain) options.domain = config.cookie.domain;
+  return options;
+}
+
+function publicAdmin(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    mfa_enabled: Boolean(user.mfa_enabled_at),
+  };
+}
+
+function issueSession(res, user) {
+  ensureJwtConfigured();
+  const token = jwt.sign({ id: user.id }, config.jwtSecret, { expiresIn: '7d' });
+  res.cookie(config.cookie.name, token, cookieOptions());
+}
+
+function clearSession(res) {
+  const options = cookieOptions();
+  delete options.maxAge;
+  res.clearCookie(config.cookie.name, options);
+}
+
+async function requireAdmin(req, res, next) {
+  try {
+    ensureJwtConfigured();
+    const token = req.cookies?.[config.cookie.name];
+    if (!token) return res.status(401).json({ message: 'Administrator sign-in is required.' });
+    const payload = jwt.verify(token, config.jwtSecret);
+    const [rows] = await db.query(
+      'SELECT id, name, email, role, status, mfa_enabled_at FROM admin_users WHERE id=? LIMIT 1',
+      [payload.id],
+    );
+    const admin = rows[0];
+    if (!admin) return res.status(401).json({ message: 'Administrator session is no longer valid.' });
+    if (admin.status !== 'active') return res.status(403).json({ message: 'This administrator account is disabled.' });
+    if (!['owner', 'admin'].includes(admin.role)) return res.status(403).json({ message: 'Administrator permission is required.' });
+    req.admin = admin;
+    next();
+  } catch (error) {
+    if (error.code === 'AUTH_NOT_CONFIGURED') return res.status(503).json({ message: error.message });
+    return res.status(401).json({ message: 'Administrator session expired. Please sign in again.' });
+  }
+}
+
+function requireOwner(req, res, next) {
+  if (req.admin?.role !== 'owner') {
+    return res.status(403).json({ message: 'Owner permission is required for this action.' });
+  }
+  next();
+}
+
+module.exports = {
+  clearSession,
+  issueSession,
+  publicAdmin,
+  requireAdmin,
+  requireOwner,
+};

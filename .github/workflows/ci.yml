@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Validate metadata files
+        run: |
+          plutil -lint PromptDock/Resources/PrivacyInfo.xcprivacy
+          plutil -lint PromptDock/PromptDock.entitlements
+          plutil -lint PromptDock/PromptDockRelease.entitlements
+          plutil -lint PromptDockWidget/Info.plist
+          plutil -lint PromptDockWidget/PromptDockWidget.entitlements
+          plutil -lint PromptDockWidget/PromptDockWidgetRelease.entitlements
+          jq empty PromptDock/Resources/Localizable.xcstrings
+          test -f LICENSE
+
+      - name: Run Debug tests
+        run: |
+          xcodebuild \
+            -project PromptDock.xcodeproj \
+            -scheme PromptDock \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/PromptDock-Debug" \
+            -resultBundlePath "$RUNNER_TEMP/PromptDockTests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+
+      - name: Build Release without signing
+        run: |
+          xcodebuild \
+            -project PromptDock.xcodeproj \
+            -scheme PromptDock \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/PromptDock-Release" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Inspect Release bundle and security configuration
+        run: |
+          APP_PATH="$RUNNER_TEMP/PromptDock-Release/Build/Products/Release/PromptDock.app"
+          WIDGET_PATH="$APP_PATH/Contents/PlugIns/PromptDockWidget.appex"
+          test -d "$WIDGET_PATH"
+          test -f "$APP_PATH/Contents/Resources/PrivacyInfo.xcprivacy"
+          APP_GROUP="$(plutil -extract PromptDockAppGroupIdentifier raw "$APP_PATH/Contents/Info.plist")"
+          WIDGET_GROUP="$(plutil -extract PromptDockAppGroupIdentifier raw "$WIDGET_PATH/Contents/Info.plist")"
+          test -n "$APP_GROUP"
+          test "$APP_GROUP" = "$WIDGET_GROUP"
+          grep -q 'com.apple.security.app-sandbox' PromptDock/PromptDockRelease.entitlements
+          grep -q 'com.apple.security.application-groups' PromptDock/PromptDockRelease.entitlements
+          grep -q 'com.apple.security.app-sandbox' PromptDockWidget/PromptDockWidgetRelease.entitlements
+          xcodebuild \
+            -project PromptDock.xcodeproj \
+            -target PromptDock \
+            -configuration Release \
+            -showBuildSettings \
+            > "$RUNNER_TEMP/PromptDockReleaseBuildSettings.txt"
+          grep -q 'ENABLE_HARDENED_RUNTIME = YES' "$RUNNER_TEMP/PromptDockReleaseBuildSettings.txt"
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PromptDock-test-results
+          path: ${{ runner.temp }}/PromptDockTests.xcresult
+          if-no-files-found: ignore
+          retention-days: 7

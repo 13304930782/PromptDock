@@ -89,6 +89,17 @@ struct PromptCommands: Commands {
             .keyboardShortcut(.delete, modifiers: [])
             .disabled(actions?.hasSelectedPrompt != true)
         }
+
+        CommandGroup(replacing: .help) {
+            Button(
+                language.text(
+                    english: "Template Variables Guide",
+                    chinese: "模板变量操作手册"
+                )
+            ) {
+                openWindow(id: "template-guide")
+            }
+        }
     }
 
     private var favoriteCommandTitle: String {

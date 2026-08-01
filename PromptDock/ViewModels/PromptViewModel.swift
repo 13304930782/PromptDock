@@ -106,24 +106,28 @@ final class PromptViewModel: ObservableObject {
         }
     }
 
-    func filteredPrompts(from prompts: [Prompt]) -> [Prompt] {
-        let sectionPrompts: [Prompt] = switch selectedSection {
+    func filteredPrompts(
+        from prompts: [Prompt],
+        locale: Locale = .autoupdatingCurrent
+    ) -> [Prompt] {
+        let sectionPrompts: [Prompt]
+        switch selectedSection {
         case .all:
-            prompts
+            sectionPrompts = prompts
         case .favorites:
-            prompts.filter(\.isFavorite)
+            sectionPrompts = prompts.filter(\.isFavorite)
         case .category(let name):
-            prompts.filter {
-                $0.category.localizedCaseInsensitiveCompare(
-                    name
-                ) == .orderedSame
+            let sectionKey = CategoryNameIdentity.normalized(name)
+            sectionPrompts = prompts.filter {
+                CategoryNameIdentity.normalized($0.category) == sectionKey
             }
         }
 
         guard hasSearchQuery else { return sectionPrompts }
         return PromptSearchService.results(
             in: sectionPrompts,
-            query: searchText
+            query: searchText,
+            locale: locale
         )
     }
 
@@ -132,8 +136,11 @@ final class PromptViewModel: ObservableObject {
         return prompts.first { $0.id == selectedPromptID }
     }
 
-    func reconcileSelection(in prompts: [Prompt]) {
-        let visiblePrompts = filteredPrompts(from: prompts)
+    func reconcileSelection(
+        in prompts: [Prompt],
+        locale: Locale = .autoupdatingCurrent
+    ) {
+        let visiblePrompts = filteredPrompts(from: prompts, locale: locale)
 
         if let selectedPromptID,
            visiblePrompts.contains(where: { $0.id == selectedPromptID }) {
@@ -257,7 +264,11 @@ final class PromptViewModel: ObservableObject {
             throw PromptValidationError.missingContent
         }
 
-        return (title, draft.category, content)
+        return (
+            title,
+            CategoryNameIdentity.trimmed(draft.category),
+            content
+        )
     }
 
     private func selectSearchResult(

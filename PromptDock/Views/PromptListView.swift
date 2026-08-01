@@ -126,6 +126,7 @@ struct PromptListView: View {
 }
 
 private struct PromptRowView: View {
+    @Environment(\.locale) private var locale
     let prompt: Prompt
     let searchText: String
 
@@ -150,7 +151,10 @@ private struct PromptRowView: View {
 
             HStack {
                 SearchHighlightedText(
-                    text: prompt.category,
+                    text: BuiltInCategoryPresentation.displayName(
+                        for: prompt.category,
+                        locale: locale
+                    ),
                     query: searchText
                 )
                     .lineLimit(1)

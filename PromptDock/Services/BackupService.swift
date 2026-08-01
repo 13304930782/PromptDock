@@ -222,11 +222,11 @@ enum BackupService {
 
         var categoryNames = Set<String>()
         for category in backup.categories {
-            let name = trimmed(category.name)
+            let name = CategoryNameIdentity.trimmed(category.name)
             guard !name.isEmpty, !category.systemImage.isEmpty else {
                 throw BackupError.invalidCategory
             }
-            guard categoryNames.insert(normalized(name)).inserted else {
+            guard categoryNames.insert(CategoryNameIdentity.normalized(name)).inserted else {
                 throw BackupError.duplicateCategoryName(name)
             }
 
@@ -255,9 +255,9 @@ enum BackupService {
         }
 
         for prompt in backup.prompts {
-            guard !trimmed(prompt.title).isEmpty,
-                  !trimmed(prompt.category).isEmpty,
-                  !trimmed(prompt.content).isEmpty
+            guard !CategoryNameIdentity.trimmed(prompt.title).isEmpty,
+                  !CategoryNameIdentity.trimmed(prompt.category).isEmpty,
+                  !CategoryNameIdentity.trimmed(prompt.content).isEmpty
             else {
                 throw BackupError.invalidPrompt
             }
@@ -309,18 +309,21 @@ enum BackupService {
         var promptsByID = Dictionary(uniqueKeysWithValues: prompts.map { ($0.id, $0) })
         var categoriesByID = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
         var categoriesByName: [String: PromptCategory] = [:]
-        for category in categories where categoriesByName[normalized(category.name)] == nil {
-            categoriesByName[normalized(category.name)] = category
+        for category in categories
+        where categoriesByName[CategoryNameIdentity.normalized(category.name)] == nil {
+            categoriesByName[CategoryNameIdentity.normalized(category.name)] = category
         }
 
         for record in backup.categories {
-            let nameKey = normalized(record.name)
+            let nameKey = CategoryNameIdentity.normalized(record.name)
             let target = categoriesByID[record.id] ?? categoriesByName[nameKey]
             if let target {
                 let nameOwner = categoriesByName[nameKey]
                 if nameOwner == nil || nameOwner?.id == target.id {
-                    categoriesByName.removeValue(forKey: normalized(target.name))
-                    target.name = trimmed(record.name)
+                    categoriesByName.removeValue(
+                        forKey: CategoryNameIdentity.normalized(target.name)
+                    )
+                    target.name = CategoryNameIdentity.trimmed(record.name)
                     categoriesByName[nameKey] = target
                 }
                 apply(record, to: target)
@@ -345,6 +348,7 @@ enum BackupService {
             }
         }
 
+        canonicalizePromptCategories(prompts, using: categories)
         insertMissingCategories(for: prompts, categories: &categories, in: context)
         insertDefaultCategoriesIfEmpty(&categories, in: context)
         normalizeSortOrder(categories)
@@ -365,6 +369,7 @@ enum BackupService {
         let prompts = backup.prompts.map(makePrompt)
         categories.forEach(context.insert)
         prompts.forEach(context.insert)
+        canonicalizePromptCategories(prompts, using: categories)
         insertMissingCategories(for: prompts, categories: &categories, in: context)
         insertDefaultCategoriesIfEmpty(&categories, in: context)
         normalizeSortOrder(categories)
@@ -403,12 +408,13 @@ enum BackupService {
         categories: inout [PromptCategory],
         in context: ModelContext
     ) {
-        var names = Set(categories.map { normalized($0.name) })
+        var names = Set(categories.map { CategoryNameIdentity.normalized($0.name) })
         var nextOrder = (categories.map(\.sortOrder).max() ?? -1) + 1
 
         for prompt in prompts {
-            let name = trimmed(prompt.category)
-            guard names.insert(normalized(name)).inserted else { continue }
+            let name = CategoryNameIdentity.trimmed(prompt.category)
+            guard names.insert(CategoryNameIdentity.normalized(name)).inserted
+            else { continue }
             let category = PromptCategory(
                 name: name,
                 sortOrder: nextOrder,
@@ -418,6 +424,26 @@ enum BackupService {
             nextOrder += 1
             context.insert(category)
             categories.append(category)
+        }
+    }
+
+    private static func canonicalizePromptCategories(
+        _ prompts: [Prompt],
+        using categories: [PromptCategory]
+    ) {
+        let canonicalNames = categories.reduce(into: [String: String]()) {
+            result, category in
+            let key = CategoryNameIdentity.normalized(category.name)
+            if result[key] == nil {
+                result[key] = category.name
+            }
+        }
+
+        for prompt in prompts {
+            let key = CategoryNameIdentity.normalized(prompt.category)
+            if let canonicalName = canonicalNames[key] {
+                prompt.category = canonicalName
+            }
         }
     }
 
@@ -459,9 +485,9 @@ enum BackupService {
     ) -> Prompt {
         Prompt(
             id: record.id,
-            title: trimmed(record.title),
-            category: trimmed(record.category),
-            content: trimmed(record.content),
+            title: CategoryNameIdentity.trimmed(record.title),
+            category: CategoryNameIdentity.trimmed(record.category),
+            content: CategoryNameIdentity.trimmed(record.content),
             createdDate: record.createdDate,
             updatedDate: record.updatedDate,
             isFavorite: record.isFavorite
@@ -472,9 +498,9 @@ enum BackupService {
         _ record: PromptDockBackup.PromptRecord,
         to prompt: Prompt
     ) {
-        prompt.title = trimmed(record.title)
-        prompt.category = trimmed(record.category)
-        prompt.content = trimmed(record.content)
+        prompt.title = CategoryNameIdentity.trimmed(record.title)
+        prompt.category = CategoryNameIdentity.trimmed(record.category)
+        prompt.content = CategoryNameIdentity.trimmed(record.content)
         prompt.createdDate = record.createdDate
         prompt.updatedDate = record.updatedDate
         prompt.isFavorite = record.isFavorite
@@ -485,7 +511,7 @@ enum BackupService {
     ) -> PromptCategory {
         PromptCategory(
             id: record.id,
-            name: trimmed(record.name),
+            name: CategoryNameIdentity.trimmed(record.name),
             systemImage: record.systemImage,
             sortOrder: record.sortOrder,
             createdDate: record.createdDate,
@@ -521,14 +547,4 @@ enum BackupService {
         return "\(version) (\(build))"
     }
 
-    private nonisolated static func trimmed(_ value: String) -> String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private nonisolated static func normalized(_ value: String) -> String {
-        trimmed(value).folding(
-            options: [.caseInsensitive, .diacriticInsensitive],
-            locale: Locale(identifier: "en_US_POSIX")
-        )
-    }
 }

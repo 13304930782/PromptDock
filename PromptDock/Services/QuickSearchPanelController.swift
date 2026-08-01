@@ -1,5 +1,4 @@
 import AppKit
-import Carbon
 import SwiftData
 import SwiftUI
 
@@ -62,10 +61,7 @@ final class MenuBarController: NSObject {
             return
         }
 
-        let languageRawValue = UserDefaults.standard.string(
-            forKey: AppLanguage.storageKey
-        ) ?? AppLanguage.system.rawValue
-        let language = AppLanguage(rawValue: languageRawValue) ?? .system
+        let language = AppPreferences.selectedLanguage
         popover.contentSize = NSSize(width: 410, height: 88)
         popover.contentViewController = NSHostingController(
             rootView: QuickSearchView(
@@ -110,10 +106,7 @@ final class QuickSearchPanelController: NSObject, NSWindowDelegate {
 
     func show() {
         let panel = makePanelIfNeeded()
-        let languageRawValue = UserDefaults.standard.string(
-            forKey: AppLanguage.storageKey
-        ) ?? AppLanguage.system.rawValue
-        let language = AppLanguage(rawValue: languageRawValue) ?? .system
+        let language = AppPreferences.selectedLanguage
         resize(panel, to: 88, animated: false)
         panel.contentViewController = NSHostingController(
             rootView: QuickSearchView(
@@ -141,7 +134,7 @@ final class QuickSearchPanelController: NSObject, NSWindowDelegate {
         to requestedHeight: CGFloat,
         animated: Bool
     ) {
-        let height = min(max(requestedHeight, 88), 351)
+        let height = min(max(requestedHeight, 88), 480)
         guard abs(panel.frame.height - height) > 0.5 else { return }
 
         let frame = NSRect(
@@ -186,7 +179,6 @@ final class QuickSearchPanelController: NSObject, NSWindowDelegate {
 
         eventMonitor = NSEvent.addLocalMonitorForEvents(
             matching: [
-                .keyDown,
                 .leftMouseDown,
                 .rightMouseDown,
                 .otherMouseDown
@@ -197,13 +189,7 @@ final class QuickSearchPanelController: NSObject, NSWindowDelegate {
                   panel.isVisible
             else { return event }
 
-            if event.type == .keyDown,
-               event.keyCode == UInt16(kVK_Escape) {
-                panel.orderOut(nil)
-                return nil
-            }
-
-            if event.type != .keyDown, event.window !== panel {
+            if event.window !== panel {
                 panel.orderOut(nil)
             }
             return event
@@ -251,28 +237,20 @@ final class AppRuntime: ObservableObject {
         guard !hasStarted else { return }
         hasStarted = true
         menuBarController.setVisible(
-            UserDefaults.standard.bool(forKey: AppPreferences.showMenuBar)
+            AppPreferences.isMenuBarVisible
         )
         hotKeyService.setEnabled(
-            UserDefaults.standard.bool(
-                forKey: AppPreferences.globalQuickSearchEnabled
-            )
+            AppPreferences.isGlobalQuickSearchEnabled
         )
     }
 
     func setGlobalQuickSearchEnabled(_ enabled: Bool) {
-        UserDefaults.standard.set(
-            enabled,
-            forKey: AppPreferences.globalQuickSearchEnabled
-        )
+        AppPreferences.isGlobalQuickSearchEnabled = enabled
         hotKeyService.setEnabled(enabled)
     }
 
     func setMenuBarVisible(_ isVisible: Bool) {
-        UserDefaults.standard.set(
-            isVisible,
-            forKey: AppPreferences.showMenuBar
-        )
+        AppPreferences.isMenuBarVisible = isVisible
         menuBarController.setVisible(isVisible)
     }
 

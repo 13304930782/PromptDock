@@ -11,6 +11,15 @@ build/
 *.xccovreport
 *.profraw
 
+# CueGrove website
+node_modules/
+.pnpm-store/
+dist/
+server/node_modules/
+server/.env
+.env
+npm-debug.log*
+
 # Local Xcode user state
 xcuserdata/
 *.xcuserstate
