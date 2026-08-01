@@ -6,6 +6,7 @@ const { requireAdmin, requireOwner } = require('../middleware/auth');
 const { getSetting, saveSetting } = require('../lib/settings');
 const { mailReady, resolveMailConfig, sendDecisionEmail, sendTestEmail } = require('../lib/mailer');
 const { encryptSecret } = require('../lib/secrets');
+const { issueFeedbackToken } = require('./feedback');
 const { isEmail, isHttpUrl, normalizeEmail, passwordError, string } = require('../lib/validation');
 
 const router = express.Router();
@@ -241,6 +242,7 @@ router.patch('/early-access/:id/review', async (req, res, next) => {
 
   let application;
   let settings;
+  let feedbackToken;
   let connection;
   try {
     settings = await getSetting('early_access');
@@ -277,6 +279,9 @@ router.patch('/early-access/:id/review', async (req, res, next) => {
       internal_note: internalNote,
       applicant_message: applicantMessage,
     };
+    if (decision === 'approved') {
+      feedbackToken = await issueFeedbackToken(id);
+    }
   } catch (error) {
     if (connection) await connection.rollback().catch(() => undefined);
     return next(error);
@@ -285,7 +290,10 @@ router.patch('/early-access/:id/review', async (req, res, next) => {
   }
 
   try {
-    const delivery = await sendDecisionEmail(application, settings);
+    const deliverySettings = feedbackToken
+      ? { ...settings, feedback_url: `${config.siteUrl}/feedback/${feedbackToken}` }
+      : settings;
+    const delivery = await sendDecisionEmail(application, deliverySettings);
     return res.json({
       message: decision === 'approved' ? 'Application approved.' : 'Application rejected.',
       email_status: delivery.status,
@@ -319,7 +327,11 @@ router.post('/early-access/:id/retry-email', async (req, res, next) => {
     if (application.status === 'approved' && !settings.download_url) {
       return res.status(409).json({ message: 'Configure the PromptDock download URL before retrying this email.' });
     }
-    const delivery = await sendDecisionEmail(application, settings);
+    const feedbackToken = application.status === 'approved' ? await issueFeedbackToken(id) : null;
+    const deliverySettings = feedbackToken
+      ? { ...settings, feedback_url: `${config.siteUrl}/feedback/${feedbackToken}` }
+      : settings;
+    const delivery = await sendDecisionEmail(application, deliverySettings);
     if (delivery.status === 'failed') {
       return res.status(502).json({ message: `Email delivery failed: ${delivery.error}` });
     }

@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const authRoutes = require('./routes/auth');
 const earlyAccessRoutes = require('./routes/earlyAccess');
 const adminRoutes = require('./routes/admin');
+const feedbackRoutes = require('./routes/feedback');
 const { requireSameOrigin } = require('./middleware/security');
 const config = require('./config');
 
@@ -28,6 +29,8 @@ function createApp() {
   app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'cuegrove' }));
   app.use('/api/auth', authRoutes);
   app.use('/api/early-access', earlyAccessRoutes);
+  app.use('/api/feedback', feedbackRoutes.router);
+  app.use('/api/admin/feedback', feedbackRoutes.adminRouter);
   app.use('/api/admin', adminRoutes);
 
   app.use((req, res) => {

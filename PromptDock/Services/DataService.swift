@@ -9,15 +9,33 @@ enum PromptDockSchemaV1: VersionedSchema {
     }
 }
 
+enum PromptDockSchemaV2: VersionedSchema {
+    static let versionIdentifier = Schema.Version(2, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Prompt.self,
+            PromptCategory.self,
+            PromptVersion.self,
+            PromptTag.self,
+            SmartCollection.self,
+            TemplateVariableDefinition.self
+        ]
+    }
+}
+
 enum PromptDockMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [PromptDockSchemaV1.self]
+        [PromptDockSchemaV1.self, PromptDockSchemaV2.self]
     }
 
     static var stages: [MigrationStage] {
-        // Add a new VersionedSchema and an explicit MigrationStage before
-        // changing persisted model fields. V1 intentionally needs no stage.
-        []
+        [
+            .lightweight(
+                fromVersion: PromptDockSchemaV1.self,
+                toVersion: PromptDockSchemaV2.self
+            )
+        ]
     }
 }
 
@@ -26,7 +44,7 @@ enum DataService {
         isStoredInMemoryOnly: Bool = false,
         storeURL: URL? = nil
     ) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: PromptDockSchemaV1.self)
+        let schema = Schema(versionedSchema: PromptDockSchemaV2.self)
         let configuration: ModelConfiguration
         if let storeURL {
             configuration = ModelConfiguration(

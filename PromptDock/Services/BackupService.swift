@@ -5,13 +5,17 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct PromptDockBackup: Codable, Equatable {
-    static let currentFormatVersion = 1
+    static let currentFormatVersion = 2
 
     var formatVersion: Int
     var createdAt: Date
     var appVersion: String
     var prompts: [PromptRecord]
     var categories: [CategoryRecord]
+    var versions: [VersionRecord] = []
+    var tags: [TagRecord] = []
+    var smartCollections: [SmartCollectionRecord] = []
+    var variableDefinitions: [VariableDefinitionRecord] = []
 
     struct PromptRecord: Codable, Equatable {
         var id: UUID
@@ -33,6 +37,45 @@ struct PromptDockBackup: Codable, Equatable {
         var iconKind: CategoryIconKind
         var iconEmoji: String?
         var iconImageData: Data?
+    }
+
+    struct VersionRecord: Codable, Equatable {
+        var id: UUID
+        var promptID: UUID
+        var title: String
+        var category: String
+        var content: String
+        var createdAt: Date
+    }
+
+    struct TagRecord: Codable, Equatable {
+        var id: UUID
+        var name: String
+        var color: PromptTagColor
+        var promptIDs: [UUID]
+        var createdAt: Date
+    }
+
+    struct SmartCollectionRecord: Codable, Equatable {
+        var id: UUID
+        var name: String
+        var query: String
+        var category: String?
+        var tagIDs: [UUID]
+        var favoriteOnly: Bool
+        var updatedWithinDays: Int?
+        var matchAll: Bool
+        var createdAt: Date
+    }
+
+    struct VariableDefinitionRecord: Codable, Equatable {
+        var id: UUID
+        var promptID: UUID
+        var name: String
+        var label: String
+        var defaultValue: String
+        var order: Int
+        var isRepeatable: Bool
     }
 
     var summary: BackupSummary {
@@ -152,6 +195,14 @@ enum BackupService {
                 ]
             )
         )
+        let versions = try context.fetch(FetchDescriptor<PromptVersion>())
+        let tags = try context.fetch(FetchDescriptor<PromptTag>())
+        let smartCollections = try context.fetch(FetchDescriptor<SmartCollection>())
+        let variableDefinitions = try context.fetch(
+            FetchDescriptor<TemplateVariableDefinition>(
+                sortBy: [SortDescriptor(\TemplateVariableDefinition.order)]
+            )
+        )
 
         return PromptDockBackup(
             formatVersion: PromptDockBackup.currentFormatVersion,
@@ -180,6 +231,49 @@ enum BackupService {
                     iconEmoji: $0.iconEmoji,
                     iconImageData: $0.iconImageData
                 )
+            },
+            versions: versions.map {
+                PromptDockBackup.VersionRecord(
+                    id: $0.id,
+                    promptID: $0.promptID,
+                    title: $0.title,
+                    category: $0.category,
+                    content: $0.content,
+                    createdAt: $0.createdAt
+                )
+            },
+            tags: tags.map {
+                PromptDockBackup.TagRecord(
+                    id: $0.id,
+                    name: $0.name,
+                    color: $0.color,
+                    promptIDs: $0.promptIDs,
+                    createdAt: $0.createdAt
+                )
+            },
+            smartCollections: smartCollections.map {
+                PromptDockBackup.SmartCollectionRecord(
+                    id: $0.id,
+                    name: $0.name,
+                    query: $0.query,
+                    category: $0.category,
+                    tagIDs: $0.tagIDs,
+                    favoriteOnly: $0.favoriteOnly,
+                    updatedWithinDays: $0.updatedWithinDays,
+                    matchAll: $0.matchAll,
+                    createdAt: $0.createdAt
+                )
+            },
+            variableDefinitions: variableDefinitions.map {
+                PromptDockBackup.VariableDefinitionRecord(
+                    id: $0.id,
+                    promptID: $0.promptID,
+                    name: $0.name,
+                    label: $0.label,
+                    defaultValue: $0.defaultValue,
+                    order: $0.order,
+                    isRepeatable: $0.isRepeatable
+                )
             }
         )
     }
@@ -205,7 +299,7 @@ enum BackupService {
     }
 
     nonisolated static func validate(_ backup: PromptDockBackup) throws {
-        guard backup.formatVersion == PromptDockBackup.currentFormatVersion else {
+        guard (1...PromptDockBackup.currentFormatVersion).contains(backup.formatVersion) else {
             throw BackupError.unsupportedVersion(backup.formatVersion)
         }
         guard backup.prompts.count <= maximumPromptCount,
@@ -218,6 +312,13 @@ enum BackupService {
         }
         guard Set(backup.categories.map(\.id)).count == backup.categories.count else {
             throw BackupError.duplicateCategoryID
+        }
+        guard Set(backup.versions.map(\.id)).count == backup.versions.count,
+              Set(backup.tags.map(\.id)).count == backup.tags.count,
+              Set(backup.smartCollections.map(\.id)).count == backup.smartCollections.count,
+              Set(backup.variableDefinitions.map(\.id)).count == backup.variableDefinitions.count
+        else {
+            throw BackupError.tooManyItems
         }
 
         var categoryNames = Set<String>()
@@ -286,6 +387,7 @@ enum BackupService {
             case .replace:
                 try replace(with: backup, in: context)
             }
+            try mergePhase1Records(backup, in: context)
             try context.save()
         } catch {
             context.rollback()
@@ -358,6 +460,18 @@ enum BackupService {
         with backup: PromptDockBackup,
         in context: ModelContext
     ) throws {
+        for version in try context.fetch(FetchDescriptor<PromptVersion>()) {
+            context.delete(version)
+        }
+        for tag in try context.fetch(FetchDescriptor<PromptTag>()) {
+            context.delete(tag)
+        }
+        for collection in try context.fetch(FetchDescriptor<SmartCollection>()) {
+            context.delete(collection)
+        }
+        for definition in try context.fetch(FetchDescriptor<TemplateVariableDefinition>()) {
+            context.delete(definition)
+        }
         for prompt in try context.fetch(FetchDescriptor<Prompt>()) {
             context.delete(prompt)
         }
@@ -373,6 +487,93 @@ enum BackupService {
         insertMissingCategories(for: prompts, categories: &categories, in: context)
         insertDefaultCategoriesIfEmpty(&categories, in: context)
         normalizeSortOrder(categories)
+    }
+
+    private static func mergePhase1Records(
+        _ backup: PromptDockBackup,
+        in context: ModelContext
+    ) throws {
+        let existingVersions = Dictionary(
+            uniqueKeysWithValues: try context.fetch(FetchDescriptor<PromptVersion>()).map { ($0.id, $0) }
+        )
+        for record in backup.versions where existingVersions[record.id] == nil {
+            context.insert(PromptVersion(
+                id: record.id,
+                promptID: record.promptID,
+                title: record.title,
+                category: record.category,
+                content: record.content,
+                createdAt: record.createdAt
+            ))
+        }
+
+        let existingTags = Dictionary(
+            uniqueKeysWithValues: try context.fetch(FetchDescriptor<PromptTag>()).map { ($0.id, $0) }
+        )
+        for record in backup.tags {
+            if let tag = existingTags[record.id] {
+                tag.name = record.name
+                tag.color = record.color
+                tag.promptIDs = record.promptIDs
+            } else {
+                context.insert(PromptTag(
+                    id: record.id,
+                    name: record.name,
+                    color: record.color,
+                    promptIDs: record.promptIDs,
+                    createdAt: record.createdAt
+                ))
+            }
+        }
+
+        let existingCollections = Dictionary(
+            uniqueKeysWithValues: try context.fetch(FetchDescriptor<SmartCollection>()).map { ($0.id, $0) }
+        )
+        for record in backup.smartCollections {
+            if let collection = existingCollections[record.id] {
+                collection.name = record.name
+                collection.query = record.query
+                collection.category = record.category
+                collection.tagIDs = record.tagIDs
+                collection.favoriteOnly = record.favoriteOnly
+                collection.updatedWithinDays = record.updatedWithinDays
+                collection.matchAll = record.matchAll
+            } else {
+                context.insert(SmartCollection(
+                    id: record.id,
+                    name: record.name,
+                    query: record.query,
+                    category: record.category,
+                    tagIDs: record.tagIDs,
+                    favoriteOnly: record.favoriteOnly,
+                    updatedWithinDays: record.updatedWithinDays,
+                    matchAll: record.matchAll,
+                    createdAt: record.createdAt
+                ))
+            }
+        }
+
+        let existingDefinitions = Dictionary(
+            uniqueKeysWithValues: try context.fetch(FetchDescriptor<TemplateVariableDefinition>()).map { ($0.id, $0) }
+        )
+        for record in backup.variableDefinitions {
+            if let definition = existingDefinitions[record.id] {
+                definition.label = record.label
+                definition.defaultValue = record.defaultValue
+                definition.order = record.order
+                definition.isRepeatable = record.isRepeatable
+            } else {
+                context.insert(TemplateVariableDefinition(
+                    id: record.id,
+                    promptID: record.promptID,
+                    name: record.name,
+                    label: record.label,
+                    defaultValue: record.defaultValue,
+                    order: record.order,
+                    isRepeatable: record.isRepeatable
+                ))
+            }
+        }
     }
 
     private static func writeSafetyBackup(in context: ModelContext) throws -> URL {
