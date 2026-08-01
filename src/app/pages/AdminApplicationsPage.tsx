@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Mail, RotateCw, X } from 'lucide-react';
+import { Mail, RotateCw, Send, X } from 'lucide-react';
 import { api } from '../lib/api';
-import type { Application, EarlyAccessSettings } from '../types';
+import type { AdminUser, Application, EarlyAccessSettings } from '../types';
 
 const roleLabels: Record<string, string> = {
   student: 'Student',
@@ -17,7 +17,7 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
 
-export default function AdminApplicationsPage() {
+export default function AdminApplicationsPage({ user }: { user: AdminUser }) {
   const [applications, setApplications] = useState<Application[]>([]);
   const [settings, setSettings] = useState<EarlyAccessSettings | null>(null);
   const [status, setStatus] = useState('pending');
@@ -28,6 +28,7 @@ export default function AdminApplicationsPage() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [working, setWorking] = useState(false);
+  const [bulkWorking, setBulkWorking] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -108,6 +109,31 @@ export default function AdminApplicationsPage() {
     }
   };
 
+  const resendApprovedEmails = async () => {
+    const approved = applications.filter((item) => item.status === 'approved');
+    if (user.role !== 'owner' || approved.length === 0) return;
+    const confirmed = window.confirm(
+      'Resend the approval email to every approved Early Access user? Their previous feedback links will be replaced.',
+    );
+    if (!confirmed) return;
+
+    setBulkWorking(true);
+    setError('');
+    try {
+      const result = await api<{ message: string; sent: number; failed: number }>('/admin/early-access/resend-approved', {
+        method: 'POST',
+        body: JSON.stringify({ confirm: true }),
+        timeoutMs: 180_000,
+      });
+      setNotice(result.message);
+      await load();
+    } catch (resendError) {
+      setError(resendError instanceof Error ? resendError.message : 'Unable to resend approval emails.');
+    } finally {
+      setBulkWorking(false);
+    }
+  };
+
   return (
     <>
       <div className="admin-topline">
@@ -127,7 +153,15 @@ export default function AdminApplicationsPage() {
           <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
         </select>
+        {user.role === 'owner' && applications.some((item) => item.status === 'approved') && (
+          <button className="button button-retry" type="button" disabled={bulkWorking} onClick={resendApprovedEmails}>
+            <Send size={17} />{bulkWorking ? 'Sending…' : 'Resend to all approved'}
+          </button>
+        )}
       </div>
+      {user.role === 'owner' && applications.some((item) => item.status === 'approved') && (
+        <p className="admin-help-text">Sends to every approved user and replaces each user’s previous private feedback link.</p>
+      )}
       <div className="admin-card">
         {applications.length === 0 ? (
           <div className="empty-admin">No applications match these filters.</div>

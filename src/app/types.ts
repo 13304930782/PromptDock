@@ -59,3 +59,23 @@ export type Application = {
   latest_email_status: 'sent' | 'failed' | null;
   latest_email_error: string | null;
 };
+
+export type FeedbackReport = {
+  id: number;
+  application_id: number;
+  category: 'bug' | 'idea' | 'ux' | 'performance' | 'other';
+  title: string;
+  details: string;
+  steps: string | null;
+  expected: string | null;
+  actual: string | null;
+  device: string | null;
+  macos_version: string | null;
+  app_build: string | null;
+  status: 'new' | 'triaged' | 'resolved';
+  created_at: string;
+  updated_at: string;
+  full_name: string;
+  email: string;
+  cohort: string;
+};

@@ -6,6 +6,7 @@ const { requireAdmin, requireOwner } = require('../middleware/auth');
 const { getSetting, saveSetting } = require('../lib/settings');
 const { mailReady, resolveMailConfig, sendDecisionEmail, sendTestEmail } = require('../lib/mailer');
 const { encryptSecret } = require('../lib/secrets');
+const { issueFeedbackToken } = require('./feedback');
 const { isEmail, isHttpUrl, normalizeEmail, passwordError, string } = require('../lib/validation');
 
 const router = express.Router();
@@ -241,6 +242,7 @@ router.patch('/early-access/:id/review', async (req, res, next) => {
 
   let application;
   let settings;
+  let feedbackToken;
   let connection;
   try {
     settings = await getSetting('early_access');
@@ -277,6 +279,9 @@ router.patch('/early-access/:id/review', async (req, res, next) => {
       internal_note: internalNote,
       applicant_message: applicantMessage,
     };
+    if (decision === 'approved') {
+      feedbackToken = await issueFeedbackToken(id);
+    }
   } catch (error) {
     if (connection) await connection.rollback().catch(() => undefined);
     return next(error);
@@ -285,7 +290,10 @@ router.patch('/early-access/:id/review', async (req, res, next) => {
   }
 
   try {
-    const delivery = await sendDecisionEmail(application, settings);
+    const deliverySettings = feedbackToken
+      ? { ...settings, feedback_url: `${config.siteUrl}/feedback/${feedbackToken}` }
+      : settings;
+    const delivery = await sendDecisionEmail(application, deliverySettings);
     return res.json({
       message: decision === 'approved' ? 'Application approved.' : 'Application rejected.',
       email_status: delivery.status,
@@ -319,13 +327,76 @@ router.post('/early-access/:id/retry-email', async (req, res, next) => {
     if (application.status === 'approved' && !settings.download_url) {
       return res.status(409).json({ message: 'Configure the PromptDock download URL before retrying this email.' });
     }
-    const delivery = await sendDecisionEmail(application, settings);
+    const feedbackToken = application.status === 'approved' ? await issueFeedbackToken(id) : null;
+    const deliverySettings = feedbackToken
+      ? { ...settings, feedback_url: `${config.siteUrl}/feedback/${feedbackToken}` }
+      : settings;
+    const delivery = await sendDecisionEmail(application, deliverySettings);
     if (delivery.status === 'failed') {
       return res.status(502).json({ message: `Email delivery failed: ${delivery.error}` });
     }
     return res.json({ message: 'Decision email sent.' });
   } catch (error) {
     next(error);
+  }
+});
+
+router.post('/early-access/resend-approved', requireOwner, async (req, res, next) => {
+  if (req.body?.confirm !== true) {
+    return res.status(400).json({ message: 'Explicit confirmation is required before resending approval emails.' });
+  }
+
+  const hasRequestedIds = Array.isArray(req.body.ids);
+  const requestedIds = hasRequestedIds
+    ? [...new Set(req.body.ids.map(Number).filter((id) => Number.isInteger(id) && id > 0))]
+    : null;
+  if (hasRequestedIds && requestedIds.length === 0) {
+    return res.status(400).json({ message: 'Select at least one approved application.' });
+  }
+  if (requestedIds && requestedIds.length > 1000) {
+    return res.status(400).json({ message: 'You can resend at most 1000 approval emails at once.' });
+  }
+
+  try {
+    const settings = await getSetting('early_access');
+    if (!settings.download_url) {
+      return res.status(409).json({ message: 'Configure the PromptDock download URL before resending approval emails.' });
+    }
+
+    const params = requestedIds || [];
+    const [applications] = await db.query(
+      `SELECT * FROM early_access_applications
+       WHERE status='approved' ${requestedIds ? `AND id IN (${requestedIds.map(() => '?').join(',')})` : ''}
+       ORDER BY id ASC
+       LIMIT 1000`,
+      params,
+    );
+
+    const results = [];
+    for (const application of applications) {
+      try {
+        const feedbackToken = await issueFeedbackToken(application.id);
+        const delivery = await sendDecisionEmail(application, {
+          ...settings,
+          feedback_url: `${config.siteUrl}/feedback/${feedbackToken}`,
+        });
+        results.push({ id: application.id, status: delivery.status, error: delivery.error || null });
+      } catch (error) {
+        results.push({ id: application.id, status: 'failed', error: String(error.message || 'Email delivery failed.') });
+      }
+    }
+
+    const sent = results.filter((item) => item.status === 'sent').length;
+    const failed = results.length - sent;
+    return res.json({
+      message: `Resent approval emails: ${sent} sent, ${failed} failed.`,
+      total: results.length,
+      sent,
+      failed,
+      results,
+    });
+  } catch (error) {
+    return next(error);
   }
 });
 
