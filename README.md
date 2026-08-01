@@ -5,15 +5,22 @@
 <h1 align="center">PromptDock</h1>
 
 <p align="center">
-  把常用提示词整理好，在需要时立刻找到、填写并复制。
+  把常用提示词整理好，在需要时立刻找到、填写并复制。<br>
+  Organize the prompts you rely on. Find, fill, and copy them when you need them.
 </p>
 
 <p align="center">
-  <a href="https://cuegroveapp.com/early-access"><strong>加入 Early Access</strong></a>
+  <a href="https://cuegroveapp.com/early-access"><strong>Early Access</strong></a>
   ·
-  <a href="https://cuegroveapp.com">产品网站</a>
+  <a href="https://cuegroveapp.com">CueGrove</a>
   ·
-  <a href="docs/ROADMAP.zh-CN.md">开发路线</a>
+  <a href="docs/ROADMAP.zh-CN.md">Roadmap</a>
+</p>
+
+<p align="center">
+  <strong><a href="#简体中文">简体中文</a></strong>
+  ·
+  <strong><a href="#english">English</a></strong>
 </p>
 
 <p align="center">
@@ -24,6 +31,10 @@
 </p>
 
 ---
+
+<a id="简体中文"></a>
+
+# 简体中文
 
 ## 你的提示词，不该散落在聊天记录里
 
@@ -146,24 +157,133 @@ SwiftData 模型使用显式 Schema 版本和迁移阶段。修改数据模型�
 
 PromptDock 使用 [MIT License](LICENSE)。
 
+<p align="right"><a href="#english">English →</a></p>
+
+---
+
+<a id="english"></a>
+
+# English
+
+## Your prompts should not be buried in chat history
+
+PromptDock is a native prompt manager for macOS. It turns prompts into a searchable, reusable personal library: it stays quietly in the menu bar, opens with a shortcut when needed, and lets you copy the right prompt immediately.
+
+It is designed for students, teachers, developers, creators, and anyone who wants a clearer, more dependable AI workflow.
+
+## From organizing to using, in just a few steps
+
+### Keep everything organized
+
+Create, edit, favorite, and reorder prompts. Use categories, tags, and smart collections to organize different workflows. Custom categories can use a system Emoji or an image stored only on this Mac.
+
+### Find the right prompt
+
+Search titles, content, and categories with live keyword highlighting and match counts. Move through results with the arrow keys without constantly switching between mouse and keyboard.
+
+### Copy immediately
+
+Open Quick Search from the menu bar or press the default shortcut `⇧⌘P`. Select a result and press `Return` to copy it; the window closes automatically when copying is complete.
+
+### Turn prompts into reusable templates
+
+Write the fixed parts once and turn everything that changes into variables:
+
+```text
+Summarize {{topic}} in a {{tone}} tone, then process these files in order: {{filename[]}}
+```
+
+- `{{topic}}`: enter one value when copying.
+- `{{filename[]}}`: use the plus button to add as many repeated items as needed, up to 100 items per variable.
+- Variables with the same name are filled once and replaced everywhere.
+- A live preview shows the final prompt while you fill it in.
+
+### Recover earlier work
+
+PromptDock saves version history whenever you save a change, so you can preview and restore an earlier version. JSON backups support merge and replace imports; a safety backup is created before replacement.
+
+### Feel at home on macOS
+
+- Menu bar Quick Search and a configurable global shortcut
+- Desktop Widget for copying recent or favorite prompts
+- Launch at login
+- English and Simplified Chinese
+- Light, dark, and high-contrast interfaces
+
+## AI is optional, not required
+
+PromptDock works fully without an AI service. When useful, the template assistant can turn a natural-language requirement into a prompt template with variables.
+
+- Supports DeepSeek and OpenAI-compatible endpoints.
+- Early Access uses your own API key.
+- The API key is stored in the macOS Keychain.
+- Every request requires your explicit confirmation.
+- Only the current requirement and template syntax guide are sent. Your saved prompt library, categories, and local images are not included.
+
+## Local first
+
+Your prompts, categories, tags, version history, images, and backups stay on this Mac by default. PromptDock currently has no account system, advertising, behavioral analytics, tracking, or cloud sync.
+
+Only when you explicitly confirm an online AI template request is the current requirement sent to the selected provider, subject to that provider's privacy terms. Time Machine, disk synchronization, and other system backup behavior depend on your macOS settings.
+
+## Current status
+
+PromptDock is currently in Early Access and supports **macOS 14 or later**.
+
+Windows, iPhone, and iPad versions are still being planned. This repository does not present unavailable platform features as current functionality.
+
+> A free Apple ID / Personal Team can be used for local development and testing. Public distribution with Developer ID signing, notarization, or the Mac App Store still requires the Apple Developer Program. An unnotarized test build may trigger a Gatekeeper warning on first launch.
+
+## Developer quick start
+
+PromptDock is built with SwiftUI, SwiftData, AppKit, WidgetKit, and the system Keychain, with no third-party runtime frameworks.
+
+1. Clone the repository and open `PromptDock.xcodeproj`.
+2. Under **TARGETS → PromptDock → Signing & Capabilities**, select your Team.
+3. Select the same Team for **PromptDockWidget**.
+4. Choose the `PromptDock` scheme and `My Mac`, then press `⌘R`.
+
+The App Group is generated from `$(DEVELOPMENT_TEAM).PromptDock`, so no Swift source changes are required.
+
+Run the tests:
+
+```bash
+xcodebuild \
+  -project PromptDock.xcodeproj \
+  -scheme PromptDock \
+  -configuration Debug \
+  -destination 'platform=macOS' \
+  -derivedDataPath /tmp/PromptDockTests \
+  CODE_SIGNING_ALLOWED=NO \
+  test
+```
+
 <details>
-<summary><strong>English overview</strong></summary>
+<summary><strong>The CueGrove website in this repository</strong></summary>
 
-PromptDock is a native macOS library for prompts you use repeatedly. Organize them with categories, tags, favorites, and smart collections; find them from the menu bar; fill reusable variables; then copy the final prompt without interrupting your work.
+This repository also contains the independent CueGrove website and Early Access service:
 
-### What it does
+- `src/`: React, TypeScript, and Vite frontend.
+- `server/`: Express, MySQL, email, and review services.
+- `Brand/CueGrove/`: CueGrove brand assets.
 
-- Searches titles, content, and categories with highlighting and keyboard navigation.
-- Opens Quick Search with `⇧⌘P`; press `Return` to copy and close.
-- Supports single-value variables such as `{{topic}}` and repeatable variables such as `{{filename[]}}` with live preview.
-- Keeps version history and supports safe JSON backup and restore.
-- Provides a WidgetKit widget, configurable global shortcut, launch at login, and bilingual UI.
-- Optionally generates templates through DeepSeek or an OpenAI-compatible endpoint using your own Keychain-protected API key.
-
-### Privacy
-
-Prompts, categories, tags, history, images, and backups stay on this Mac by default. PromptDock has no account system, advertising, analytics, tracking, or cloud sync. Only a user-confirmed AI request sends the current requirement and syntax guide to the selected provider; the saved library is not included.
-
-PromptDock currently supports macOS 14 or later and is in Early Access. Join through [CueGrove](https://cuegroveapp.com/early-access).
+Use `pnpm dev` for website development, `pnpm server:dev` for the backend, and `pnpm build` for a production build. See [CUEGROVE_DEPLOY.md](CUEGROVE_DEPLOY.md) for deployment instructions.
 
 </details>
+
+<details>
+<summary><strong>Data compatibility and contributing</strong></summary>
+
+The SwiftData model uses explicit schema versions and migration stages. Any data-model change must add a new schema version and migration tests instead of modifying a previously released schema.
+
+Backup formats must remain backward compatible. Changes involving imports, migrations, or Widget shared storage should also verify rollback behavior and the ability to read existing data.
+
+See [SECURITY.md](SECURITY.md) for security reporting. Do not submit API keys, private prompts, or other sensitive data in a public issue.
+
+</details>
+
+## License
+
+PromptDock is available under the [MIT License](LICENSE).
+
+<p align="right"><a href="#简体中文">← 简体中文</a></p>
