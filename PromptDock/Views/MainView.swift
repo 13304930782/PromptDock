@@ -17,8 +17,7 @@ struct MainView: View {
     private var languageRawValue = AppLanguage.system.rawValue
 
     @StateObject private var viewModel = PromptViewModel()
-    @State private var isEditorPresented = false
-    @State private var editorPromptID: UUID?
+    @State private var editorRequest: PromptEditorRequest?
     @State private var promptPendingDeletionID: UUID?
     @State private var actionErrorMessage: String?
     @State private var copiedPromptID: UUID?
@@ -63,11 +62,6 @@ struct MainView: View {
                 isFavorite: $0.isFavorite
             )
         }
-    }
-
-    private var editorPrompt: Prompt? {
-        guard let editorPromptID else { return nil }
-        return prompts.first { $0.id == editorPromptID }
     }
 
     private var promptPendingDeletion: Prompt? {
@@ -266,7 +260,11 @@ struct MainView: View {
             }
         }
         .animation(.snappy, value: shortcutSuccessMessage)
-        .sheet(isPresented: $isEditorPresented) {
+        .sheet(item: $editorRequest) { request in
+            let editorPrompt = request.promptID.flatMap { promptID in
+                prompts.first { $0.id == promptID }
+            }
+
             EditorView(
                 prompt: editorPrompt,
                 categories: categories,
@@ -395,8 +393,7 @@ struct MainView: View {
     }
 
     private func presentEditor(for prompt: Prompt?) {
-        editorPromptID = prompt?.id
-        isEditorPresented = true
+        editorRequest = PromptEditorRequest(promptID: prompt?.id)
     }
 
     private func requestDeletion(of prompt: Prompt) {
@@ -678,6 +675,11 @@ struct MainView: View {
             searchShortcutGuideToken = nil
         }
     }
+}
+
+private struct PromptEditorRequest: Identifiable {
+    let id = UUID()
+    let promptID: UUID?
 }
 
 private struct WidgetSnapshotRevision: Hashable {
