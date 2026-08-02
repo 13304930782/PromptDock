@@ -563,6 +563,16 @@ final class PromptDockTests: XCTestCase {
             try local.chatCompletionsURL().absoluteString,
             "http://localhost:11434/v1/chat/completions"
         )
+
+        let embeddedCredentials = AIProviderConfiguration(
+            provider: .custom,
+            baseURL: "https://user:secret@example.com/v1",
+            model: "model"
+        )
+        XCTAssertThrowsError(try embeddedCredentials.chatCompletionsURL()) {
+            error in
+            XCTAssertEqual(error as? AIServiceError, .invalidBaseURL)
+        }
     }
 
     func testAIServiceCleansMarkdownCodeFence() {
@@ -652,6 +662,23 @@ final class PromptDockTests: XCTestCase {
             XCTFail("Expected a missing API key error.")
         } catch {
             XCTAssertEqual(error as? AIServiceError, .missingAPIKey)
+        }
+    }
+
+    func testAIServiceRejectsLineBreakInAPIKey() throws {
+        let service = AITemplateService()
+        XCTAssertThrowsError(
+            try service.makeRequest(
+                request: "Requirement",
+                configuration: .init(
+                    provider: .deepSeek,
+                    baseURL: AIProviderConfiguration.deepSeekBaseURL,
+                    model: AIProviderConfiguration.defaultDeepSeekModel
+                ),
+                apiKey: "valid-prefix\r\nInjected: value"
+            )
+        ) { error in
+            XCTAssertEqual(error as? AIServiceError, .invalidAPIKey)
         }
     }
 

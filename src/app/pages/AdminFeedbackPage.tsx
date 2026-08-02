@@ -58,8 +58,14 @@ export default function AdminFeedbackPage() {
   }, [openReport, selected?.id]);
 
   const updateStatus = async (id: number, nextStatus: 'new' | 'triaged' | 'resolved') => {
+    const current = reports.find((report) => report.id === id);
+    if (current?.status === nextStatus) return;
+    if (nextStatus === 'resolved' && !window.confirm(`Mark “${current?.title || 'this report'}” as resolved?`)) {
+      return;
+    }
     await api(`/admin/feedback/${id}`, { method: 'PATCH', body: JSON.stringify({ status: nextStatus }) });
-    await Promise.all([load(), selected?.id === id ? openReport(id) : Promise.resolve()]);
+    await load();
+    if (selected?.id === id) await openReport(id);
   };
 
   const sendReply = async (event: FormEvent) => {
@@ -75,7 +81,8 @@ export default function AdminFeedbackPage() {
       });
       setReply('');
       setNotice(result.email_status === 'sent' ? 'Reply sent and the tester was notified by email.' : 'Reply saved, but the notification email was not delivered.');
-      await Promise.all([load(), openReport(selected.id)]);
+      await load();
+      await openReport(selected.id);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to send reply.');
     } finally {

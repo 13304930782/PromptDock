@@ -33,7 +33,8 @@ async function verifyTurnstile({
       reason: success ? 'verified' : (response.ok ? 'rejected' : 'unavailable'),
       errorCodes: Array.isArray(result['error-codes']) ? result['error-codes'] : [],
     };
-  } catch {
+  } catch (error) {
+    console.warn(`[turnstile] verification unavailable: ${error?.name || 'unknown error'}`);
     return { success: false, reason: 'unavailable' };
   } finally {
     clearTimeout(timer);

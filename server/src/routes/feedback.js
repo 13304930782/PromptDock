@@ -10,6 +10,8 @@ const { string } = require('../lib/validation');
 
 const router = express.Router();
 const adminRouter = express.Router();
+const FEEDBACK_COOKIE = 'cuegrove_feedback';
+const FEEDBACK_COOKIE_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
 const categories = new Set(['bug', 'idea', 'ux', 'performance', 'other']);
 const submitLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -29,6 +31,22 @@ const replyLimit = rateLimit({
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function feedbackPortalUrl(token, reportId) {
+  const fragment = new URLSearchParams({ token });
+  if (reportId) fragment.set('report', String(reportId));
+  return `${config.siteUrl}/feedback/portal#${fragment}`;
+}
+
+function feedbackCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: config.cookie.secure,
+    sameSite: 'strict',
+    path: '/api/feedback',
+    maxAge: FEEDBACK_COOKIE_MAX_AGE,
+  };
 }
 
 async function issueFeedbackToken(applicationId, revokeExisting = true) {
@@ -62,6 +80,10 @@ async function resolveToken(token) {
     [hashToken(clean)],
   );
   return rows[0] || null;
+}
+
+async function resolveRequestAccess(req) {
+  return resolveToken(req.params.token || req.cookies?.[FEEDBACK_COOKIE]);
 }
 
 async function ownerRecipient() {
@@ -102,20 +124,35 @@ async function reportsForApplication(applicationId) {
   return reports.map((report) => ({ ...report, messages: messages.get(report.id) || [] }));
 }
 
-router.get('/:token([A-Za-z0-9_-]{40,80})', async (req, res, next) => {
+router.post('/session', submitLimit, async (req, res, next) => {
   try {
-    const access = await resolveToken(req.params.token);
+    const token = string(req.body.token, 160);
+    const access = await resolveToken(token);
     if (!access) return res.status(404).json({ message: 'This feedback link is invalid or expired.' });
-    const reports = await reportsForApplication(access.application_id);
-    res.json({ feedback: { name: access.full_name, cohort: access.cohort, reports } });
+    res.cookie(FEEDBACK_COOKIE, token, feedbackCookieOptions());
+    return res.json({ message: 'Feedback access ready.' });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
-router.post('/:token([A-Za-z0-9_-]{40,80})', submitLimit, async (req, res, next) => {
+async function listFeedback(req, res, next) {
   try {
-    const access = await resolveToken(req.params.token);
+    const access = await resolveRequestAccess(req);
+    if (!access) return res.status(404).json({ message: 'This feedback link is invalid or expired.' });
+    const reports = await reportsForApplication(access.application_id);
+    return res.json({ feedback: { name: access.full_name, cohort: access.cohort, reports } });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+router.get('/', listFeedback);
+router.get('/:token([A-Za-z0-9_-]{40,80})', listFeedback);
+
+async function submitFeedback(req, res, next) {
+  try {
+    const access = await resolveRequestAccess(req);
     if (!access) return res.status(404).json({ message: 'This feedback link is invalid or expired.' });
 
     const category = string(req.body.category, 30);
@@ -150,15 +187,18 @@ router.post('/:token([A-Za-z0-9_-]{40,80})', submitLimit, async (req, res, next)
       actionUrl: `${config.siteUrl}/admin/feedback?report=${result.insertId}`,
       isNewReport: true,
     }) : { status: 'skipped' };
-    res.status(201).json({ message: 'Thanks — your feedback was received.', email_status: delivery.status });
+    return res.status(201).json({ message: 'Thanks — your feedback was received.', email_status: delivery.status });
   } catch (error) {
-    next(error);
+    return next(error);
   }
-});
+}
 
-router.post('/:token([A-Za-z0-9_-]{40,80})/:id/replies', replyLimit, async (req, res, next) => {
+router.post('/', submitLimit, submitFeedback);
+router.post('/:token([A-Za-z0-9_-]{40,80})', submitLimit, submitFeedback);
+
+async function submitReply(req, res, next) {
   try {
-    const access = await resolveToken(req.params.token);
+    const access = await resolveRequestAccess(req);
     if (!access) return res.status(404).json({ message: 'This feedback link is invalid or expired.' });
     const id = Number(req.params.id);
     const body = string(req.body.body, 4000);
@@ -187,11 +227,14 @@ router.post('/:token([A-Za-z0-9_-]{40,80})/:id/replies', replyLimit, async (req,
       actionUrl: `${config.siteUrl}/admin/feedback?report=${id}`,
       isNewReport: false,
     }) : { status: 'skipped' };
-    res.status(201).json({ message: 'Reply sent.', email_status: delivery.status });
+    return res.status(201).json({ message: 'Reply sent.', email_status: delivery.status });
   } catch (error) {
-    next(error);
+    return next(error);
   }
-});
+}
+
+router.post('/:id(\\d+)/replies', replyLimit, submitReply);
+router.post('/:token([A-Za-z0-9_-]{40,80})/:id/replies', replyLimit, submitReply);
 
 adminRouter.use(requireAdmin, requireOwner);
 
@@ -269,7 +312,7 @@ adminRouter.post('/:id/replies', async (req, res, next) => {
       locale: report.locale,
       recipientName: report.full_name,
       reportTitle: report.title,
-      actionUrl: `${config.siteUrl}/feedback/${replyToken}#report-${id}`,
+      actionUrl: feedbackPortalUrl(replyToken, id),
       isNewReport: false,
     });
     res.status(201).json({ message: 'Reply sent.', email_status: delivery.status });
@@ -293,4 +336,9 @@ adminRouter.patch('/:id', async (req, res, next) => {
   }
 });
 
-module.exports = { router, adminRouter, issueFeedbackToken };
+module.exports = {
+  router,
+  adminRouter,
+  feedbackPortalUrl,
+  issueFeedbackToken,
+};

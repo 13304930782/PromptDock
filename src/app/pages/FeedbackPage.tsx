@@ -17,7 +17,7 @@ function formatDate(value: string) {
 }
 
 export default function FeedbackPage() {
-  const { token = '' } = useParams();
+  const { token: legacyToken = '' } = useParams();
   const [name, setName] = useState('');
   const [reports, setReports] = useState<FeedbackReport[]>([]);
   const [category, setCategory] = useState('bug');
@@ -37,7 +37,7 @@ export default function FeedbackPage() {
 
   const load = useCallback(async (quiet = false) => {
     try {
-      const result = await api<{ feedback: { name: string; reports: FeedbackReport[] } }>(`/feedback/${token}`);
+      const result = await api<{ feedback: { name: string; reports: FeedbackReport[] } }>('/feedback');
       setName(result.feedback.name);
       setReports(result.feedback.reports);
       setState('ready');
@@ -48,12 +48,35 @@ export default function FeedbackPage() {
         setState('error');
       }
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     document.title = 'PromptDock Feedback — CueGrove';
-    load();
-  }, [load]);
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    const token = legacyToken || fragment.get('token') || '';
+    const report = fragment.get('report');
+
+    const open = async () => {
+      try {
+        if (token) {
+          await api('/feedback/session', {
+            method: 'POST',
+            body: JSON.stringify({ token }),
+          });
+          window.history.replaceState(
+            null,
+            '',
+            `/feedback/portal${report ? `#report-${encodeURIComponent(report)}` : ''}`,
+          );
+        }
+        await load();
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : 'This feedback link is invalid or expired.');
+        setState('error');
+      }
+    };
+    open();
+  }, [legacyToken, load]);
 
   useEffect(() => {
     if (state !== 'ready') return undefined;
@@ -72,7 +95,7 @@ export default function FeedbackPage() {
     setState('submitting');
     setMessage('');
     try {
-      const result = await api<{ email_status: string }>(`/feedback/${token}`, {
+      const result = await api<{ email_status: string }>('/feedback', {
         method: 'POST',
         body: JSON.stringify({ category, title, details, steps, expected, actual, device, macos_version: macosVersion, app_build: appBuild }),
         timeoutMs: 130_000,
@@ -93,7 +116,7 @@ export default function FeedbackPage() {
     setWorkingReport(reportId);
     setMessage('');
     try {
-      const result = await api<{ email_status: string }>(`/feedback/${token}/${reportId}/replies`, {
+      const result = await api<{ email_status: string }>(`/feedback/${reportId}/replies`, {
         method: 'POST',
         body: JSON.stringify({ body }),
         timeoutMs: 130_000,

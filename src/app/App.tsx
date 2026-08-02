@@ -93,6 +93,7 @@ export default function App() {
         <Route path="/privacy-promise" element={<PrivacyPromisePage />} />
         <Route path="/security" element={<SecurityCommitmentPage />} />
         <Route path="/feedback/:token" element={<FeedbackPage />} />
+        <Route path="/feedback/portal" element={<FeedbackPage />} />
         <Route path="/feedback" element={<FeedbackInfoPage />} />
         <Route path="/admin/login" element={user ? <Navigate to="/admin/early-access" replace /> : <AdminLoginPage onLogin={setUser} />} />
         <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />

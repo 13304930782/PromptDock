@@ -6,7 +6,7 @@ const { requireAdmin, requireOwner } = require('../middleware/auth');
 const { getSetting, saveSetting } = require('../lib/settings');
 const { mailReady, resolveMailConfig, sendDecisionEmail, sendTestEmail } = require('../lib/mailer');
 const { encryptSecret } = require('../lib/secrets');
-const { issueFeedbackToken } = require('./feedback');
+const { feedbackPortalUrl, issueFeedbackToken } = require('./feedback');
 const { isEmail, isHttpUrl, normalizeEmail, passwordError, string } = require('../lib/validation');
 
 const router = express.Router();
@@ -165,12 +165,14 @@ router.post('/users/:id/reset-password', requireOwner, async (req, res, next) =>
     const passwordHash = await bcrypt.hash(req.body.password, 12);
     const [result] = await db.query(
       `UPDATE admin_users
-       SET password_hash=?, failed_login_count=0, locked_until=NULL
+       SET password_hash=?, failed_login_count=0, locked_until=NULL,
+           token_version=token_version+1
        WHERE id=?`,
       [passwordHash, id],
     );
     if (!result.affectedRows) return res.status(404).json({ message: 'Administrator not found.' });
     await db.query('UPDATE admin_password_resets SET used_at=NOW() WHERE admin_id=? AND used_at IS NULL', [id]);
+    console.info(`[admin/password-reset] ${new Date().toISOString()} actor=${req.admin.id} target=${id}`);
     res.json({ message: 'Administrator password updated and account lock cleared.' });
   } catch (error) {
     next(error);
@@ -291,7 +293,7 @@ router.patch('/early-access/:id/review', async (req, res, next) => {
 
   try {
     const deliverySettings = feedbackToken
-      ? { ...settings, feedback_url: `${config.siteUrl}/feedback/${feedbackToken}` }
+      ? { ...settings, feedback_url: feedbackPortalUrl(feedbackToken) }
       : settings;
     const delivery = await sendDecisionEmail(application, deliverySettings);
     return res.json({
@@ -329,7 +331,7 @@ router.post('/early-access/:id/retry-email', async (req, res, next) => {
     }
     const feedbackToken = application.status === 'approved' ? await issueFeedbackToken(id) : null;
     const deliverySettings = feedbackToken
-      ? { ...settings, feedback_url: `${config.siteUrl}/feedback/${feedbackToken}` }
+      ? { ...settings, feedback_url: feedbackPortalUrl(feedbackToken) }
       : settings;
     const delivery = await sendDecisionEmail(application, deliverySettings);
     if (delivery.status === 'failed') {
@@ -378,7 +380,7 @@ router.post('/early-access/resend-approved', requireOwner, async (req, res, next
         const feedbackToken = await issueFeedbackToken(application.id);
         const delivery = await sendDecisionEmail(application, {
           ...settings,
-          feedback_url: `${config.siteUrl}/feedback/${feedbackToken}`,
+          feedback_url: feedbackPortalUrl(feedbackToken),
         });
         results.push({ id: application.id, status: delivery.status, error: delivery.error || null });
       } catch (error) {
@@ -408,7 +410,7 @@ router.get('/settings/early-access', async (_req, res, next) => {
   }
 });
 
-router.put('/settings/early-access', async (req, res, next) => {
+router.put('/settings/early-access', requireOwner, async (req, res, next) => {
   try {
     const cohort = string(req.body.cohort, 80);
     const downloadUrl = string(req.body.download_url, 500);
@@ -505,7 +507,7 @@ router.put('/settings/mail', requireOwner, async (req, res, next) => {
   }
 });
 
-router.get('/settings/mail/status', async (_req, res, next) => {
+router.get('/settings/mail/status', requireOwner, async (_req, res, next) => {
   try {
     const [stored, resolved] = await Promise.all([
       getSetting('mail_transport'),

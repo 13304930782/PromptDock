@@ -212,10 +212,12 @@ struct PromptDetailView: View {
     private func loadHistory(for prompt: Prompt) {
         do {
             let promptID = prompt.id
-            history = try modelContext.fetch(FetchDescriptor<PromptVersion>(
+            var descriptor = FetchDescriptor<PromptVersion>(
                 predicate: #Predicate { $0.promptID == promptID },
                 sortBy: [SortDescriptor(\PromptVersion.createdAt, order: .reverse)]
-            ))
+            )
+            descriptor.fetchLimit = Phase1Service.maximumPromptVersions
+            history = try modelContext.fetch(descriptor)
             isHistoryPresented = true
         } catch {
             historyError = error.localizedDescription

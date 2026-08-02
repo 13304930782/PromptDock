@@ -56,7 +56,11 @@ function createMfaChallenge(admin) {
     throw error;
   }
   return jwt.sign(
-    { id: admin.id, purpose: 'mfa-login' },
+    {
+      id: admin.id,
+      purpose: 'mfa-login',
+      token_version: Number(admin.token_version || 0),
+    },
     config.jwtSecret,
     { expiresIn: '5m' },
   );
@@ -67,7 +71,10 @@ function verifyMfaChallenge(token) {
   if (payload.purpose !== 'mfa-login' || !Number.isInteger(Number(payload.id))) {
     throw new Error('Invalid MFA challenge.');
   }
-  return Number(payload.id);
+  return {
+    id: Number(payload.id),
+    tokenVersion: Number(payload.token_version),
+  };
 }
 
 function verifySecondFactor(admin, code, { allowRecovery = true, requireTotp = false } = {}) {
@@ -125,7 +132,6 @@ router.post('/login', loginLimit, async (req, res, next) => {
       return res.status(401).json({ message: 'Email or password is incorrect.' });
     }
 
-    await db.query('UPDATE admin_users SET failed_login_count=0, locked_until=NULL WHERE id=?', [admin.id]);
     if (admin.mfa_enabled_at) {
       if (!admin.mfa_secret_encrypted) {
         return res.status(503).json({ message: 'Multi-factor authentication is not configured correctly for this account.' });
@@ -136,7 +142,10 @@ router.post('/login', loginLimit, async (req, res, next) => {
       });
     }
 
-    await db.query('UPDATE admin_users SET last_login_at=NOW() WHERE id=?', [admin.id]);
+    await db.query(
+      'UPDATE admin_users SET failed_login_count=0, locked_until=NULL, last_login_at=NOW() WHERE id=?',
+      [admin.id],
+    );
     issueSession(res, admin);
     return res.json({ user: publicAdmin(admin) });
   } catch (error) {
@@ -147,9 +156,9 @@ router.post('/login', loginLimit, async (req, res, next) => {
 router.post('/mfa/verify-login', mfaLimit, async (req, res, next) => {
   let connection;
   try {
-    let adminId;
+    let challenge;
     try {
-      adminId = verifyMfaChallenge(req.body.challenge_token);
+      challenge = verifyMfaChallenge(req.body.challenge_token);
     } catch {
       return res.status(401).json({ message: 'This verification request is invalid or expired. Sign in again.' });
     }
@@ -158,9 +167,13 @@ router.post('/mfa/verify-login', mfaLimit, async (req, res, next) => {
 
     connection = await db.getConnection();
     await connection.beginTransaction();
-    const [rows] = await connection.query('SELECT * FROM admin_users WHERE id=? FOR UPDATE', [adminId]);
+    const [rows] = await connection.query('SELECT * FROM admin_users WHERE id=? FOR UPDATE', [challenge.id]);
     const admin = rows[0];
-    if (!admin || admin.status !== 'active') {
+    if (
+      !admin
+      || admin.status !== 'active'
+      || challenge.tokenVersion !== Number(admin.token_version)
+    ) {
       await connection.rollback();
       return res.status(401).json({ message: 'This verification request is no longer valid.' });
     }
@@ -170,7 +183,18 @@ router.post('/mfa/verify-login', mfaLimit, async (req, res, next) => {
     }
     const verification = verifySecondFactor(admin, code);
     if (!verification.ok) {
-      await connection.rollback();
+      const failures = Number(admin.failed_login_count || 0) + 1;
+      await connection.query(
+        `UPDATE admin_users
+         SET failed_login_count=?,
+             locked_until=IF(? >= ?, DATE_ADD(NOW(), INTERVAL ? MINUTE), NULL)
+         WHERE id=?`,
+        [failures, failures, MAX_FAILURES, LOCK_MINUTES, admin.id],
+      );
+      await connection.commit();
+      if (failures >= MAX_FAILURES) {
+        return res.status(423).json({ message: 'Too many failed attempts. This account is locked for 15 minutes.' });
+      }
       return res.status(401).json({ message: 'Authenticator or recovery code is incorrect.' });
     }
     await recordSecondFactorUse(connection, admin.id, verification);
@@ -273,13 +297,19 @@ router.post('/mfa/enable', requireAdmin, mfaLimit, async (req, res, next) => {
     await connection.query(
       `UPDATE admin_users
        SET mfa_enabled_at=NOW(), mfa_setup_expires_at=NULL, mfa_last_used_step=?,
-           mfa_recovery_hashes=?
+           mfa_recovery_hashes=?, token_version=token_version+1
        WHERE id=?`,
       [step, JSON.stringify(recoveryCodes.map(hashRecoveryCode)), admin.id],
     );
     await connection.commit();
+    const updatedAdmin = {
+      ...admin,
+      mfa_enabled_at: new Date(),
+      token_version: Number(admin.token_version || 0) + 1,
+    };
+    issueSession(res, updatedAdmin);
     return res.json({
-      user: publicAdmin({ ...admin, mfa_enabled_at: new Date() }),
+      user: publicAdmin(updatedAdmin),
       recovery_codes: recoveryCodes,
     });
   } catch (error) {
@@ -348,12 +378,19 @@ router.delete('/mfa', requireAdmin, mfaLimit, async (req, res, next) => {
     await connection.query(
       `UPDATE admin_users
        SET mfa_secret_encrypted=NULL, mfa_setup_expires_at=NULL, mfa_enabled_at=NULL,
-           mfa_recovery_hashes=NULL, mfa_last_used_step=NULL
+           mfa_recovery_hashes=NULL, mfa_last_used_step=NULL,
+           token_version=token_version+1
        WHERE id=?`,
       [admin.id],
     );
     await connection.commit();
-    return res.json({ user: publicAdmin({ ...admin, mfa_enabled_at: null }) });
+    const updatedAdmin = {
+      ...admin,
+      mfa_enabled_at: null,
+      token_version: Number(admin.token_version || 0) + 1,
+    };
+    issueSession(res, updatedAdmin);
+    return res.json({ user: publicAdmin(updatedAdmin) });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => undefined);
     next(error);
@@ -366,9 +403,17 @@ router.get('/me', requireAdmin, (req, res) => {
   res.json({ user: publicAdmin(req.admin) });
 });
 
-router.post('/logout', (req, res) => {
-  clearSession(res);
-  res.json({ message: 'Signed out.' });
+router.post('/logout', requireAdmin, async (req, res, next) => {
+  try {
+    await db.query(
+      'UPDATE admin_users SET token_version=token_version+1 WHERE id=?',
+      [req.admin.id],
+    );
+    clearSession(res);
+    res.json({ message: 'Signed out.' });
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.post('/forgot-password', resetLimit, async (req, res, next) => {
@@ -424,7 +469,10 @@ router.post('/reset-password', resetLimit, async (req, res, next) => {
     try {
       await connection.beginTransaction();
       await connection.query(
-        'UPDATE admin_users SET password_hash=?, failed_login_count=0, locked_until=NULL WHERE id=?',
+        `UPDATE admin_users
+         SET password_hash=?, failed_login_count=0, locked_until=NULL,
+             token_version=token_version+1
+         WHERE id=?`,
         [passwordHash, reset.admin_id],
       );
       await connection.query('UPDATE admin_password_resets SET used_at=NOW() WHERE id=?', [reset.id]);

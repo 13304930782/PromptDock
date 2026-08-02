@@ -16,7 +16,7 @@ function cookieOptions() {
   const options = {
     httpOnly: true,
     secure: config.cookie.secure,
-    sameSite: 'lax',
+    sameSite: 'strict',
     path: '/',
     maxAge: COOKIE_MAX_AGE,
   };
@@ -36,7 +36,11 @@ function publicAdmin(user) {
 
 function issueSession(res, user) {
   ensureJwtConfigured();
-  const token = jwt.sign({ id: user.id }, config.jwtSecret, { expiresIn: '7d' });
+  const token = jwt.sign(
+    { id: user.id, token_version: Number(user.token_version || 0) },
+    config.jwtSecret,
+    { expiresIn: '7d' },
+  );
   res.cookie(config.cookie.name, token, cookieOptions());
 }
 
@@ -46,6 +50,10 @@ function clearSession(res) {
   res.clearCookie(config.cookie.name, options);
 }
 
+function sessionVersionMatches(payload, user) {
+  return Number(payload?.token_version) === Number(user?.token_version);
+}
+
 async function requireAdmin(req, res, next) {
   try {
     ensureJwtConfigured();
@@ -53,11 +61,14 @@ async function requireAdmin(req, res, next) {
     if (!token) return res.status(401).json({ message: 'Administrator sign-in is required.' });
     const payload = jwt.verify(token, config.jwtSecret);
     const [rows] = await db.query(
-      'SELECT id, name, email, role, status, mfa_enabled_at FROM admin_users WHERE id=? LIMIT 1',
+      'SELECT id, name, email, role, status, token_version, mfa_enabled_at FROM admin_users WHERE id=? LIMIT 1',
       [payload.id],
     );
     const admin = rows[0];
     if (!admin) return res.status(401).json({ message: 'Administrator session is no longer valid.' });
+    if (!sessionVersionMatches(payload, admin)) {
+      return res.status(401).json({ message: 'Administrator session is no longer valid.' });
+    }
     if (admin.status !== 'active') return res.status(403).json({ message: 'This administrator account is disabled.' });
     if (!['owner', 'admin'].includes(admin.role)) return res.status(403).json({ message: 'Administrator permission is required.' });
     req.admin = admin;
@@ -81,4 +92,5 @@ module.exports = {
   publicAdmin,
   requireAdmin,
   requireOwner,
+  sessionVersionMatches,
 };

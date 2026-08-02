@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import ImageIO
 
 enum CategoryImageError: LocalizedError {
     case fileTooLarge
@@ -25,6 +26,22 @@ enum CategoryImageProcessor {
     static func process(_ data: Data) throws -> Data {
         guard data.count <= maximumSourceByteCount else {
             throw CategoryImageError.fileTooLarge
+        }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let properties = CGImageSourceCopyPropertiesAtIndex(
+                source,
+                0,
+                nil
+              ) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? Int,
+              let height = properties[kCGImagePropertyPixelHeight] as? Int,
+              width > 0,
+              height > 0,
+              width <= 16_384,
+              height <= 16_384,
+              width * height <= 100_000_000
+        else {
+            throw CategoryImageError.unreadableImage
         }
         guard let image = NSImage(data: data),
               image.size.width > 0,

@@ -88,8 +88,13 @@ struct HotKeyCombination: Codable, Equatable, Hashable {
               )
         else { return nil }
 
-        let data = unsafeBitCast(property, to: CFData.self)
-        guard let bytes = CFDataGetBytePtr(data) else { return nil }
+        let value = Unmanaged<AnyObject>
+            .fromOpaque(property)
+            .takeUnretainedValue()
+        guard let data = value as? NSData,
+              data.length >= MemoryLayout<UCKeyboardLayout>.size
+        else { return nil }
+        let bytes = data.bytes.assumingMemoryBound(to: UInt8.self)
         let layout = UnsafePointer<UCKeyboardLayout>(
             OpaquePointer(bytes)
         )
@@ -200,6 +205,7 @@ final class CarbonGlobalHotKeyRegistrar: GlobalHotKeyRegistering {
             eventClass: OSType(kEventClassKeyboard),
             eventKind: UInt32(kEventHotKeyPressed)
         )
+        // The handler is removed in deinit, so this callback cannot outlive self.
         let pointer = Unmanaged.passUnretained(self).toOpaque()
         InstallEventHandler(
             GetApplicationEventTarget(),
