@@ -1,5 +1,5 @@
 import { ArrowRight, MessageSquare } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { usePublicLocale } from '../lib/locale';
 
 export default function FeedbackInfoPage() {

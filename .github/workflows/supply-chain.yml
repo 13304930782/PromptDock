@@ -32,9 +32,6 @@ jobs:
         uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
-          # RSC/server actions are not present in this static client-only site.
-          # Time-limited exception: SUPPLY_CHAIN_SECURITY.md (review 2026-08-29).
-          allow-ghsas: GHSA-qwww-vcr4-c8h2
 
   production-audit:
     name: Audit production dependencies

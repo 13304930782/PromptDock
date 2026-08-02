@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { api } from '../lib/api';
 import type { AdminUser } from '../types';
 
