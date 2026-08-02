@@ -97,7 +97,7 @@ export default function AdminSettingsPage({ user }: { user: AdminUser }) {
             <div><h2>Early Access</h2><p>Application cohort, approval links, and administrator notifications.</p></div>
             <span className="settings-source"><Database size={14} />Database</span>
           </div>
-          {settings && (
+          {user.role === 'owner' && settings && (
             <form className="settings-form" onSubmit={saveEarlyAccess}>
               <label className="toggle-label">
                 <input type="checkbox" checked={settings.applications_open} onChange={(event) => setSettings({ ...settings, applications_open: event.target.checked })} />
@@ -115,6 +115,9 @@ export default function AdminSettingsPage({ user }: { user: AdminUser }) {
               </label>
               <button className="button button-approve" type="submit" disabled={Boolean(working)}>Save Early Access settings</button>
             </form>
+          )}
+          {user.role !== 'owner' && (
+            <p className="settings-hint">Only the owner can change Early Access settings.</p>
           )}
         </section>
 

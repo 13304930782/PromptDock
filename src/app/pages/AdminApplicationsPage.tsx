@@ -69,6 +69,10 @@ export default function AdminApplicationsPage({ user }: { user: AdminUser }) {
       setError('Configure the PromptDock download URL before approving applications.');
       return;
     }
+    const confirmed = window.confirm(
+      `${decision === 'approved' ? 'Approve' : 'Reject'} ${selected.full_name}'s application? This decision cannot be changed.`,
+    );
+    if (!confirmed) return;
     setWorking(true);
     setError('');
     try {

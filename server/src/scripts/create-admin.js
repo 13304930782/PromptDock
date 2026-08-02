@@ -25,7 +25,7 @@ async function run() {
   await db.query(
     `INSERT INTO admin_users (name, email, password_hash, role, status)
      VALUES (?, ?, ?, ?, 'active')
-     ON DUPLICATE KEY UPDATE name=VALUES(name), password_hash=VALUES(password_hash), role=VALUES(role), status='active', failed_login_count=0, locked_until=NULL`,
+     ON DUPLICATE KEY UPDATE name=VALUES(name), password_hash=VALUES(password_hash), role=VALUES(role), status='active', failed_login_count=0, locked_until=NULL, token_version=token_version+1`,
     [name, email, passwordHash, role],
   );
   delete process.env.CUEGROVE_ADMIN_PASSWORD;

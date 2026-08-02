@@ -43,7 +43,9 @@ struct AIProviderConfiguration: Equatable {
         guard var components = URLComponents(string: trimmed),
               let scheme = components.scheme?.lowercased(),
               let host = components.host,
-              !host.isEmpty
+              !host.isEmpty,
+              components.user == nil,
+              components.password == nil
         else {
             throw AIServiceError.invalidBaseURL
         }
@@ -241,6 +243,10 @@ struct AITemplateService {
         let trimmedKey = apiKey?.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
+        if let trimmedKey,
+           trimmedKey.rangeOfCharacter(from: .newlines) != nil {
+            throw AIServiceError.invalidAPIKey
+        }
         if configuration.requiresAPIKey,
            trimmedKey?.isEmpty != false {
             throw AIServiceError.missingAPIKey
@@ -350,6 +356,7 @@ enum AIServiceError: LocalizedError, Equatable {
     case insecureBaseURL
     case missingModel
     case missingAPIKey
+    case invalidAPIKey
     case keychain(OSStatus)
     case network(String)
     case invalidResponse
@@ -367,6 +374,8 @@ enum AIServiceError: LocalizedError, Equatable {
             "Enter a model name."
         case .missingAPIKey:
             "Enter and save a DeepSeek API key first."
+        case .invalidAPIKey:
+            "The API key contains an invalid line break."
         case .keychain(let status):
             "Unable to access the API key in Keychain (code \(status))."
         case .network(let message):
