@@ -2515,6 +2515,14 @@ input[type='password']::-webkit-caps-lock-indicator {
     justify-content: center;
   }
 
+  .footer-links {
+    flex-wrap: wrap;
+  }
+
+  .footer-links > * {
+    white-space: nowrap;
+  }
+
   .admin-login-page {
     grid-template-columns: 1fr;
   }
