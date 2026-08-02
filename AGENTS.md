@@ -1,5 +1,11 @@
 # Project agent instructions
 
+## Git workflow
+
+- Never merge a working branch into `main` unless the user explicitly authorizes that specific merge.
+- After completing and verifying a requested modification, stage only the files belonging to that task, commit them on the current working branch, and push that branch by default without waiting for a separate push request.
+- Never include unrelated or pre-existing user changes in a commit. If the task changes cannot be isolated safely, stop and explain the conflict instead of switching branches or merging.
+
 ## Deployment handoff
 
 - After completing changes that can be deployed, always include copyable deployment commands in the final response.
