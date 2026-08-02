@@ -1,5 +1,5 @@
 import { ClipboardList, LogOut, Settings, ShieldCheck, Sprout, Users } from 'lucide-react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router';
 import { api } from '../lib/api';
 import type { AdminUser } from '../types';
 

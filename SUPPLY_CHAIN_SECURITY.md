@@ -38,9 +38,7 @@ Reports containing exploitable detail should be sent privately to
 
 ## Time-limited exceptions
 
-| Advisory | Affected dependency | Reason the path is not exposed | Review by |
-| --- | --- | --- | --- |
-| `GHSA-qwww-vcr4-c8h2` | React Router 7 | The advisory affects React Server Components action handling. CueGrove is a client-only declarative router served as static files and does not use React Router RSC or server actions. The compatible upstream fix requires the React 19, Vite 7, and React Router 8 migration, which will be handled separately. | 2026-08-29 |
+There are currently no dependency-audit exceptions.
 
 Exceptions must identify the affected path, explain why it is not reachable,
 name a review date, and be removed as soon as a compatible fix is deployed.

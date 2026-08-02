@@ -9,7 +9,7 @@ import {
   RefreshCcw,
   ShieldCheck,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { usePublicLocale } from '../lib/locale';
 
 const privacyCopy = {

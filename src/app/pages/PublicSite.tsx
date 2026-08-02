@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useReducer, useState } from 'react';
 import { ArrowDown, ArrowRight, Check, FolderHeart, Leaf, Menu, Search, ShieldCheck, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import Plasma from '../components/Plasma';
 import TextType from '../components/TextType';
 import Turnstile from '../components/Turnstile';
