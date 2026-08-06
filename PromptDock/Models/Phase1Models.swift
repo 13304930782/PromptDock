@@ -201,6 +201,122 @@ enum Phase1Service {
         return byName.values.sorted { $0.order < $1.order }
     }
 
+    static func applyOrganization(
+        to prompt: Prompt,
+        draft: PromptDraft,
+        tags: [PromptTag],
+        in context: ModelContext
+    ) throws {
+        for tag in tags {
+            if draft.tagIDs.contains(tag.id) {
+                if !tag.promptIDs.contains(prompt.id) { tag.promptIDs.append(prompt.id) }
+            } else {
+                tag.promptIDs.removeAll { $0 == prompt.id }
+            }
+        }
+        var knownTagNames = Set(tags.map { CategoryNameIdentity.normalized($0.name) })
+        for name in draft.newTagNames {
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            let identity = CategoryNameIdentity.normalized(trimmed)
+            if knownTagNames.insert(identity).inserted {
+                context.insert(PromptTag(name: trimmed, color: .blue, promptIDs: [prompt.id]))
+            }
+        }
+        try syncVariableDefinitions(
+            promptID: prompt.id,
+            drafts: draft.variableDefinitions,
+            content: draft.content,
+            in: context
+        )
+    }
+
+    static func syncVariableDefinitions(
+        promptID: UUID,
+        drafts: [TemplateVariableDraft],
+        content: String,
+        in context: ModelContext
+    ) throws {
+        let fields = PromptTemplate(content).fields
+        let fieldNames = Set(fields.map(\.name))
+        let existing = try context.fetch(FetchDescriptor<TemplateVariableDefinition>(
+            predicate: #Predicate { $0.promptID == promptID }
+        ))
+        var byName = Dictionary(uniqueKeysWithValues: existing.map { ($0.name, $0) })
+        let draftByName = Dictionary(uniqueKeysWithValues: drafts.map { ($0.name, $0) })
+
+        for definition in existing where !fieldNames.contains(definition.name) {
+            context.delete(definition)
+            byName[definition.name] = nil
+        }
+        for (fallbackOrder, field) in fields.enumerated() {
+            let draft = draftByName[field.name]
+            let definition = byName[field.name] ?? TemplateVariableDefinition(
+                promptID: promptID,
+                name: field.name
+            )
+            if byName[field.name] == nil { context.insert(definition) }
+            definition.label = draft?.label.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? field.name
+            definition.defaultValue = draft?.defaultValue ?? ""
+            definition.order = draft?.order ?? fallbackOrder
+            definition.isRepeatable = field.isRepeatable
+        }
+    }
+
+    static func move(
+        prompts: [Prompt],
+        to category: String,
+        in context: ModelContext
+    ) throws {
+        for prompt in prompts {
+            prompt.category = category
+            prompt.updatedDate = .now
+        }
+        try saveOrRollback(context)
+    }
+
+    static func setTag(
+        _ tag: PromptTag,
+        for prompts: [Prompt],
+        isIncluded: Bool,
+        in context: ModelContext
+    ) throws {
+        let ids = Set(prompts.map(\.id))
+        if isIncluded {
+            tag.promptIDs = Array(Set(tag.promptIDs).union(ids))
+        } else {
+            tag.promptIDs.removeAll(where: ids.contains)
+        }
+        try saveOrRollback(context)
+    }
+
+    static func setFavorite(
+        _ value: Bool,
+        for prompts: [Prompt],
+        in context: ModelContext
+    ) throws {
+        for prompt in prompts { prompt.isFavorite = value }
+        try saveOrRollback(context)
+    }
+
+    static func delete(
+        prompts: [Prompt],
+        tags: [PromptTag],
+        in context: ModelContext
+    ) throws {
+        let ids = Set(prompts.map(\.id))
+        for tag in tags { tag.promptIDs.removeAll(where: ids.contains) }
+        for prompt in prompts { context.delete(prompt) }
+        try saveOrRollback(context)
+    }
+
+    private static func saveOrRollback(_ context: ModelContext) throws {
+        do { try context.save() } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
     static func matches(
         _ prompt: Prompt,
         collection: SmartCollection,
@@ -227,4 +343,8 @@ enum Phase1Service {
         }
         return checks.isEmpty || (collection.matchAll ? checks.allSatisfy { $0 } : checks.contains(true))
     }
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

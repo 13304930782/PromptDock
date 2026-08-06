@@ -3,7 +3,7 @@ import SwiftUI
 struct PromptListView: View {
     let section: PromptSection
     let prompts: [Prompt]
-    @Binding var selection: UUID?
+    @Binding var selection: Set<UUID>
     @Binding var searchText: String
     let onCreate: () -> Void
     let onCopy: (Prompt) -> Void
@@ -185,7 +185,7 @@ private struct PromptListView_Previews: PreviewProvider {
                     isFavorite: true
                 )
             ],
-            selection: .constant(nil),
+            selection: .constant([]),
             searchText: .constant(""),
             onCreate: {},
             onCopy: { _ in },

@@ -39,131 +39,42 @@ struct SettingsView: View {
 }
 
 private struct ProfessionalSettingsView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \PromptTag.createdAt) private var tags: [PromptTag]
-    @Query(sort: \SmartCollection.createdAt) private var collections: [SmartCollection]
-    @Query private var prompts: [Prompt]
+    @Environment(\.openWindow) private var openWindow
+    @AppStorage(AppLanguage.storageKey)
+    private var languageRawValue = AppLanguage.system.rawValue
 
-    @State private var newTagName = ""
-    @State private var newCollectionName = ""
-    @State private var newCollectionQuery = ""
-    @State private var notice: String?
+    private var usesChinese: Bool {
+        (AppLanguage(rawValue: languageRawValue) ?? .system).usesChinese
+    }
 
     var body: some View {
         Form {
-            Section("Tags") {
-                if tags.isEmpty {
-                    Text("Create tags to organize prompts across categories.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(tags) { tag in
-                        HStack {
-                            Label(tag.name, systemImage: "tag.fill")
-                            Spacer()
-                            Text("\(tag.promptIDs.count) prompts")
-                                .foregroundStyle(.secondary)
-                            Button(role: .destructive) {
-                                modelContext.delete(tag)
-                                try? modelContext.save()
-                            } label: {
-                                Image(systemName: "trash")
-                            }
-                            .buttonStyle(.borderless)
-                            .accessibilityLabel("Delete tag \(tag.name)")
-                        }
-                    }
-                }
+            Section(usesChinese ? "整理资料库" : "Organize Your Library") {
+                Label(
+                    usesChinese ? "标签和智能集合现在位于主窗口侧栏。" : "Tags and Smart Collections now live in the main window sidebar.",
+                    systemImage: "sidebar.left"
+                )
+                Text(
+                    usesChinese
+                        ? "你可以直接新增、编辑、改名或删除，不必在设置和资料库之间切换。"
+                        : "Create, edit, rename, or delete them where you use them—without switching between Settings and your library."
+                )
+                .foregroundStyle(.secondary)
 
-                HStack {
-                    TextField("New tag", text: $newTagName)
-                    Button("Add") { addTag() }
-                        .disabled(newTagName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button {
+                    openWindow(id: "main")
+                } label: {
+                    Label(usesChinese ? "打开资料库" : "Open Library", systemImage: "arrow.up.forward.app")
                 }
             }
 
-            Section("Smart Collections") {
-                if collections.isEmpty {
-                    Text("Collections save a search, favorite filter, or tag combination.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(collections) { collection in
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(collection.name)
-                                if !collection.query.isEmpty {
-                                    Text(collection.query)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer()
-                            Text("\(prompts.filter { Phase1Service.matches($0, collection: collection, tags: tags) }.count)")
-                                .foregroundStyle(.secondary)
-                            Button(role: .destructive) {
-                                modelContext.delete(collection)
-                                try? modelContext.save()
-                            } label: {
-                                Image(systemName: "trash")
-                            }
-                            .buttonStyle(.borderless)
-                            .accessibilityLabel("Delete collection \(collection.name)")
-                        }
-                    }
-                }
-
-                TextField("Collection name", text: $newCollectionName)
-                TextField("Search text (optional)", text: $newCollectionQuery)
-                Button("Save Smart Collection") { addCollection() }
-                    .disabled(newCollectionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-
-            Section("Version History") {
-                Text("PromptDock keeps up to 50 previous versions per prompt. Open a prompt and choose History to preview or restore one.")
+            Section(usesChinese ? "版本历史" : "Version History") {
+                Text(usesChinese ? "PromptDock 为每条提示词保留最多 50 个历史版本。打开提示词并选择“历史记录”即可预览或恢复。" : "PromptDock keeps up to 50 previous versions per prompt. Open a prompt and choose History to preview or restore one.")
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
         .padding()
-        .alert("Unable to Save", isPresented: Binding(
-            get: { notice != nil },
-            set: { if !$0 { notice = nil } }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(notice ?? "")
-        }
-    }
-
-    private func addTag() {
-        let name = newTagName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
-        guard !tags.contains(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) else {
-            notice = "A tag with this name already exists."
-            return
-        }
-        modelContext.insert(PromptTag(name: name))
-        do {
-            try modelContext.save()
-            newTagName = ""
-        } catch {
-            notice = error.localizedDescription
-        }
-    }
-
-    private func addCollection() {
-        let name = newCollectionName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
-        modelContext.insert(SmartCollection(
-            name: name,
-            query: newCollectionQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        ))
-        do {
-            try modelContext.save()
-            newCollectionName = ""
-            newCollectionQuery = ""
-        } catch {
-            notice = error.localizedDescription
-        }
     }
 }
 

@@ -15,6 +15,7 @@ struct PromptDetailView: View {
     let usesChinese: Bool
     let onCopy: (Prompt) -> Void
     let onEdit: (Prompt) -> Void
+    let onRewrite: (Prompt) -> Void
     let onToggleFavorite: (Prompt) -> Void
     let onDelete: (Prompt) -> Void
 
@@ -140,6 +141,12 @@ struct PromptDetailView: View {
                             .help("Edit Prompt (Command-E)")
 
                             Button {
+                                onRewrite(prompt)
+                            } label: {
+                                Label(usesChinese ? "AI 改写" : "AI Rewrite", systemImage: "sparkles")
+                            }
+
+                            Button {
                                 onToggleFavorite(prompt)
                             } label: {
                                 Label(
@@ -221,6 +228,169 @@ struct PromptDetailView: View {
             isHistoryPresented = true
         } catch {
             historyError = error.localizedDescription
+        }
+    }
+}
+
+struct BulkPromptActionsView: View {
+    let prompts: [Prompt]
+    let categories: [PromptCategory]
+    let tags: [PromptTag]
+    let usesChinese: Bool
+    let onMove: (String) -> Void
+    let onSetTag: (PromptTag, Bool) -> Void
+    let onSetFavorite: (Bool) -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Label(
+                usesChinese ? "已选择 \(prompts.count) 条提示词" : "\(prompts.count) Prompts Selected",
+                systemImage: "checkmark.circle"
+            ).font(.title2.bold())
+            Text(usesChinese ? "批量整理会一次应用到所有选中项。" : "Changes apply to every selected prompt at once.")
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 12) {
+                Menu {
+                    ForEach(categories) { category in
+                        Button(category.name) { onMove(category.name) }
+                    }
+                } label: { Label(usesChinese ? "移动到分类" : "Move to Category", systemImage: "folder") }
+
+                Menu {
+                    if tags.isEmpty { Text(usesChinese ? "暂无标签" : "No Tags") }
+                    ForEach(tags) { tag in
+                        Button(tag.name) { onSetTag(tag, true) }
+                    }
+                } label: { Label(usesChinese ? "添加标签" : "Add Tag", systemImage: "tag") }
+
+                Menu {
+                    if tags.isEmpty { Text(usesChinese ? "暂无标签" : "No Tags") }
+                    ForEach(tags) { tag in
+                        Button(tag.name) { onSetTag(tag, false) }
+                    }
+                } label: { Label(usesChinese ? "移除标签" : "Remove Tag", systemImage: "tag.slash") }
+            }
+
+            HStack(spacing: 12) {
+                Button { onSetFavorite(true) } label: { Label(usesChinese ? "收藏" : "Favorite", systemImage: "star") }
+                Button { onSetFavorite(false) } label: { Label(usesChinese ? "取消收藏" : "Unfavorite", systemImage: "star.slash") }
+                Spacer()
+                Button(role: .destructive, action: onDelete) { Label(usesChinese ? "删除" : "Delete", systemImage: "trash") }
+            }
+            Spacer()
+        }
+        .padding(28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+enum AIRewriteGoal: String, CaseIterable, Identifiable {
+    case concise, context, structure, tone
+    var id: String { rawValue }
+    func title(usesChinese: Bool) -> String {
+        switch self {
+        case .concise: usesChinese ? "精简表达" : "Make Concise"
+        case .context: usesChinese ? "补全上下文" : "Add Context"
+        case .structure: usesChinese ? "优化结构" : "Improve Structure"
+        case .tone: usesChinese ? "调整语气" : "Adjust Tone"
+        }
+    }
+}
+
+struct AIRewriteView: View {
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    let originalContent: String
+    let usesChinese: Bool
+    let onAccept: (String) -> Void
+    @State private var goal: AIRewriteGoal = .concise
+    @State private var additionalInstructions = ""
+    @State private var candidate: String?
+    @State private var errorMessage: String?
+    @State private var task: Task<Void, Never>?
+    @State private var isGenerating = false
+
+    private var configuration: AIProviderConfiguration { AppPreferences.aiConfiguration }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(usesChinese ? "AI 改写" : "AI Rewrite").font(.title2.bold())
+                    Text(title).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(usesChinese ? "完成" : "Done") { dismiss() }
+            }
+
+            Picker(usesChinese ? "改写目标" : "Rewrite Goal", selection: $goal) {
+                ForEach(AIRewriteGoal.allCases) { Text($0.title(usesChinese: usesChinese)).tag($0) }
+            }.pickerStyle(.segmented)
+
+            TextField(usesChinese ? "补充要求（可选）" : "Additional Instructions (Optional)", text: $additionalInstructions, axis: .vertical)
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("\(configuration.provider.displayName(usesChinese: usesChinese)) · \(configuration.model)", systemImage: "network")
+                    Text(usesChinese ? "点击生成后，只会发送下方当前提示词正文和改写要求。不会发送资料库、分类、标签或历史版本。" : "Generate sends only the current prompt below and your rewrite instructions. Your library, categories, tags, and history are not sent.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            HStack(alignment: .top, spacing: 12) {
+                rewriteColumn(usesChinese ? "原文" : "Original", text: originalContent, highlightsChanges: false)
+                rewriteColumn(usesChinese ? "改写版" : "Rewrite", text: candidate ?? (usesChinese ? "生成后将在此显示结果。" : "The result will appear here."), highlightsChanges: candidate != nil)
+            }.frame(maxHeight: .infinity)
+
+            if let errorMessage { Label(errorMessage, systemImage: "exclamationmark.triangle").foregroundStyle(.red).font(.caption) }
+
+            HStack {
+                if isGenerating { ProgressView().controlSize(.small); Button(usesChinese ? "取消" : "Cancel") { task?.cancel() } }
+                Spacer()
+                if let candidate {
+                    Button(usesChinese ? "复制改写版" : "Copy Rewrite") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(candidate, forType: .string) }
+                    Button(usesChinese ? "接受改写" : "Accept Rewrite") { onAccept(candidate) }.buttonStyle(.borderedProminent)
+                }
+                Button(candidate == nil ? (usesChinese ? "生成改写" : "Generate Rewrite") : (usesChinese ? "重新生成" : "Regenerate"), action: generate)
+                    .disabled(isGenerating)
+            }
+        }
+        .padding(24)
+        .frame(width: 820, height: 650)
+        .onDisappear { task?.cancel() }
+    }
+
+    private func rewriteColumn(_ heading: String, text: String, highlightsChanges: Bool) -> some View {
+        GroupBox(heading) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Array(text.components(separatedBy: .newlines).enumerated()), id: \.offset) { index, line in
+                        let originalLines = originalContent.components(separatedBy: .newlines)
+                        Text(line.isEmpty ? " " : line)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 2)
+                            .background(highlightsChanges && (index >= originalLines.count || originalLines[index] != line) ? Color.accentColor.opacity(0.10) : Color.clear)
+                    }
+                }.textSelection(.enabled)
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func generate() {
+        task?.cancel(); candidate = nil; errorMessage = nil; isGenerating = true
+        task = Task {
+            do {
+                let key = try AIKeychainStore.load(for: configuration.provider)
+                let result = try await AITemplateService().rewritePrompt(content: originalContent, goal: goal, additionalInstructions: additionalInstructions, usesChinese: usesChinese, configuration: configuration, apiKey: key)
+                guard !Task.isCancelled else { return }
+                candidate = result
+            } catch is CancellationError {
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isGenerating = false
         }
     }
 }
@@ -324,6 +494,7 @@ private struct PromptDetailView_Previews: PreviewProvider {
             usesChinese: false,
             onCopy: { _ in },
             onEdit: { _ in },
+            onRewrite: { _ in },
             onToggleFavorite: { _ in },
             onDelete: { _ in }
         )

@@ -5,12 +5,39 @@ struct PromptTemplateCopyRequest: Identifiable {
     let promptID: UUID
     let promptTitle: String
     let template: PromptTemplate
+    let fields: [PromptTemplateField]
 
-    init(prompt: Prompt) {
+    init(prompt: Prompt, definitions: [TemplateVariableDefinition] = []) {
         promptID = prompt.id
         promptTitle = prompt.title
-        template = PromptTemplate(prompt.content)
+        let parsedTemplate = PromptTemplate(prompt.content)
+        template = parsedTemplate
+        let byName = Dictionary(uniqueKeysWithValues: definitions.map { ($0.name, $0) })
+        var configuredFields: [(index: Int, field: PromptTemplateField)] = []
+        for (index, field) in parsedTemplate.fields.enumerated() {
+            let definition = byName[field.name]
+            configuredFields.append((index, PromptTemplateField(
+                variable: field,
+                label: definition?.label ?? field.name,
+                defaultValue: definition?.defaultValue ?? "",
+                order: definition?.order ?? Int.max
+            )))
+        }
+        configuredFields.sort {
+            $0.field.order == $1.field.order
+                ? $0.index < $1.index
+                : $0.field.order < $1.field.order
+        }
+        fields = configuredFields.map(\.field)
     }
+}
+
+struct PromptTemplateField: Identifiable {
+    var id: String { variable.id }
+    let variable: PromptTemplateVariable
+    let label: String
+    let defaultValue: String
+    let order: Int
 }
 
 enum PromptTemplateFillPresentation {
@@ -44,15 +71,15 @@ struct PromptTemplateFillView: View {
         self.onCopy = onCopy
         _values = State(
             initialValue: Dictionary(
-                uniqueKeysWithValues: request.template.fields.compactMap {
-                    $0.isRepeatable ? nil : ($0.name, "")
+                uniqueKeysWithValues: request.fields.compactMap {
+                    $0.variable.isRepeatable ? nil : ($0.variable.name, $0.defaultValue)
                 }
             )
         )
         _repeatableValues = State(
             initialValue: Dictionary(
-                uniqueKeysWithValues: request.template.fields.compactMap {
-                    $0.isRepeatable ? ($0.name, [""]) : nil
+                uniqueKeysWithValues: request.fields.compactMap {
+                    $0.variable.isRepeatable ? ($0.variable.name, [$0.defaultValue]) : nil
                 }
             )
         )
@@ -90,7 +117,7 @@ struct PromptTemplateFillView: View {
         .task {
             await Task.yield()
             focusedField = focusTarget(
-                for: request.template.fields.first
+                for: request.fields.first?.variable
             )
         }
     }
@@ -214,11 +241,11 @@ struct PromptTemplateFillView: View {
     private var variableFields: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
-                ForEach(request.template.fields) { field in
-                    if field.isRepeatable {
-                        repeatableField(field)
+                ForEach(request.fields) { field in
+                    if field.variable.isRepeatable {
+                        repeatableField(field.variable, label: field.label)
                     } else {
-                        valueField(field)
+                        valueField(field.variable, label: field.label)
                     }
                 }
             }
@@ -231,10 +258,11 @@ struct PromptTemplateFillView: View {
     }
 
     private func valueField(
-        _ field: PromptTemplateVariable
+        _ field: PromptTemplateVariable,
+        label: String
     ) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(field.name)
+            Text(label)
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
 
@@ -258,13 +286,14 @@ struct PromptTemplateFillView: View {
     }
 
     private func repeatableField(
-        _ field: PromptTemplateVariable
+        _ field: PromptTemplateVariable,
+        label: String
     ) -> some View {
         let items = repeatableValues[field.name] ?? [""]
 
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Text(field.name)
+                Text(label)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
 

@@ -1527,6 +1527,116 @@ final class PromptDockTests: XCTestCase {
     }
 
     @MainActor
+    func testSmartCollectionCanMatchAnyCondition() {
+        let prompt = Prompt(title: "Swift", category: "Coding", content: "Actors")
+        let collection = SmartCollection(
+            name: "Broad",
+            query: "missing",
+            category: "coding",
+            matchAll: false
+        )
+
+        XCTAssertTrue(Phase1Service.matches(prompt, collection: collection, tags: []))
+        collection.matchAll = true
+        XCTAssertFalse(Phase1Service.matches(prompt, collection: collection, tags: []))
+    }
+
+    @MainActor
+    func testBulkOrganizationUpdatesPromptsAndTags() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = ModelContext(container)
+        let first = Prompt(title: "One", category: "Writing", content: "First")
+        let second = Prompt(title: "Two", category: "Writing", content: "Second")
+        let tag = PromptTag(name: "Important", color: .red)
+        [first, second].forEach(context.insert)
+        context.insert(tag)
+        try context.save()
+
+        try Phase1Service.move(prompts: [first, second], to: "Coding", in: context)
+        try Phase1Service.setTag(tag, for: [first, second], isIncluded: true, in: context)
+        try Phase1Service.setFavorite(true, for: [first, second], in: context)
+
+        XCTAssertEqual(first.category, "Coding")
+        XCTAssertEqual(second.category, "Coding")
+        XCTAssertTrue(first.isFavorite && second.isFavorite)
+        XCTAssertEqual(Set(tag.promptIDs), Set([first.id, second.id]))
+
+        try Phase1Service.setTag(tag, for: [first], isIncluded: false, in: context)
+        XCTAssertEqual(tag.promptIDs, [second.id])
+    }
+
+    @MainActor
+    func testVariableDefinitionsUseDraftMetadataAndRemoveOrphans() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = ModelContext(container)
+        let prompt = Prompt(
+            title: "Template",
+            category: "Writing",
+            content: "Review {{file[]}} for {{audience}}"
+        )
+        context.insert(prompt)
+        try context.save()
+
+        try Phase1Service.syncVariableDefinitions(
+            promptID: prompt.id,
+            drafts: [
+                TemplateVariableDraft(
+                    name: "audience",
+                    label: "Reader",
+                    defaultValue: "Students",
+                    order: 0
+                ),
+                TemplateVariableDraft(
+                    name: "file",
+                    label: "Document",
+                    order: 1,
+                    isRepeatable: true
+                )
+            ],
+            content: prompt.content,
+            in: context
+        )
+        try context.save()
+
+        var definitions = try context.fetch(FetchDescriptor<TemplateVariableDefinition>())
+        XCTAssertEqual(definitions.count, 2)
+        XCTAssertEqual(definitions.first(where: { $0.name == "audience" })?.label, "Reader")
+        XCTAssertEqual(definitions.first(where: { $0.name == "audience" })?.defaultValue, "Students")
+        XCTAssertEqual(definitions.first(where: { $0.name == "file" })?.isRepeatable, true)
+
+        try Phase1Service.syncVariableDefinitions(
+            promptID: prompt.id,
+            drafts: [],
+            content: "Review {{file[]}}",
+            in: context
+        )
+        try context.save()
+
+        definitions = try context.fetch(FetchDescriptor<TemplateVariableDefinition>())
+        XCTAssertEqual(definitions.map(\.name), ["file"])
+    }
+
+    @MainActor
+    func testTagFilterAndRecentSectionUseExistingData() {
+        let tagged = Prompt(title: "Tagged", category: "AI", content: "One")
+        let other = Prompt(title: "Other", category: "AI", content: "Two")
+        let tag = PromptTag(name: "Release", promptIDs: [tagged.id])
+        let viewModel = PromptViewModel()
+
+        viewModel.selectedSection = .tag(tag.id, tag.name)
+        XCTAssertEqual(
+            viewModel.filteredPrompts(from: [tagged, other], tags: [tag]).map(\.id),
+            [tagged.id]
+        )
+
+        let prompts = (0..<25).map { index in
+            Prompt(title: "Prompt \(index)", category: "AI", content: "Content")
+        }
+        viewModel.selectedSection = .recent
+        XCTAssertEqual(viewModel.filteredPrompts(from: prompts).count, 20)
+    }
+
+    @MainActor
     func testBackupV2RoundTripPreservesPhase1Records() throws {
         let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
         let context = ModelContext(container)

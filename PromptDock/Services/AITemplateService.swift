@@ -175,6 +175,22 @@ struct AITemplateService {
         self.session = session
     }
 
+    func rewritePrompt(
+        content: String,
+        goal: AIRewriteGoal,
+        additionalInstructions: String,
+        usesChinese: Bool,
+        configuration: AIProviderConfiguration,
+        apiKey: String?
+    ) async throws -> String {
+        let instruction = usesChinese
+            ? "你是提示词编辑器。请按“\(goal.title(usesChinese: true))”改写下面的提示词。只返回完整改写正文，不要解释，不要使用 Markdown 代码块。必须原样保留所有 {{变量}} 和 {{变量[]}} 占位符。"
+            : "You are a prompt editor. Rewrite the prompt for: \(goal.title(usesChinese: false)). Return only the complete rewritten prompt, with no explanation or Markdown fence. Preserve every {{variable}} and {{variable[]}} placeholder exactly."
+        let extra = additionalInstructions.trimmingCharacters(in: .whitespacesAndNewlines)
+        let request = [instruction, extra.isEmpty ? nil : (usesChinese ? "补充要求：\(extra)" : "Additional requirements: \(extra)"), usesChinese ? "原提示词：\n\(content)" : "Original prompt:\n\(content)"].compactMap { $0 }.joined(separator: "\n\n")
+        return try await generateTemplate(request: request, configuration: configuration, apiKey: apiKey)
+    }
+
     func generateTemplate(
         request: String,
         configuration: AIProviderConfiguration,

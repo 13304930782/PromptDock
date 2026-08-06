@@ -6,17 +6,26 @@ struct PromptDraft {
     var category: String
     var content: String
     var isFavorite: Bool
+    var tagIDs: Set<UUID>
+    var variableDefinitions: [TemplateVariableDraft]
+    var newTagNames: [String]
 
     init(
         title: String = "",
         category: String = "Teaching",
         content: String = "",
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        tagIDs: Set<UUID> = [],
+        variableDefinitions: [TemplateVariableDraft] = [],
+        newTagNames: [String] = []
     ) {
         self.title = title
         self.category = category
         self.content = content
         self.isFavorite = isFavorite
+        self.tagIDs = tagIDs
+        self.variableDefinitions = variableDefinitions
+        self.newTagNames = newTagNames
     }
 
     init(prompt: Prompt) {
@@ -24,11 +33,45 @@ struct PromptDraft {
         category = prompt.category
         content = prompt.content
         isFavorite = prompt.isFavorite
+        tagIDs = []
+        variableDefinitions = []
+        newTagNames = []
     }
 
     var isValid: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
+struct TemplateVariableDraft: Identifiable, Hashable {
+    var id: String { name }
+    var name: String
+    var label: String
+    var defaultValue: String
+    var order: Int
+    var isRepeatable: Bool
+
+    init(
+        name: String,
+        label: String? = nil,
+        defaultValue: String = "",
+        order: Int,
+        isRepeatable: Bool = false
+    ) {
+        self.name = name
+        self.label = label ?? name
+        self.defaultValue = defaultValue
+        self.order = order
+        self.isRepeatable = isRepeatable
+    }
+
+    init(_ definition: TemplateVariableDefinition) {
+        name = definition.name
+        label = definition.label
+        defaultValue = definition.defaultValue
+        order = definition.order
+        isRepeatable = definition.isRepeatable
     }
 }
 
@@ -49,13 +92,19 @@ enum PromptValidationError: LocalizedError {
 enum PromptSection: Hashable, Identifiable {
     case all
     case favorites
+    case recent
+    case smartCollection(UUID, String)
     case category(String)
+    case tag(UUID, String)
 
     var id: String {
         switch self {
         case .all: "library.all"
         case .favorites: "library.favorites"
+        case .recent: "library.recent"
+        case .smartCollection(let id, _): "collection.\(id.uuidString)"
         case .category(let name): "category.\(name)"
+        case .tag(let id, _): "tag.\(id.uuidString)"
         }
     }
 
@@ -63,6 +112,8 @@ enum PromptSection: Hashable, Identifiable {
         switch self {
         case .all: "All Prompts"
         case .favorites: "Favorites"
+        case .recent: "Recently Updated"
+        case .smartCollection(_, let name), .tag(_, let name): name
         case .category(let name): name
         }
     }
@@ -71,7 +122,10 @@ enum PromptSection: Hashable, Identifiable {
         switch self {
         case .all: "square.stack"
         case .favorites: "star"
+        case .recent: "clock"
+        case .smartCollection: "square.stack.3d.up"
         case .category: "folder"
+        case .tag: "tag"
         }
     }
 
@@ -79,13 +133,14 @@ enum PromptSection: Hashable, Identifiable {
         LocalizedStringKey(title)
     }
 
-    static let librarySections: [PromptSection] = [.all, .favorites]
+    static let librarySections: [PromptSection] = [.all, .favorites, .recent]
 }
 
 @MainActor
 final class PromptViewModel: ObservableObject {
     @Published var selectedSection: PromptSection = .all
     @Published var selectedPromptID: UUID?
+    @Published var selectedPromptIDs: Set<UUID> = []
     @Published var searchText = ""
 
     var hasSearchQuery: Bool {
@@ -100,7 +155,7 @@ final class PromptViewModel: ObservableObject {
         switch selectedSection {
         case .category(let name):
             name
-        case .all, .favorites:
+        case .all, .favorites, .recent, .smartCollection, .tag:
             categories.first?.name
                 ?? CategoryService.defaultCategories[0].name
         }
@@ -108,6 +163,8 @@ final class PromptViewModel: ObservableObject {
 
     func filteredPrompts(
         from prompts: [Prompt],
+        tags: [PromptTag] = [],
+        collections: [SmartCollection] = [],
         locale: Locale = .autoupdatingCurrent
     ) -> [Prompt] {
         let sectionPrompts: [Prompt]
@@ -116,11 +173,24 @@ final class PromptViewModel: ObservableObject {
             sectionPrompts = prompts
         case .favorites:
             sectionPrompts = prompts.filter(\.isFavorite)
+        case .recent:
+            sectionPrompts = Array(prompts.prefix(20))
+        case .smartCollection(let id, _):
+            guard let collection = collections.first(where: { $0.id == id }) else {
+                sectionPrompts = []
+                break
+            }
+            sectionPrompts = prompts.filter {
+                Phase1Service.matches($0, collection: collection, tags: tags)
+            }
         case .category(let name):
             let sectionKey = CategoryNameIdentity.normalized(name)
             sectionPrompts = prompts.filter {
                 CategoryNameIdentity.normalized($0.category) == sectionKey
             }
+        case .tag(let id, _):
+            let promptIDs = Set(tags.first(where: { $0.id == id })?.promptIDs ?? [])
+            sectionPrompts = prompts.filter { promptIDs.contains($0.id) }
         }
 
         guard hasSearchQuery else { return sectionPrompts }
@@ -138,16 +208,39 @@ final class PromptViewModel: ObservableObject {
 
     func reconcileSelection(
         in prompts: [Prompt],
+        tags: [PromptTag] = [],
+        collections: [SmartCollection] = [],
         locale: Locale = .autoupdatingCurrent
     ) {
-        let visiblePrompts = filteredPrompts(from: prompts, locale: locale)
+        let visiblePrompts = filteredPrompts(
+            from: prompts,
+            tags: tags,
+            collections: collections,
+            locale: locale
+        )
+        let visibleIDs = Set(visiblePrompts.map(\.id))
+        selectedPromptIDs.formIntersection(visibleIDs)
 
         if let selectedPromptID,
            visiblePrompts.contains(where: { $0.id == selectedPromptID }) {
+            if selectedPromptIDs.isEmpty { selectedPromptIDs = [selectedPromptID] }
             return
         }
 
         selectedPromptID = visiblePrompts.first?.id
+        selectedPromptIDs = selectedPromptID.map { [$0] } ?? []
+    }
+
+    func updateSelection(_ ids: Set<UUID>) {
+        let added = ids.subtracting(selectedPromptIDs)
+        selectedPromptIDs = ids
+        if let newlySelected = added.first {
+            selectedPromptID = newlySelected
+        } else if let selectedPromptID, ids.contains(selectedPromptID) {
+            return
+        } else {
+            selectedPromptID = ids.first
+        }
     }
 
     func searchResultPosition(in prompts: [Prompt]) -> String {
@@ -173,6 +266,7 @@ final class PromptViewModel: ObservableObject {
     @discardableResult
     func createPrompt(
         from draft: PromptDraft,
+        tags: [PromptTag] = [],
         in context: ModelContext
     ) throws -> Prompt {
         let values = try validatedValues(from: draft)
@@ -186,6 +280,12 @@ final class PromptViewModel: ObservableObject {
         context.insert(prompt)
 
         do {
+            try Phase1Service.applyOrganization(
+                to: prompt,
+                draft: draft,
+                tags: tags,
+                in: context
+            )
             try context.save()
             return prompt
         } catch {
@@ -197,6 +297,7 @@ final class PromptViewModel: ObservableObject {
     func updatePrompt(
         _ prompt: Prompt,
         from draft: PromptDraft,
+        tags: [PromptTag] = [],
         in context: ModelContext
     ) throws {
         let values = try validatedValues(from: draft)
@@ -216,6 +317,12 @@ final class PromptViewModel: ObservableObject {
         prompt.updatedDate = .now
 
         do {
+            try Phase1Service.applyOrganization(
+                to: prompt,
+                draft: draft,
+                tags: tags,
+                in: context
+            )
             try context.save()
         } catch {
             context.rollback()
@@ -235,6 +342,7 @@ final class PromptViewModel: ObservableObject {
             if selectedPromptID == deletedPromptID {
                 selectedPromptID = nil
             }
+            selectedPromptIDs.remove(deletedPromptID)
         } catch {
             context.rollback()
             throw error

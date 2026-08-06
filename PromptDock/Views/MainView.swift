@@ -13,6 +13,10 @@ struct MainView: View {
     ])
     private var categories: [PromptCategory]
 
+    @Query(sort: \PromptTag.createdAt) private var tags: [PromptTag]
+    @Query(sort: \SmartCollection.createdAt) private var collections: [SmartCollection]
+    @Query(sort: \TemplateVariableDefinition.order) private var variableDefinitions: [TemplateVariableDefinition]
+
     @AppStorage(AppLanguage.storageKey)
     private var languageRawValue = AppLanguage.system.rawValue
 
@@ -23,6 +27,8 @@ struct MainView: View {
     @State private var copiedPromptID: UUID?
     @State private var copyFeedbackToken: UUID?
     @State private var templateCopyRequest: PromptTemplateCopyRequest?
+    @State private var isBulkDeletePresented = false
+    @State private var rewritePromptID: UUID?
     @State private var isCopyShortcutGuidePresented = false
     @State private var isSearchShortcutGuidePresented = false
     @State private var copyShortcutGuideToken: UUID?
@@ -46,6 +52,8 @@ struct MainView: View {
     private var visiblePrompts: [Prompt] {
         viewModel.filteredPrompts(
             from: prompts,
+            tags: tags,
+            collections: collections,
             locale: selectedLanguage.locale
         )
     }
@@ -69,30 +77,63 @@ struct MainView: View {
         return prompts.first { $0.id == promptPendingDeletionID }
     }
 
+    private var rewritePrompt: Prompt? {
+        guard let rewritePromptID else { return nil }
+        return prompts.first { $0.id == rewritePromptID }
+    }
+
     private var selectedPrompt: Prompt? {
         viewModel.selectedPrompt(in: prompts)
+    }
+
+    private var selectedPrompts: [Prompt] {
+        prompts.filter { viewModel.selectedPromptIDs.contains($0.id) }
     }
 
     private var commandActions: PromptCommandActions {
         PromptCommandActions(
             selectedPromptTitle: selectedPrompt?.title,
-            isSelectedPromptFavorite: selectedPrompt?.isFavorite ?? false,
+            selectedPromptCount: selectedPrompts.count,
+            areSelectedPromptsFavorite: !selectedPrompts.isEmpty && selectedPrompts.allSatisfy(\.isFavorite),
+            categoryChoices: categories.map { category in
+                PromptCommandChoice(id: category.id.uuidString, title: category.name) {
+                    bulkMove(category.name)
+                }
+            },
+            addTagChoices: tags.map { tag in
+                PromptCommandChoice(id: tag.id.uuidString, title: tag.name) {
+                    bulkSetTag(tag, true)
+                }
+            },
+            removeTagChoices: tags.map { tag in
+                PromptCommandChoice(id: tag.id.uuidString, title: tag.name) {
+                    bulkSetTag(tag, false)
+                }
+            },
             createPrompt: { presentEditor(for: nil) },
             copySelectedPrompt: {
-                guard let selectedPrompt else { return }
+                guard selectedPrompts.count == 1, let selectedPrompt else { return }
                 copy(selectedPrompt)
             },
             editSelectedPrompt: {
-                guard let selectedPrompt else { return }
+                guard selectedPrompts.count == 1, let selectedPrompt else { return }
                 presentEditor(for: selectedPrompt)
             },
             toggleSelectedPromptFavorite: {
-                guard let selectedPrompt else { return }
-                toggleFavorite(for: selectedPrompt)
+                guard !selectedPrompts.isEmpty else { return }
+                if selectedPrompts.count == 1, let selectedPrompt {
+                    toggleFavorite(for: selectedPrompt)
+                } else {
+                    bulkSetFavorite(!selectedPrompts.allSatisfy(\.isFavorite))
+                }
             },
             deleteSelectedPrompt: {
-                guard let selectedPrompt else { return }
-                requestDeletion(of: selectedPrompt)
+                guard !selectedPrompts.isEmpty else { return }
+                if selectedPrompts.count == 1, let selectedPrompt {
+                    requestDeletion(of: selectedPrompt)
+                } else {
+                    isBulkDeletePresented = true
+                }
             }
         )
     }
@@ -139,10 +180,17 @@ struct MainView: View {
             SidebarView(
                 selection: $viewModel.selectedSection,
                 categories: categories,
+                tags: tags,
+                collections: collections,
+                usesChinese: selectedLanguage.usesChinese,
                 onCreateCategory: createCategory,
                 onMoveCategories: moveCategories,
                 onRenameCategory: renameCategory,
-                onDeleteCategory: deleteCategory
+                onDeleteCategory: deleteCategory,
+                onSaveTag: saveTag,
+                onDeleteTag: deleteTag,
+                onSaveCollection: saveCollection,
+                onDeleteCollection: deleteCollection
             )
                 .navigationSplitViewColumnWidth(
                     min: 180,
@@ -153,7 +201,10 @@ struct MainView: View {
             PromptListView(
                 section: viewModel.selectedSection,
                 prompts: visiblePrompts,
-                selection: $viewModel.selectedPromptID,
+                selection: Binding(
+                    get: { viewModel.selectedPromptIDs },
+                    set: viewModel.updateSelection
+                ),
                 searchText: $viewModel.searchText,
                 onCreate: { presentEditor(for: nil) },
                 onCopy: copy,
@@ -167,18 +218,32 @@ struct MainView: View {
                 max: 440
             )
         } detail: {
-            PromptDetailView(
-                prompt: selectedPrompt,
-                searchText: viewModel.searchText,
-                isCopied: copiedPromptID == viewModel.selectedPromptID,
-                isCopyShortcutGuidePresented: $isCopyShortcutGuidePresented,
-                hasLearnedCopyShortcut: hasLearnedCopyShortcut,
-                usesChinese: selectedLanguage.usesChinese,
-                onCopy: copy,
-                onEdit: { presentEditor(for: $0) },
-                onToggleFavorite: { toggleFavorite(for: $0) },
-                onDelete: { requestDeletion(of: $0) }
-            )
+            if selectedPrompts.count > 1 {
+                BulkPromptActionsView(
+                    prompts: selectedPrompts,
+                    categories: categories,
+                    tags: tags,
+                    usesChinese: selectedLanguage.usesChinese,
+                    onMove: bulkMove,
+                    onSetTag: bulkSetTag,
+                    onSetFavorite: bulkSetFavorite,
+                    onDelete: { isBulkDeletePresented = true }
+                )
+            } else {
+                PromptDetailView(
+                    prompt: selectedPrompt,
+                    searchText: viewModel.searchText,
+                    isCopied: copiedPromptID == viewModel.selectedPromptID,
+                    isCopyShortcutGuidePresented: $isCopyShortcutGuidePresented,
+                    hasLearnedCopyShortcut: hasLearnedCopyShortcut,
+                    usesChinese: selectedLanguage.usesChinese,
+                    onCopy: copy,
+                    onEdit: { presentEditor(for: $0) },
+                    onRewrite: { rewritePromptID = $0.id },
+                    onToggleFavorite: { toggleFavorite(for: $0) },
+                    onDelete: { requestDeletion(of: $0) }
+                )
+            }
         }
         .toolbar {
             if viewModel.hasSearchQuery {
@@ -268,23 +333,32 @@ struct MainView: View {
             EditorView(
                 prompt: editorPrompt,
                 categories: categories,
+                tags: tags,
+                selectedTagIDs: Set(tags.filter { tag in
+                    editorPrompt.map { tag.promptIDs.contains($0.id) } ?? false
+                }.map(\.id)),
+                variableDefinitions: variableDefinitions.filter { $0.promptID == editorPrompt?.id },
                 initialCategory: viewModel.preferredNewPromptCategory(
                     from: categories
-                )
+                ),
+                usesChinese: selectedLanguage.usesChinese
             ) { draft in
                 if let editorPrompt {
                     try viewModel.updatePrompt(
                         editorPrompt,
                         from: draft,
+                        tags: tags,
                         in: modelContext
                     )
                 } else {
                     let createdPrompt = try viewModel.createPrompt(
                         from: draft,
+                        tags: tags,
                         in: modelContext
                     )
                     viewModel.selectedSection = .all
                     viewModel.selectedPromptID = createdPrompt.id
+                    viewModel.selectedPromptIDs = [createdPrompt.id]
                 }
             }
         }
@@ -308,6 +382,22 @@ struct MainView: View {
                 }
             )
         }
+        .sheet(isPresented: Binding(get: { rewritePrompt != nil }, set: { if !$0 { rewritePromptID = nil } })) {
+            if let rewritePrompt {
+                AIRewriteView(
+                    title: rewritePrompt.title,
+                    originalContent: rewritePrompt.content,
+                    usesChinese: selectedLanguage.usesChinese
+                ) { rewritten in
+                    var draft = draft(for: rewritePrompt)
+                    draft.content = rewritten
+                    performAction {
+                        try viewModel.updatePrompt(rewritePrompt, from: draft, tags: tags, in: modelContext)
+                    }
+                    rewritePromptID = nil
+                }
+            }
+        }
         .confirmationDialog(
             "Delete Prompt?",
             isPresented: deletionIsPresented,
@@ -322,6 +412,13 @@ struct MainView: View {
                 "This will permanently delete “\(prompt.title)”. This action cannot be undone."
             )
         }
+        .confirmationDialog(
+            selectedLanguage.usesChinese ? "删除 \(selectedPrompts.count) 条提示词？" : "Delete \(selectedPrompts.count) Prompts?",
+            isPresented: $isBulkDeletePresented
+        ) {
+            Button(selectedLanguage.usesChinese ? "删除" : "Delete", role: .destructive) { bulkDelete() }
+            Button(selectedLanguage.usesChinese ? "取消" : "Cancel", role: .cancel) {}
+        }
         .alert(
             "Unable to Complete Action",
             isPresented: actionErrorIsPresented
@@ -334,6 +431,8 @@ struct MainView: View {
             ensureCategories()
             viewModel.reconcileSelection(
                 in: prompts,
+                tags: tags,
+                collections: collections,
                 locale: selectedLanguage.locale
             )
             WidgetSnapshotService.refresh(from: prompts)
@@ -341,12 +440,16 @@ struct MainView: View {
         .onChange(of: viewModel.selectedSection) {
             viewModel.reconcileSelection(
                 in: prompts,
+                tags: tags,
+                collections: collections,
                 locale: selectedLanguage.locale
             )
         }
         .onChange(of: visiblePromptIDs) {
             viewModel.reconcileSelection(
                 in: prompts,
+                tags: tags,
+                collections: collections,
                 locale: selectedLanguage.locale
             )
         }
@@ -482,6 +585,92 @@ struct MainView: View {
         }
     }
 
+    private func saveTag(_ tag: PromptTag?, draft: PromptTagDraft) {
+        performAction {
+            let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { return }
+            if let tag {
+                tag.name = name
+                tag.color = draft.color
+            } else {
+                modelContext.insert(PromptTag(name: name, color: draft.color))
+            }
+            try modelContext.save()
+        }
+    }
+
+    private func deleteTag(_ tag: PromptTag) {
+        performAction {
+            if case .tag(let id, _) = viewModel.selectedSection, id == tag.id {
+                viewModel.selectedSection = .all
+            }
+            for collection in collections {
+                collection.tagIDs.removeAll { $0 == tag.id }
+            }
+            modelContext.delete(tag)
+            try modelContext.save()
+        }
+    }
+
+    private func saveCollection(_ collection: SmartCollection?, draft: SmartCollectionDraft) {
+        performAction {
+            let target = collection ?? SmartCollection(name: draft.name)
+            if collection == nil { modelContext.insert(target) }
+            target.name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            target.query = draft.query
+            target.category = draft.category
+            target.tagIDs = Array(draft.tagIDs)
+            target.favoriteOnly = draft.favoriteOnly
+            target.updatedWithinDays = draft.updatedWithinDays
+            target.matchAll = draft.matchAll
+            try modelContext.save()
+            viewModel.selectedSection = .smartCollection(target.id, target.name)
+        }
+    }
+
+    private func deleteCollection(_ collection: SmartCollection) {
+        performAction {
+            if case .smartCollection(let id, _) = viewModel.selectedSection, id == collection.id {
+                viewModel.selectedSection = .all
+            }
+            modelContext.delete(collection)
+            try modelContext.save()
+        }
+    }
+
+    private func bulkMove(_ category: String) {
+        performAction { try Phase1Service.move(prompts: selectedPrompts, to: category, in: modelContext) }
+    }
+
+    private func bulkSetTag(_ tag: PromptTag, _ isIncluded: Bool) {
+        performAction { try Phase1Service.setTag(tag, for: selectedPrompts, isIncluded: isIncluded, in: modelContext) }
+    }
+
+    private func bulkSetFavorite(_ value: Bool) {
+        performAction { try Phase1Service.setFavorite(value, for: selectedPrompts, in: modelContext) }
+    }
+
+    private func bulkDelete() {
+        performAction {
+            let ids = Set(selectedPrompts.map(\.id))
+            try Phase1Service.delete(prompts: selectedPrompts, tags: tags, in: modelContext)
+            viewModel.selectedPromptIDs.subtract(ids)
+            viewModel.selectedPromptID = viewModel.selectedPromptIDs.first
+            isBulkDeletePresented = false
+        }
+    }
+
+    private func draft(for prompt: Prompt) -> PromptDraft {
+        PromptDraft(
+            title: prompt.title,
+            category: prompt.category,
+            content: prompt.content,
+            isFavorite: prompt.isFavorite,
+            tagIDs: Set(tags.filter { $0.promptIDs.contains(prompt.id) }.map(\.id)),
+            variableDefinitions: variableDefinitions.filter { $0.promptID == prompt.id }.map(TemplateVariableDraft.init)
+        )
+    }
+
     private func toggleFavorite(for prompt: Prompt) {
         performAction {
             try viewModel.toggleFavorite(
@@ -494,7 +683,10 @@ struct MainView: View {
     private func copy(_ prompt: Prompt) {
         let template = PromptTemplate(prompt.content)
         guard !template.hasVariables else {
-            templateCopyRequest = PromptTemplateCopyRequest(prompt: prompt)
+            templateCopyRequest = PromptTemplateCopyRequest(
+                prompt: prompt,
+                definitions: variableDefinitions.filter { $0.promptID == prompt.id }
+            )
             return
         }
 
@@ -540,6 +732,7 @@ struct MainView: View {
         do {
             try action()
         } catch {
+            modelContext.rollback()
             actionErrorMessage = error.localizedDescription
         }
     }

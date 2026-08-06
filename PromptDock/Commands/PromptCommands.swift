@@ -2,7 +2,11 @@ import SwiftUI
 
 struct PromptCommandActions {
     let selectedPromptTitle: String?
-    let isSelectedPromptFavorite: Bool
+    let selectedPromptCount: Int
+    let areSelectedPromptsFavorite: Bool
+    let categoryChoices: [PromptCommandChoice]
+    let addTagChoices: [PromptCommandChoice]
+    let removeTagChoices: [PromptCommandChoice]
     let createPrompt: () -> Void
     let copySelectedPrompt: () -> Void
     let editSelectedPrompt: () -> Void
@@ -10,8 +14,17 @@ struct PromptCommandActions {
     let deleteSelectedPrompt: () -> Void
 
     var hasSelectedPrompt: Bool {
-        selectedPromptTitle != nil
+        selectedPromptCount > 0
     }
+
+    var hasMultiplePrompts: Bool { selectedPromptCount > 1 }
+    var hasSinglePrompt: Bool { selectedPromptCount == 1 }
+}
+
+struct PromptCommandChoice: Identifiable {
+    let id: String
+    let title: String
+    let action: () -> Void
 }
 
 private struct PromptCommandActionsKey: FocusedValueKey {
@@ -61,13 +74,13 @@ struct PromptCommands: Commands {
                 "c",
                 modifiers: [.command, .shift]
             )
-            .disabled(actions?.hasSelectedPrompt != true)
+            .disabled(actions?.hasSinglePrompt != true)
 
             Button(language.text(english: "Edit Prompt", chinese: "编辑提示词")) {
                 actions?.editSelectedPrompt()
             }
             .keyboardShortcut("e", modifiers: .command)
-            .disabled(actions?.hasSelectedPrompt != true)
+            .disabled(actions?.hasSinglePrompt != true)
 
             Button(favoriteCommandTitle) {
                 actions?.toggleSelectedPromptFavorite()
@@ -78,10 +91,32 @@ struct PromptCommands: Commands {
             )
             .disabled(actions?.hasSelectedPrompt != true)
 
+            if actions?.hasMultiplePrompts == true {
+                Menu(language.text(english: "Move to Category", chinese: "移动到分类")) {
+                    ForEach(actions?.categoryChoices ?? []) { choice in
+                        Button(choice.title, action: choice.action)
+                    }
+                }
+
+                Menu(language.text(english: "Add Tag", chinese: "添加标签")) {
+                    ForEach(actions?.addTagChoices ?? []) { choice in
+                        Button(choice.title, action: choice.action)
+                    }
+                }
+
+                Menu(language.text(english: "Remove Tag", chinese: "移除标签")) {
+                    ForEach(actions?.removeTagChoices ?? []) { choice in
+                        Button(choice.title, action: choice.action)
+                    }
+                }
+            }
+
             Divider()
 
             Button(
-                language.text(english: "Delete Prompt", chinese: "删除提示词"),
+                actions?.hasMultiplePrompts == true
+                    ? language.text(english: "Delete Selected Prompts", chinese: "删除所选提示词")
+                    : language.text(english: "Delete Prompt", chinese: "删除提示词"),
                 role: .destructive
             ) {
                 actions?.deleteSelectedPrompt()
@@ -103,7 +138,7 @@ struct PromptCommands: Commands {
     }
 
     private var favoriteCommandTitle: String {
-        actions?.isSelectedPromptFavorite == true
+        actions?.areSelectedPromptsFavorite == true
             ? language.text(
                 english: "Remove from Favorites",
                 chinese: "取消收藏"
