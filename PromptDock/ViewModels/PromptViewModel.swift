@@ -174,7 +174,9 @@ final class PromptViewModel: ObservableObject {
         case .favorites:
             sectionPrompts = prompts.filter(\.isFavorite)
         case .recent:
-            sectionPrompts = Array(prompts.prefix(20))
+            sectionPrompts = Array(
+                prompts.sorted { $0.updatedDate > $1.updatedDate }.prefix(20)
+            )
         case .smartCollection(let id, _):
             guard let collection = collections.first(where: { $0.id == id }) else {
                 sectionPrompts = []
@@ -332,21 +334,15 @@ final class PromptViewModel: ObservableObject {
 
     func deletePrompt(
         _ prompt: Prompt,
+        tags: [PromptTag] = [],
         in context: ModelContext
     ) throws {
         let deletedPromptID = prompt.id
-        context.delete(prompt)
-
-        do {
-            try context.save()
-            if selectedPromptID == deletedPromptID {
-                selectedPromptID = nil
-            }
-            selectedPromptIDs.remove(deletedPromptID)
-        } catch {
-            context.rollback()
-            throw error
+        try Phase1Service.delete(prompts: [prompt], tags: tags, in: context)
+        if selectedPromptID == deletedPromptID {
+            selectedPromptID = nil
         }
+        selectedPromptIDs.remove(deletedPromptID)
     }
 
     func toggleFavorite(

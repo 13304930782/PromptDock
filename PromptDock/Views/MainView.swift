@@ -723,7 +723,7 @@ struct MainView: View {
 
     private func delete(_ prompt: Prompt) {
         performAction {
-            try viewModel.deletePrompt(prompt, in: modelContext)
+            try viewModel.deletePrompt(prompt, tags: tags, in: modelContext)
             promptPendingDeletionID = nil
         }
     }

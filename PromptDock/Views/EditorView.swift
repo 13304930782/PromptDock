@@ -177,7 +177,16 @@ private struct SelectablePromptTextEditor: NSViewRepresentable {
     }
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let textView = scroll.documentView as? NSTextView else { return }
-        if textView.string != text { textView.string = text }
+        if textView.string != text {
+            let selection = textView.selectedRange()
+            textView.string = text
+            let length = (text as NSString).length
+            let location = min(selection.location, length)
+            textView.setSelectedRange(NSRange(
+                location: location,
+                length: min(selection.length, length - location)
+            ))
+        }
         if let token = selectionToken, let range = textView.string.range(of: token) {
             let nsRange = NSRange(range, in: textView.string)
             textView.setSelectedRange(nsRange); textView.scrollRangeToVisible(nsRange)

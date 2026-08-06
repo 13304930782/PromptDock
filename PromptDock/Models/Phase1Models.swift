@@ -162,18 +162,23 @@ enum Phase1Service {
         to prompt: Prompt,
         in context: ModelContext
     ) throws {
-        try captureVersionIfChanged(
-            for: prompt,
-            title: version.title,
-            category: version.category,
-            content: version.content,
-            in: context
-        )
-        prompt.title = version.title
-        prompt.category = version.category
-        prompt.content = version.content
-        prompt.updatedDate = .now
-        try context.save()
+        do {
+            try captureVersionIfChanged(
+                for: prompt,
+                title: version.title,
+                category: version.category,
+                content: version.content,
+                in: context
+            )
+            prompt.title = version.title
+            prompt.category = version.category
+            prompt.content = version.content
+            prompt.updatedDate = .now
+            try saveOrRollback(context)
+        } catch {
+            context.rollback()
+            throw error
+        }
     }
 
     static func ensureVariableDefinitions(
@@ -305,7 +310,14 @@ enum Phase1Service {
         in context: ModelContext
     ) throws {
         let ids = Set(prompts.map(\.id))
+        let versions = try context.fetch(FetchDescriptor<PromptVersion>())
+            .filter { ids.contains($0.promptID) }
+        let definitions = try context.fetch(FetchDescriptor<TemplateVariableDefinition>())
+            .filter { ids.contains($0.promptID) }
+
         for tag in tags { tag.promptIDs.removeAll(where: ids.contains) }
+        for version in versions { context.delete(version) }
+        for definition in definitions { context.delete(definition) }
         for prompt in prompts { context.delete(prompt) }
         try saveOrRollback(context)
     }

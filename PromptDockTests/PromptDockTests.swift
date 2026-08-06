@@ -1566,6 +1566,72 @@ final class PromptDockTests: XCTestCase {
     }
 
     @MainActor
+    func testDeletingPromptsRemovesTagsHistoryAndVariableDefinitions() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = ModelContext(container)
+        let first = Prompt(title: "One", category: "AI", content: "Hello {{name}}")
+        let second = Prompt(title: "Two", category: "AI", content: "Keep")
+        let tag = PromptTag(name: "Release", promptIDs: [first.id, second.id])
+        context.insert(first)
+        context.insert(second)
+        context.insert(tag)
+        context.insert(PromptVersion(
+            promptID: first.id,
+            title: first.title,
+            category: first.category,
+            content: first.content
+        ))
+        context.insert(TemplateVariableDefinition(promptID: first.id, name: "name"))
+        try context.save()
+
+        try Phase1Service.delete(prompts: [first], tags: [tag], in: context)
+
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Prompt>()).map(\.id), [second.id])
+        XCTAssertEqual(tag.promptIDs, [second.id])
+        XCTAssertTrue(try context.fetch(FetchDescriptor<PromptVersion>()).isEmpty)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<TemplateVariableDefinition>()).isEmpty)
+    }
+
+    @MainActor
+    func testUpdatingPromptPreservesSubmittedTagsAndVariableMetadata() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = ModelContext(container)
+        let prompt = Prompt(title: "Template", category: "AI", content: "Hello {{name}}")
+        let tag = PromptTag(name: "Reusable", promptIDs: [prompt.id])
+        let definition = TemplateVariableDefinition(
+            promptID: prompt.id,
+            name: "name",
+            label: "Recipient",
+            defaultValue: "World",
+            order: 0
+        )
+        context.insert(prompt)
+        context.insert(tag)
+        context.insert(definition)
+        try context.save()
+
+        try PromptViewModel().updatePrompt(
+            prompt,
+            from: PromptDraft(
+                title: "Updated Template",
+                category: "AI",
+                content: "Welcome {{name}}",
+                tagIDs: [tag.id],
+                variableDefinitions: [TemplateVariableDraft(definition)]
+            ),
+            tags: [tag],
+            in: context
+        )
+
+        let savedDefinition = try XCTUnwrap(
+            context.fetch(FetchDescriptor<TemplateVariableDefinition>()).first
+        )
+        XCTAssertEqual(tag.promptIDs, [prompt.id])
+        XCTAssertEqual(savedDefinition.label, "Recipient")
+        XCTAssertEqual(savedDefinition.defaultValue, "World")
+    }
+
+    @MainActor
     func testVariableDefinitionsUseDraftMetadataAndRemoveOrphans() throws {
         let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
         let context = ModelContext(container)
@@ -1630,10 +1696,18 @@ final class PromptDockTests: XCTestCase {
         )
 
         let prompts = (0..<25).map { index in
-            Prompt(title: "Prompt \(index)", category: "AI", content: "Content")
+            Prompt(
+                title: "Prompt \(index)",
+                category: "AI",
+                content: "Content",
+                updatedDate: Date(timeIntervalSince1970: TimeInterval(index))
+            )
         }
         viewModel.selectedSection = .recent
-        XCTAssertEqual(viewModel.filteredPrompts(from: prompts).count, 20)
+        let recent = viewModel.filteredPrompts(from: prompts)
+        XCTAssertEqual(recent.count, 20)
+        XCTAssertEqual(recent.first?.title, "Prompt 24")
+        XCTAssertEqual(recent.last?.title, "Prompt 5")
     }
 
     @MainActor
