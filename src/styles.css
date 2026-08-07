@@ -2881,6 +2881,160 @@ input[type='password']::-webkit-caps-lock-indicator {
   background: var(--white);
 }
 
+.matching-controls {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid var(--cream-200);
+  border-radius: 18px;
+  background: var(--cream-50);
+}
+
+.matching-controls-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.matching-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.matching-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.matching-switch-track {
+  display: flex;
+  width: 46px;
+  height: 26px;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 3px;
+  border-radius: 999px;
+  background: #aebcb5;
+  transition: background 160ms ease;
+}
+
+.matching-switch-track i {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow: 0 2px 6px rgba(8, 47, 39, 0.2);
+  transition: transform 160ms ease;
+}
+
+.matching-switch input:checked + .matching-switch-track {
+  background: var(--forest-800);
+}
+
+.matching-switch input:checked + .matching-switch-track i {
+  transform: translateX(20px);
+}
+
+.matching-switch input:focus-visible + .matching-switch-track {
+  outline: 3px solid rgba(244, 191, 79, 0.62);
+  outline-offset: 3px;
+}
+
+.matching-switch > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+
+.matching-switch strong {
+  color: var(--forest-950);
+  font-size: 13px;
+}
+
+.matching-switch small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.matching-roll-button {
+  display: inline-flex;
+  min-height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 1px solid var(--forest-800);
+  border-radius: 12px;
+  color: var(--forest-900);
+  background: var(--white);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.matching-roll-button:focus-visible,
+.shuffle-pass-controls input:focus-visible {
+  outline: 3px solid rgba(244, 191, 79, 0.62);
+  outline-offset: 3px;
+}
+
+.shuffle-pass-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 190px)) minmax(220px, 1fr);
+  align-items: end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.shuffle-pass-controls label {
+  display: grid;
+  gap: 7px;
+  color: var(--forest-900);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.shuffle-pass-controls input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--cream-200);
+  border-radius: 11px;
+  color: var(--forest-950);
+  background: var(--white);
+  font-weight: 750;
+}
+
+.shuffle-pass-controls input:disabled {
+  color: var(--forest-700);
+  background: var(--cream-100);
+  opacity: 1;
+}
+
+.matching-dice-values {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.matching-dice-values > span {
+  display: flex;
+  gap: 5px;
+}
+
+.matching-dice-values strong {
+  color: var(--forest-900);
+}
+
 .matching-meta {
   display: flex;
   align-items: center;
@@ -2902,21 +3056,6 @@ input[type='password']::-webkit-caps-lock-indicator {
   flex: 0 0 auto;
   color: var(--forest-900);
   font-size: 12px;
-}
-
-.matching-rolls {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-
-.matching-rolls > span {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--forest-900);
-  font-size: 12px;
-  font-weight: 750;
 }
 
 .matching-button {
@@ -3130,15 +3269,22 @@ input[type='password']::-webkit-caps-lock-indicator {
     gap: 6px;
   }
 
-  .matching-rolls {
-    width: 100%;
-    justify-content: space-between;
-    gap: 8px;
+  .matching-controls-head {
+    align-items: stretch;
+    flex-direction: column;
   }
 
-  .matching-rolls > span {
-    align-items: flex-start;
-    flex-direction: column;
+  .matching-roll-button {
+    width: 100%;
+  }
+
+  .shuffle-pass-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .matching-dice-values {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
   }
 
   .roll-notice {

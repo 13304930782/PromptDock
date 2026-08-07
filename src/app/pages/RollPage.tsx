@@ -35,7 +35,7 @@ const rollCopy = {
     diceHistory: '最近结果',
     noHistory: '还没有掷骰记录',
     matchingTitle: '两列随机配对',
-    matchingBody: '左右各填一列内容。每次操作会掷出两个骰子，左骰点数决定左列洗牌次数，右骰点数决定右列洗牌次数。',
+    matchingBody: '左右各填一列内容。骰子只负责填写两列的随机次数，点击随机排序后才会分别打乱两列。',
     leftTitle: '左侧内容',
     rightTitle: '右侧内容',
     leftPlaceholder: '每行一个项目\n例如：\n小林\n小周\n小陈',
@@ -44,11 +44,14 @@ const rollCopy = {
     emptyHint: '请填写左右两列内容',
     mismatchHint: (left: number, right: number) => `数量不一致：左侧 ${left} 项，右侧 ${right} 项`,
     readyHint: (count: number) => `数量一致，可以生成 ${count} 组配对`,
-    match: '掷骰并随机排序',
-    rematch: '再次掷骰并随机',
-    rollRule: '左骰控制左列，右骰控制右列',
-    leftShuffle: (count: number) => `左列随机 ${count} 次`,
-    rightShuffle: (count: number) => `右列随机 ${count} 次`,
+    match: '按当前次数随机排序',
+    rematch: '再次手动随机',
+    autoFill: '骰子点数自动填入随机次数',
+    autoFillHint: '开启后，左骰填写左列，右骰填写右列',
+    manualFillHint: '已关闭自动填充，可分别修改两列次数',
+    leftShuffle: '左列随机次数',
+    rightShuffle: '右列随机次数',
+    diceValues: (left: number, right: number) => `本次骰子点数：${left} · ${right}`,
     matchResult: '随机排序结果',
     localNote: '本地计算 · 不保存填写内容 · 不记录 IP',
     noticeTitle: '使用须知',
@@ -74,7 +77,7 @@ const rollCopy = {
     diceHistory: 'Recent results',
     noHistory: 'No rolls yet',
     matchingTitle: 'Match two lists',
-    matchingBody: 'Enter one list on each side. Each run rolls two dice: the left die controls how many times the left list is shuffled, and the right die controls the right list.',
+    matchingBody: 'Enter one list on each side. The dice only fill the two shuffle counts; the lists change only when you press the randomize button.',
     leftTitle: 'Left list',
     rightTitle: 'Right list',
     leftPlaceholder: 'One item per line\nFor example:\nAlex\nBlair\nCasey',
@@ -83,11 +86,14 @@ const rollCopy = {
     emptyHint: 'Enter items in both lists',
     mismatchHint: (left: number, right: number) => `Counts differ: ${left} on the left and ${right} on the right`,
     readyHint: (count: number) => `Counts match. Ready to create ${count} pair${count === 1 ? '' : 's'}`,
-    match: 'Roll dice and randomize',
-    rematch: 'Roll and randomize again',
-    rollRule: 'Left die controls the left list; right die controls the right list',
-    leftShuffle: (count: number) => `Left shuffled ${count} time${count === 1 ? '' : 's'}`,
-    rightShuffle: (count: number) => `Right shuffled ${count} time${count === 1 ? '' : 's'}`,
+    match: 'Randomize with current counts',
+    rematch: 'Randomize again manually',
+    autoFill: 'Auto-fill shuffle counts from dice',
+    autoFillHint: 'When enabled, the left and right dice fill their respective counts',
+    manualFillHint: 'Auto-fill is off. You can edit each count separately',
+    leftShuffle: 'Left shuffle count',
+    rightShuffle: 'Right shuffle count',
+    diceValues: (left: number, right: number) => `Latest dice values: ${left} · ${right}`,
     matchResult: 'Randomized order',
     localNote: 'Calculated locally · Entries are not stored · No IP logging',
     noticeTitle: 'Acceptable use',
@@ -120,7 +126,8 @@ export default function RollPage() {
   const [leftInput, setLeftInput] = useState('');
   const [rightInput, setRightInput] = useState('');
   const [pairs, setPairs] = useState<Pair[]>([]);
-  const [matchingRoll, setMatchingRoll] = useState<DiceRoll | null>(null);
+  const [autoFillPasses, setAutoFillPasses] = useState(true);
+  const [shufflePasses, setShufflePasses] = useState<DiceRoll>([1, 1]);
   const t = rollCopy[locale];
   const leftItems = itemsFrom(leftInput);
   const rightItems = itemsFrom(rightInput);
@@ -136,21 +143,29 @@ export default function RollPage() {
     const result: DiceRoll = [secureRandomInt(6) + 1, secureRandomInt(6) + 1];
     setDiceResult(result);
     setDiceHistory((history) => [result, ...history].slice(0, 8));
+    if (autoFillPasses) setShufflePasses(result);
     return result;
   };
 
   const matchLists = () => {
     if (!countsMatch) return;
-    const roll = rollDice();
-    setMatchingRoll(roll);
-    setPairs(randomPairs(leftItems, rightItems, roll[0], roll[1]) as Pair[]);
+    setPairs(randomPairs(leftItems, rightItems, shufflePasses[0], shufflePasses[1]) as Pair[]);
   };
 
   const updateList = (side: 'left' | 'right', value: string) => {
     if (side === 'left') setLeftInput(value);
     else setRightInput(value);
     setPairs([]);
-    setMatchingRoll(null);
+  };
+
+  const toggleAutoFill = (checked: boolean) => {
+    setAutoFillPasses(checked);
+    if (checked && diceResult) setShufflePasses(diceResult);
+  };
+
+  const updateShufflePass = (side: 0 | 1, value: string) => {
+    const nextValue = Math.min(6, Math.max(1, Math.trunc(Number(value)) || 1));
+    setShufflePasses((current) => side === 0 ? [nextValue, current[1]] : [current[0], nextValue]);
   };
 
   const matchHint = !leftItems.length && !rightItems.length
@@ -253,14 +268,39 @@ export default function RollPage() {
               </label>
             </div>
 
+            <div className="matching-controls">
+              <div className="matching-controls-head">
+                <label className="matching-switch">
+                  <input type="checkbox" checked={autoFillPasses} onChange={(event) => toggleAutoFill(event.target.checked)} />
+                  <span className="matching-switch-track" aria-hidden="true"><i /></span>
+                  <span><strong>{t.autoFill}</strong><small>{autoFillPasses ? t.autoFillHint : t.manualFillHint}</small></span>
+                </label>
+                <button type="button" className="matching-roll-button" onClick={rollDice}>
+                  <Dice5 size={18} />{diceResult ? t.rollAgain : t.rollDice}
+                </button>
+              </div>
+
+              <div className="shuffle-pass-controls">
+                <label>
+                  <span>{t.leftShuffle}</span>
+                  <input type="number" min="1" max="6" step="1" inputMode="numeric" value={shufflePasses[0]} disabled={autoFillPasses} onChange={(event) => updateShufflePass(0, event.target.value)} />
+                </label>
+                <label>
+                  <span>{t.rightShuffle}</span>
+                  <input type="number" min="1" max="6" step="1" inputMode="numeric" value={shufflePasses[1]} disabled={autoFillPasses} onChange={(event) => updateShufflePass(1, event.target.value)} />
+                </label>
+                {diceResult && (
+                  <div className="matching-dice-values" aria-live="polite">
+                    <span><DieFace value={diceResult[0]} small /><DieFace value={diceResult[1]} small /></span>
+                    <strong>{t.diceValues(diceResult[0], diceResult[1])}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="matching-meta">
               <div className={`matching-status${countsMatch ? ' ready' : ''}`} role="status">{matchHint}</div>
-              {matchingRoll ? (
-                <div className="matching-rolls">
-                  <span><DieFace value={matchingRoll[0]} small />{t.leftShuffle(matchingRoll[0])}</span>
-                  <span><DieFace value={matchingRoll[1]} small />{t.rightShuffle(matchingRoll[1])}</span>
-                </div>
-              ) : <strong>{t.rollRule}</strong>}
+              <strong>{shufflePasses[0]} · {shufflePasses[1]}</strong>
             </div>
             <button type="button" className="roll-primary matching-button" onClick={matchLists} disabled={!countsMatch}>
               <Shuffle size={19} />{pairs.length ? t.rematch : t.match}
