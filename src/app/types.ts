@@ -3,6 +3,7 @@ export type AdminUser = {
   name: string;
   email: string;
   role: 'owner' | 'admin';
+  can_issue_roll_keys: boolean;
   mfa_enabled: boolean;
 };
 
@@ -38,6 +39,17 @@ export type ManagedAdminUser = AdminUser & {
   failed_login_count: number;
   locked_until: string | null;
   last_login_at: string | null;
+  created_at: string;
+};
+
+export type RollAccessKeyRecord = {
+  id: number;
+  key_prefix: string;
+  created_by_name: string | null;
+  expires_at: string;
+  revoked_at: string | null;
+  last_used_at: string | null;
+  use_count: number;
   created_at: string;
 };
 

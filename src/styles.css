@@ -2285,6 +2285,105 @@ input[type='password']::-webkit-caps-lock-indicator {
   line-height: 1.5;
 }
 
+.admin-permission-toggle {
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #e4e9e4;
+  border-radius: 12px;
+  background: #f9fbf7;
+}
+
+.admin-permission-toggle input {
+  width: 38px;
+  min-height: 0;
+  height: 21px;
+  padding: 0;
+  border: 0;
+  accent-color: var(--forest-800);
+}
+
+.generated-key-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 22px;
+  padding: 22px;
+  border-color: rgba(31, 115, 83, 0.28);
+}
+
+.generated-key-card > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 5px 12px;
+}
+
+.generated-key-card svg {
+  grid-row: 1 / 3;
+  color: var(--forest-700);
+}
+
+.generated-key-card span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.generated-key-card strong {
+  color: var(--forest-950);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.roll-key-list {
+  overflow: hidden;
+}
+
+.roll-key-list-head,
+.roll-key-row {
+  display: grid;
+  grid-template-columns: 0.9fr 1fr 1.25fr 0.45fr 0.7fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+}
+
+.roll-key-list-head {
+  color: #7b8d85;
+  background: #f8faf7;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.roll-key-row {
+  min-height: 66px;
+  border-top: 1px solid #edf0ed;
+  color: #607269;
+  font-size: 12px;
+}
+
+.roll-key-row strong {
+  color: var(--forest-900);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.roll-key-row .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.roll-key-row .text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
 .toggle-label input {
   width: 38px;
   height: 21px;
@@ -2471,6 +2570,111 @@ input[type='password']::-webkit-caps-lock-indicator {
 }
 
 /* Random tool */
+.roll-access-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.roll-access-card {
+  width: min(500px, calc(100% - 36px));
+  margin: clamp(64px, 10vh, 120px) auto;
+  padding: 38px;
+  border: 1px solid rgba(13, 75, 59, 0.13);
+  border-radius: 26px;
+  background: var(--white);
+  box-shadow: 0 24px 70px rgba(21, 48, 39, 0.1);
+}
+
+.roll-access-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 15px;
+  color: var(--white);
+  background: var(--forest-900);
+}
+
+.roll-access-card h1 {
+  margin: 24px 0 10px;
+  color: var(--forest-950);
+  font-family: Iowan Old Style, Baskerville, "Songti SC", Georgia, serif;
+  font-size: 34px;
+  letter-spacing: -0.035em;
+}
+
+.roll-access-card > p,
+.roll-access-card > small {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.roll-access-card > p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.roll-access-card form {
+  display: grid;
+  gap: 14px;
+  margin-block: 26px;
+}
+
+.roll-access-card label {
+  display: grid;
+  gap: 8px;
+  color: var(--forest-900);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.roll-access-card input {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 14px;
+  border: 1px solid var(--cream-200);
+  border-radius: 13px;
+  outline: none;
+  background: var(--cream-50);
+}
+
+.roll-access-card input:focus {
+  border-color: var(--forest-700);
+  box-shadow: 0 0 0 3px rgba(31, 115, 83, 0.12);
+}
+
+.roll-access-card .roll-primary {
+  width: 100%;
+}
+
+.roll-access-card > small {
+  display: block;
+  padding-top: 20px;
+  border-top: 1px solid var(--cream-200);
+  font-size: 10px;
+}
+
+.roll-access-error {
+  color: #9c3434;
+  font-size: 12px;
+}
+
+.roll-access-logout {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.roll-access-expiry {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .roll-page {
   min-height: 100vh;
   min-height: 100dvh;
@@ -3450,6 +3654,15 @@ input[type='password']::-webkit-caps-lock-indicator {
     grid-template-columns: 1fr;
   }
 
+  .roll-key-list {
+    overflow-x: auto;
+  }
+
+  .roll-key-list-head,
+  .roll-key-row {
+    min-width: 760px;
+  }
+
   .mfa-management-grid {
     grid-template-columns: 1fr;
   }
@@ -3512,6 +3725,20 @@ input[type='password']::-webkit-caps-lock-indicator {
   .site-header .brand-lockup img {
     width: 40px;
     height: 40px;
+  }
+
+  .roll-access-card {
+    margin-block: 42px;
+    padding: 28px 22px;
+  }
+
+  .generated-key-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .generated-key-card .button {
+    width: 100%;
   }
 
   .main-nav {

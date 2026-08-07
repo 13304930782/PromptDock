@@ -19,6 +19,7 @@ function publicManagedAdmin(user) {
     email: user.email,
     role: user.role,
     status: user.status,
+    can_issue_roll_keys: Boolean(user.can_issue_roll_keys),
     failed_login_count: user.failed_login_count,
     locked_until: user.locked_until,
     last_login_at: user.last_login_at,
@@ -60,7 +61,7 @@ function publicMailSettings(stored, resolved) {
 router.get('/users', requireOwner, async (_req, res, next) => {
   try {
     const [rows] = await db.query(
-      `SELECT id, name, email, role, status, failed_login_count, locked_until, last_login_at, created_at, mfa_enabled_at
+      `SELECT id, name, email, role, status, can_issue_roll_keys, failed_login_count, locked_until, last_login_at, created_at, mfa_enabled_at
        FROM admin_users ORDER BY CASE WHEN role='owner' THEN 0 ELSE 1 END, created_at ASC`,
     );
     res.json({ users: rows.map(publicManagedAdmin) });
@@ -86,7 +87,7 @@ router.post('/users', requireOwner, async (req, res, next) => {
       [name, email, passwordHash, role],
     );
     const [rows] = await db.query(
-      `SELECT id, name, email, role, status, failed_login_count, locked_until, last_login_at, created_at, mfa_enabled_at
+      `SELECT id, name, email, role, status, can_issue_roll_keys, failed_login_count, locked_until, last_login_at, created_at, mfa_enabled_at
        FROM admin_users WHERE id=? LIMIT 1`,
       [result.insertId],
     );
@@ -104,6 +105,7 @@ router.patch('/users/:id', requireOwner, async (req, res, next) => {
   const email = normalizeEmail(req.body.email);
   const role = req.body.role;
   const status = req.body.status;
+  const canIssueRollKeys = req.body.can_issue_roll_keys === true && role === 'admin' && status === 'active';
   if (name.length < 2) return res.status(400).json({ message: 'Administrator name must contain at least 2 characters.' });
   if (!isEmail(email)) return res.status(400).json({ message: 'Administrator email is invalid.' });
   if (!['owner', 'admin'].includes(role)) return res.status(400).json({ message: 'Administrator role is invalid.' });
@@ -132,17 +134,20 @@ router.patch('/users/:id', requireOwner, async (req, res, next) => {
         return res.status(409).json({ message: 'At least one active owner account is required.' });
       }
     }
+    if (canIssueRollKeys) {
+      await connection.query('UPDATE admin_users SET can_issue_roll_keys=0 WHERE id<>?', [id]);
+    }
     await connection.query(
       `UPDATE admin_users
-       SET name=?, email=?, role=?, status=?,
+       SET name=?, email=?, role=?, status=?, can_issue_roll_keys=?,
            failed_login_count=IF(?='active', 0, failed_login_count),
            locked_until=IF(?='active', NULL, locked_until)
        WHERE id=?`,
-      [name, email, role, status, status, status, id],
+      [name, email, role, status, canIssueRollKeys, status, status, id],
     );
     await connection.commit();
     const [updatedRows] = await db.query(
-      `SELECT id, name, email, role, status, failed_login_count, locked_until, last_login_at, created_at, mfa_enabled_at
+      `SELECT id, name, email, role, status, can_issue_roll_keys, failed_login_count, locked_until, last_login_at, created_at, mfa_enabled_at
        FROM admin_users WHERE id=? LIMIT 1`,
       [id],
     );

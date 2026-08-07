@@ -16,6 +16,7 @@ const AdminSecurityPage = lazy(() => import('./pages/AdminSecurityPage'));
 const AdminSettingsPage = lazy(() => import('./pages/AdminSettingsPage'));
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
 const AdminFeedbackPage = lazy(() => import('./pages/AdminFeedbackPage'));
+const AdminRollAccessPage = lazy(() => import('./pages/AdminRollAccessPage'));
 const FeedbackPage = lazy(() => import('./pages/FeedbackPage'));
 const FeedbackInfoPage = lazy(() => import('./pages/FeedbackInfoPage'));
 const PrivacyPromisePage = lazy(() => import('./pages/PrivacyPromisePage'));
@@ -102,6 +103,7 @@ export default function App() {
         <Route path="/admin/early-access" element={<ProtectedAdmin user={user} checking={checking}><AdminApplicationsPage user={user!} /></ProtectedAdmin>} />
         <Route path="/admin/settings" element={<ProtectedAdmin user={user} checking={checking}><AdminSettingsPage user={user!} /></ProtectedAdmin>} />
         <Route path="/admin/security" element={<ProtectedAdmin user={user} checking={checking}><AdminSecurityPage user={user!} onUserChange={setUser} /></ProtectedAdmin>} />
+        <Route path="/admin/roll-access" element={<ProtectedAdmin user={user} checking={checking}>{user?.role === 'owner' || user?.can_issue_roll_keys ? <AdminRollAccessPage /> : <Navigate to="/admin/early-access" replace />}</ProtectedAdmin>} />
         <Route path="/admin/users" element={<ProtectedAdmin user={user} checking={checking}>{user?.role === 'owner' ? <AdminUsersPage /> : <Navigate to="/admin/early-access" replace />}</ProtectedAdmin>} />
         <Route path="/admin/feedback" element={<ProtectedAdmin user={user} checking={checking}>{user?.role === 'owner' ? <AdminFeedbackPage /> : <Navigate to="/admin/early-access" replace />}</ProtectedAdmin>} />
         <Route path="/admin" element={<Navigate to="/admin/early-access" replace />} />

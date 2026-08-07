@@ -2,7 +2,7 @@ import { memo, useEffect, useState } from 'react';
 import { KeyRound } from 'lucide-react';
 import type { ManagedAdminUser } from '../types';
 
-export type AdminUserDraft = Pick<ManagedAdminUser, 'name' | 'email' | 'role' | 'status'>;
+export type AdminUserDraft = Pick<ManagedAdminUser, 'name' | 'email' | 'role' | 'status' | 'can_issue_roll_keys'>;
 
 type Props = {
   user: ManagedAdminUser;
@@ -17,6 +17,7 @@ function draftFromUser(user: ManagedAdminUser): AdminUserDraft {
     email: user.email,
     role: user.role,
     status: user.status,
+    can_issue_roll_keys: user.can_issue_roll_keys,
   };
 }
 
@@ -46,6 +47,7 @@ const AdminUserCard = memo(function AdminUserCard({
         </div>
         <div className="admin-user-badges">
           {user.mfa_enabled && <span className="status-badge approved">MFA</span>}
+          {user.can_issue_roll_keys && <span className="status-badge approved">Key issuer</span>}
           <span className={`status-badge ${user.status === 'active' ? 'approved' : 'rejected'}`}>{user.status}</span>
         </div>
       </div>
@@ -54,18 +56,33 @@ const AdminUserCard = memo(function AdminUserCard({
         <label>Email<input type="email" value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} /></label>
         <div className="settings-form-grid">
           <label>Role
-            <select value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value as 'owner' | 'admin' })}>
+            <select value={draft.role} onChange={(event) => {
+              const role = event.target.value as 'owner' | 'admin';
+              setDraft({ ...draft, role, can_issue_roll_keys: role === 'admin' && draft.can_issue_roll_keys });
+            }}>
               <option value="owner">Owner</option>
               <option value="admin">Admin</option>
             </select>
           </label>
           <label>Status
-            <select value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as 'active' | 'disabled' })}>
+            <select value={draft.status} onChange={(event) => {
+              const status = event.target.value as 'active' | 'disabled';
+              setDraft({ ...draft, status, can_issue_roll_keys: status === 'active' && draft.can_issue_roll_keys });
+            }}>
               <option value="active">Active</option>
               <option value="disabled">Disabled</option>
             </select>
           </label>
         </div>
+        <label className="toggle-label admin-permission-toggle">
+          <input
+            type="checkbox"
+            checked={draft.can_issue_roll_keys}
+            disabled={draft.role !== 'admin' || draft.status !== 'active'}
+            onChange={(event) => setDraft({ ...draft, can_issue_roll_keys: event.target.checked })}
+          />
+          <span>Allow this administrator to issue 24-hour tool access keys</span>
+        </label>
         <button className="button button-secondary" type="button" disabled={disabled} onClick={() => onSave(user.id, draft)}>Save account</button>
         <div className="password-reset-row">
           <label>New password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} autoComplete="new-password" autoCapitalize="none" spellCheck={false} placeholder="8+ characters" /></label>

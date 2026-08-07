@@ -1,4 +1,4 @@
-import { ClipboardList, LogOut, Settings, ShieldCheck, Sprout, Users } from 'lucide-react';
+import { ClipboardList, KeyRound, LogOut, Settings, ShieldCheck, Sprout, Users } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { AdminUser } from '../types';
@@ -27,6 +27,11 @@ export default function AdminShell({ user, children }: { user: AdminUser; childr
           <NavLink to="/admin/security">
             <ShieldCheck size={18} /><span>Security</span>
           </NavLink>
+          {(user.role === 'owner' || user.can_issue_roll_keys) && (
+            <NavLink to="/admin/roll-access">
+              <KeyRound size={18} /><span>Tool keys</span>
+            </NavLink>
+          )}
           {user.role === 'owner' && (
             <NavLink to="/admin/users">
               <Users size={18} /><span>Administrators</span>

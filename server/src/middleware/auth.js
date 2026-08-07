@@ -30,6 +30,7 @@ function publicAdmin(user) {
     name: user.name,
     email: user.email,
     role: user.role,
+    can_issue_roll_keys: Boolean(user.can_issue_roll_keys),
     mfa_enabled: Boolean(user.mfa_enabled_at),
   };
 }
@@ -53,7 +54,7 @@ async function requireAdmin(req, res, next) {
     if (!token) return res.status(401).json({ message: 'Administrator sign-in is required.' });
     const payload = jwt.verify(token, config.jwtSecret);
     const [rows] = await db.query(
-      'SELECT id, name, email, role, status, mfa_enabled_at FROM admin_users WHERE id=? LIMIT 1',
+      'SELECT id, name, email, role, status, can_issue_roll_keys, mfa_enabled_at FROM admin_users WHERE id=? LIMIT 1',
       [payload.id],
     );
     const admin = rows[0];
@@ -75,10 +76,18 @@ function requireOwner(req, res, next) {
   next();
 }
 
+function requireRollKeyIssuer(req, res, next) {
+  if (req.admin?.role !== 'owner' && !req.admin?.can_issue_roll_keys) {
+    return res.status(403).json({ message: 'Tool access-key permission is required for this action.' });
+  }
+  next();
+}
+
 module.exports = {
   clearSession,
   issueSession,
   publicAdmin,
   requireAdmin,
   requireOwner,
+  requireRollKeyIssuer,
 };

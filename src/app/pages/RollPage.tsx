@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Dice5, ListChecks, ShieldCheck, Shuffle } from 'lucide-react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { ArrowLeft, Dice5, KeyRound, ListChecks, LogOut, ShieldCheck, Shuffle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { api, ApiError } from '../lib/api';
 import { randomOrder, secureRandomInt } from '../lib/random';
 import { usePublicLocale } from '../lib/locale';
 
@@ -64,6 +65,16 @@ const rollCopy = {
     footerLine: '安静、可靠、尊重隐私的个人工具',
     privacy: '隐私承诺',
     security: '安全承诺',
+    accessTitle: '输入临时访问密钥',
+    accessBody: '本工具仅向获得授权的使用者开放。密钥由管理员提供，验证后可使用至密钥到期。',
+    accessLabel: '访问密钥',
+    accessPlaceholder: '请输入管理员提供的密钥',
+    accessSubmit: '验证并进入',
+    accessChecking: '正在检查访问权限…',
+    accessExpired: '访问密钥已过期，请向管理员获取新密钥。',
+    accessInvalid: '访问密钥无效或已过期，请检查后重试。',
+    accessUntil: (date: string) => `访问有效期至 ${date}`,
+    endAccess: '退出工具',
   },
   en: {
     languageName: '中文',
@@ -111,6 +122,16 @@ const rollCopy = {
     footerLine: 'Calm, dependable tools that respect your privacy',
     privacy: 'Privacy Promise',
     security: 'Security Commitment',
+    accessTitle: 'Enter a temporary access key',
+    accessBody: 'This tool is available only to authorized users. Enter the key supplied by an administrator to continue until it expires.',
+    accessLabel: 'Access key',
+    accessPlaceholder: 'Enter the key from your administrator',
+    accessSubmit: 'Verify and continue',
+    accessChecking: 'Checking tool access…',
+    accessExpired: 'This access key has expired. Ask an administrator for a new key.',
+    accessInvalid: 'This access key is invalid or expired. Check it and try again.',
+    accessUntil: (date: string) => `Access valid until ${date}`,
+    endAccess: 'End access',
   },
 } as const;
 
@@ -139,6 +160,11 @@ export default function RollPage() {
   const [autoFillPasses, setAutoFillPasses] = useState(true);
   const [shufflePasses, setShufflePasses] = useState<DiceRoll>([1, 1]);
   const [shuffleClicks, setShuffleClicks] = useState<DiceRoll>([0, 0]);
+  const [accessChecking, setAccessChecking] = useState(true);
+  const [accessExpiresAt, setAccessExpiresAt] = useState<string | null>(null);
+  const [accessKey, setAccessKey] = useState('');
+  const [accessError, setAccessError] = useState('');
+  const [accessWorking, setAccessWorking] = useState(false);
   const t = rollCopy[locale];
   const leftItems = itemsFrom(leftInput);
   const rightItems = itemsFrom(rightInput);
@@ -150,6 +176,87 @@ export default function RollPage() {
     document.title = locale === 'zh' ? '实用工具 — CueGrove' : 'Utilities — CueGrove';
     window.scrollTo({ top: 0 });
   }, [locale]);
+
+  useEffect(() => {
+    api<{ expires_at: string }>('/roll-access/session')
+      .then((data) => setAccessExpiresAt(data.expires_at))
+      .catch(() => setAccessExpiresAt(null))
+      .finally(() => setAccessChecking(false));
+  }, []);
+
+  useEffect(() => {
+    if (!accessExpiresAt) return undefined;
+    const expire = () => {
+      setAccessExpiresAt(null);
+      setAccessError(t.accessExpired);
+      setDiceResult(null);
+      setDiceHistory([]);
+      setLeftInput('');
+      setRightInput('');
+      setPairs([]);
+      setAutoFillPasses(true);
+      setShufflePasses([1, 1]);
+      setShuffleClicks([0, 0]);
+      setMode('dice');
+      api('/roll-access/logout', { method: 'POST' }).catch(() => undefined);
+    };
+    const expiresIn = new Date(accessExpiresAt).getTime() - Date.now();
+    if (expiresIn <= 0) {
+      expire();
+      return undefined;
+    }
+    const timer = window.setTimeout(expire, expiresIn);
+    const recheck = () => {
+      if (document.visibilityState !== 'visible') return;
+      api<{ expires_at: string }>('/roll-access/session')
+        .then((data) => setAccessExpiresAt(data.expires_at))
+        .catch((error) => {
+          if (error instanceof ApiError && [401, 403].includes(error.status)) expire();
+        });
+    };
+    const interval = window.setInterval(recheck, 60_000);
+    document.addEventListener('visibilitychange', recheck);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', recheck);
+    };
+  }, [accessExpiresAt, t.accessExpired]);
+
+  const verifyAccess = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAccessWorking(true);
+    try {
+      const data = await api<{ expires_at: string }>('/roll-access/verify', {
+        method: 'POST',
+        body: JSON.stringify({ access_key: accessKey }),
+      });
+      setAccessExpiresAt(data.expires_at);
+      setAccessKey('');
+      setAccessError('');
+    } catch (error) {
+      setAccessError(error instanceof ApiError && error.status === 401
+        ? t.accessInvalid
+        : error instanceof Error ? error.message : t.accessInvalid);
+    } finally {
+      setAccessWorking(false);
+    }
+  };
+
+  const endAccess = async () => {
+    await api('/roll-access/logout', { method: 'POST' }).catch(() => undefined);
+    setAccessExpiresAt(null);
+    setAccessError('');
+    setDiceResult(null);
+    setDiceHistory([]);
+    setLeftInput('');
+    setRightInput('');
+    setPairs([]);
+    setAutoFillPasses(true);
+    setShufflePasses([1, 1]);
+    setShuffleClicks([0, 0]);
+    setMode('dice');
+  };
 
   const rollDice = () => {
     const result: DiceRoll = [secureRandomInt(6) + 1, secureRandomInt(6) + 1];
@@ -206,6 +313,32 @@ export default function RollPage() {
       ? shufflesComplete ? t.readyHint(leftItems.length) : t.progressHint
       : t.mismatchHint(leftItems.length, rightItems.length);
 
+  if (accessChecking) {
+    return <main className="roll-page"><div className="route-loading" role="status">{t.accessChecking}</div></main>;
+  }
+
+  if (!accessExpiresAt) {
+    return (
+      <main className="roll-page roll-access-page">
+        <header className="site-header policy-header roll-header">
+          <Link className="brand-lockup" to="/" aria-label="CueGrove home"><img src="/cuegrove-logo.png" alt="" /><span>CueGrove</span></Link>
+          <nav className="policy-nav"><Link className="policy-home-link" to="/"><ArrowLeft size={16} />{t.home}</Link><button type="button" className="language-button" aria-label="Switch language" onClick={() => setLocale((value) => value === 'zh' ? 'en' : 'zh')}>{t.languageName}</button></nav>
+        </header>
+        <section className="roll-access-card" aria-labelledby="roll-access-title">
+          <span className="roll-access-icon"><KeyRound size={26} /></span>
+          <h1 id="roll-access-title">{t.accessTitle}</h1>
+          <p>{t.accessBody}</p>
+          <form onSubmit={verifyAccess}>
+            <label>{t.accessLabel}<input type="password" value={accessKey} maxLength={128} autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} placeholder={t.accessPlaceholder} onChange={(event) => setAccessKey(event.target.value)} required /></label>
+            {accessError && <div className="roll-access-error" role="alert">{accessError}</div>}
+            <button type="submit" className="roll-primary" disabled={accessWorking || !accessKey.trim()}><KeyRound size={18} />{t.accessSubmit}</button>
+          </form>
+          <small>{t.noticeBody}</small>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="roll-page">
       <header className="site-header policy-header roll-header">
@@ -215,6 +348,7 @@ export default function RollPage() {
         </Link>
         <nav className="policy-nav" aria-label={locale === 'zh' ? '实用工具页面导航' : 'Utilities navigation'}>
           <Link className="policy-home-link" to="/"><ArrowLeft size={16} />{t.home}</Link>
+          <button type="button" className="policy-home-link roll-access-logout" onClick={endAccess}><LogOut size={16} />{t.endAccess}</button>
           <button
             type="button"
             className="language-button"
@@ -231,6 +365,7 @@ export default function RollPage() {
         <h1>{t.title}</h1>
         <p>{t.intro}</p>
         <div className="roll-local-note"><span />{t.localNote}</div>
+        <div className="roll-access-expiry"><KeyRound size={14} />{t.accessUntil(new Date(accessExpiresAt).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en'))}</div>
       </section>
 
       <section className="roll-tool shell" aria-label={locale === 'zh' ? '实用工具' : 'Utilities'}>

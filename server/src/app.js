@@ -5,6 +5,7 @@ const authRoutes = require('./routes/auth');
 const earlyAccessRoutes = require('./routes/earlyAccess');
 const adminRoutes = require('./routes/admin');
 const feedbackRoutes = require('./routes/feedback');
+const rollAccessRoutes = require('./routes/rollAccess');
 const { requireSameOrigin } = require('./middleware/security');
 const config = require('./config');
 
@@ -30,7 +31,9 @@ function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/early-access', earlyAccessRoutes);
   app.use('/api/feedback', feedbackRoutes.router);
+  app.use('/api/roll-access', rollAccessRoutes.publicRouter);
   app.use('/api/admin/feedback', feedbackRoutes.adminRouter);
+  app.use('/api/admin/roll-access-keys', rollAccessRoutes.adminRouter);
   app.use('/api/admin', adminRoutes);
 
   app.use((req, res) => {
@@ -42,7 +45,7 @@ function createApp() {
     if (error.type === 'entity.parse.failed') {
       return res.status(400).json({ message: 'Request body must contain valid JSON.' });
     }
-    if (error.code === 'ER_NO_SUCH_TABLE' || error.code === 'ER_BAD_DB_ERROR') {
+    if (['ER_NO_SUCH_TABLE', 'ER_BAD_DB_ERROR', 'ER_BAD_FIELD_ERROR'].includes(error.code)) {
       return res.status(503).json({ message: 'Database is not ready. Run the CueGrove migration.' });
     }
     return res.status(500).json({ message: 'The server could not complete this request.' });

@@ -57,7 +57,10 @@ export default function AdminUsersPage() {
         method: 'PATCH',
         body: JSON.stringify(draft),
       });
-      setUsers((currentUsers) => currentUsers.map((user) => user.id === id ? data.user : user));
+      setUsers((currentUsers) => currentUsers.map((user) => {
+        if (user.id === id) return data.user;
+        return data.user.can_issue_roll_keys ? { ...user, can_issue_roll_keys: false } : user;
+      }));
       setNotice(`Administrator ${data.user.email} updated.`);
       setError('');
     } catch (saveError) {
@@ -88,7 +91,7 @@ export default function AdminUsersPage() {
   return (
     <>
       <div className="admin-topline">
-        <div><h1>Administrators</h1><p>Create accounts, manage roles, clear lockouts, and reset passwords.</p></div>
+        <div><h1>Administrators</h1><p>Create accounts, manage roles, and designate one administrator to issue tool access keys.</p></div>
         <span className="owner-count"><ShieldCheck size={16} />{activeOwners} active owner{activeOwners === 1 ? '' : 's'}</span>
       </div>
       {notice && <div className="admin-alert">{notice}</div>}
