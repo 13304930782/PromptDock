@@ -30,7 +30,7 @@ const rollCopy = {
     diceBody: '同时掷出两个传统六面骰，每个骰子的结果都是 1 到 6。',
     rollDice: '掷骰子',
     rollAgain: '再掷一次',
-    result: '合计点数',
+    result: '分别点数',
     waitingDice: '点击按钮同时掷出两个骰子',
     diceHistory: '最近结果',
     noHistory: '还没有掷骰记录',
@@ -67,7 +67,7 @@ const rollCopy = {
     diceBody: 'Roll two traditional six-sided dice together. Each result is between 1 and 6.',
     rollDice: 'Roll dice',
     rollAgain: 'Roll again',
-    result: 'Total',
+    result: 'Individual values',
     waitingDice: 'Press the button to roll both dice',
     diceHistory: 'Recent results',
     noHistory: 'No rolls yet',
@@ -206,7 +206,7 @@ export default function RollPage() {
                     <DieFace value={diceResult[0]} />
                     <DieFace value={diceResult[1]} />
                   </div>
-                  <div className="die-total"><span>{t.result}</span><strong>{diceResult[0] + diceResult[1]}</strong></div>
+                  <div className="die-points"><span>{t.result}</span><strong>{diceResult.join(' · ')}</strong></div>
                 </div>
               ) : (
                 <div className="roll-empty-state"><Dice5 size={38} /><p>{t.waitingDice}</p></div>
@@ -219,7 +219,7 @@ export default function RollPage() {
                 <ol>{diceHistory.map((roll, index) => (
                   <li key={`${index}-${roll.join('-')}`}>
                     <span className="history-dice-pair"><DieFace value={roll[0]} small /><DieFace value={roll[1]} small /></span>
-                    <strong>{roll[0] + roll[1]}</strong>
+                    <strong>{roll.join(' · ')}</strong>
                   </li>
                 ))}</ol>
               ) : <p>{t.noHistory}</p>}

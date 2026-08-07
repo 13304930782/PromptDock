@@ -2691,7 +2691,7 @@ input[type='password']::-webkit-caps-lock-indicator {
   gap: 14px;
 }
 
-.die-total > span {
+.die-points > span {
   display: block;
   color: var(--leaf-300);
   font-size: 11px;
@@ -2700,7 +2700,7 @@ input[type='password']::-webkit-caps-lock-indicator {
   text-transform: uppercase;
 }
 
-.die-total > strong {
+.die-points > strong {
   display: block;
   margin-top: 4px;
   color: var(--white);
