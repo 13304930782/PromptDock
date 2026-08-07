@@ -69,6 +69,24 @@ async function requireAdmin(req, res, next) {
   }
 }
 
+async function optionalAdminSession(req) {
+  ensureJwtConfigured();
+  const token = req.cookies?.[config.cookie.name];
+  if (!token) return null;
+  let payload;
+  try {
+    payload = jwt.verify(token, config.jwtSecret);
+  } catch {
+    return null;
+  }
+  const [rows] = await db.query(
+    'SELECT id, name, email, role, status, can_issue_roll_keys, mfa_enabled_at FROM admin_users WHERE id=? LIMIT 1',
+    [payload.id],
+  );
+  const admin = rows[0];
+  return admin?.status === 'active' && ['owner', 'admin'].includes(admin.role) ? admin : null;
+}
+
 function requireOwner(req, res, next) {
   if (req.admin?.role !== 'owner') {
     return res.status(403).json({ message: 'Owner permission is required for this action.' });
@@ -87,6 +105,7 @@ module.exports = {
   clearSession,
   issueSession,
   publicAdmin,
+  optionalAdminSession,
   requireAdmin,
   requireOwner,
   requireRollKeyIssuer,

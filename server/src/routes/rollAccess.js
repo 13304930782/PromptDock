@@ -3,7 +3,7 @@ const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 const config = require('../config');
-const { requireAdmin, requireRollKeyIssuer } = require('../middleware/auth');
+const { optionalAdminSession, requireAdmin, requireRollKeyIssuer } = require('../middleware/auth');
 const { accessKeyExpiry, generateAccessKey, hashAccessKey } = require('../lib/rollAccess');
 
 const publicRouter = express.Router();
@@ -94,7 +94,7 @@ publicRouter.post('/verify', verifyLimit, async (req, res, next) => {
       'UPDATE roll_access_keys SET last_used_at=UTC_TIMESTAMP(), use_count=use_count+1 WHERE id=?',
       [record.id],
     );
-    return res.json({ expires_at: expiresAt.toISOString() });
+    return res.json({ administrator: false, expires_at: expiresAt.toISOString() });
   } catch (error) {
     if (error.code === 'AUTH_NOT_CONFIGURED') return res.status(503).json({ message: error.message });
     next(error);
@@ -104,6 +104,8 @@ publicRouter.post('/verify', verifyLimit, async (req, res, next) => {
 publicRouter.get('/session', async (req, res, next) => {
   try {
     ensureJwtConfigured();
+    const admin = await optionalAdminSession(req);
+    if (admin) return res.json({ administrator: true, expires_at: null });
     const token = req.cookies?.[COOKIE_NAME];
     if (!token) return res.status(401).json({ message: 'A tool access key is required.' });
     const payload = jwt.verify(token, config.jwtSecret);
@@ -124,7 +126,7 @@ publicRouter.get('/session', async (req, res, next) => {
       clearAccessSession(res);
       return res.status(401).json({ message: 'This access session has expired.' });
     }
-    return res.json({ expires_at: new Date(rows[0].expires_at).toISOString() });
+    return res.json({ administrator: false, expires_at: new Date(rows[0].expires_at).toISOString() });
   } catch (error) {
     clearAccessSession(res);
     if (error.code === 'AUTH_NOT_CONFIGURED') return res.status(503).json({ message: error.message });

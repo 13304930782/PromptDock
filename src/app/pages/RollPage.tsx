@@ -8,6 +8,7 @@ import { usePublicLocale } from '../lib/locale';
 type Mode = 'dice' | 'matching';
 type Pair = [string, string];
 type DiceRoll = [number, number];
+type RollAccessSession = { administrator: boolean; expires_at: string | null };
 
 const pipPositions: Record<number, number[]> = {
   1: [5],
@@ -74,6 +75,8 @@ const rollCopy = {
     accessExpired: '访问密钥已过期，请向管理员获取新密钥。',
     accessInvalid: '访问密钥无效或已过期，请检查后重试。',
     accessUntil: (date: string) => `访问有效期至 ${date}`,
+    administratorAccess: '管理员身份已验证，无需临时密钥',
+    administratorExpired: '管理员登录已失效，请重新登录后台或使用临时密钥。',
     endAccess: '退出工具',
   },
   en: {
@@ -131,6 +134,8 @@ const rollCopy = {
     accessExpired: 'This access key has expired. Ask an administrator for a new key.',
     accessInvalid: 'This access key is invalid or expired. Check it and try again.',
     accessUntil: (date: string) => `Access valid until ${date}`,
+    administratorAccess: 'Administrator session verified — no temporary key required',
+    administratorExpired: 'Your administrator session ended. Sign in again or use a temporary key.',
     endAccess: 'End access',
   },
 } as const;
@@ -162,6 +167,7 @@ export default function RollPage() {
   const [shuffleClicks, setShuffleClicks] = useState<DiceRoll>([0, 0]);
   const [accessChecking, setAccessChecking] = useState(true);
   const [accessExpiresAt, setAccessExpiresAt] = useState<string | null>(null);
+  const [administratorAccess, setAdministratorAccess] = useState(false);
   const [accessKey, setAccessKey] = useState('');
   const [accessError, setAccessError] = useState('');
   const [accessWorking, setAccessWorking] = useState(false);
@@ -171,6 +177,23 @@ export default function RollPage() {
   const countsMatch = leftItems.length > 0 && leftItems.length === rightItems.length;
   const shufflesComplete = countsMatch && shuffleClicks.every((count, index) => count >= shufflePasses[index]);
 
+  const applyAccessSession = (session: RollAccessSession) => {
+    setAdministratorAccess(session.administrator === true);
+    setAccessExpiresAt(session.expires_at);
+  };
+
+  const resetToolState = () => {
+    setDiceResult(null);
+    setDiceHistory([]);
+    setLeftInput('');
+    setRightInput('');
+    setPairs([]);
+    setAutoFillPasses(true);
+    setShufflePasses([1, 1]);
+    setShuffleClicks([0, 0]);
+    setMode('dice');
+  };
+
   useEffect(() => {
     document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
     document.title = locale === 'zh' ? '实用工具 — CueGrove' : 'Utilities — CueGrove';
@@ -178,26 +201,22 @@ export default function RollPage() {
   }, [locale]);
 
   useEffect(() => {
-    api<{ expires_at: string }>('/roll-access/session')
-      .then((data) => setAccessExpiresAt(data.expires_at))
-      .catch(() => setAccessExpiresAt(null))
+    api<RollAccessSession>('/roll-access/session')
+      .then(applyAccessSession)
+      .catch(() => {
+        setAdministratorAccess(false);
+        setAccessExpiresAt(null);
+      })
       .finally(() => setAccessChecking(false));
   }, []);
 
   useEffect(() => {
     if (!accessExpiresAt) return undefined;
     const expire = () => {
+      setAdministratorAccess(false);
       setAccessExpiresAt(null);
       setAccessError(t.accessExpired);
-      setDiceResult(null);
-      setDiceHistory([]);
-      setLeftInput('');
-      setRightInput('');
-      setPairs([]);
-      setAutoFillPasses(true);
-      setShufflePasses([1, 1]);
-      setShuffleClicks([0, 0]);
-      setMode('dice');
+      resetToolState();
       api('/roll-access/logout', { method: 'POST' }).catch(() => undefined);
     };
     const expiresIn = new Date(accessExpiresAt).getTime() - Date.now();
@@ -208,8 +227,8 @@ export default function RollPage() {
     const timer = window.setTimeout(expire, expiresIn);
     const recheck = () => {
       if (document.visibilityState !== 'visible') return;
-      api<{ expires_at: string }>('/roll-access/session')
-        .then((data) => setAccessExpiresAt(data.expires_at))
+      api<RollAccessSession>('/roll-access/session')
+        .then(applyAccessSession)
         .catch((error) => {
           if (error instanceof ApiError && [401, 403].includes(error.status)) expire();
         });
@@ -223,15 +242,39 @@ export default function RollPage() {
     };
   }, [accessExpiresAt, t.accessExpired]);
 
+  useEffect(() => {
+    if (!administratorAccess) return undefined;
+    const deny = () => {
+      setAdministratorAccess(false);
+      setAccessExpiresAt(null);
+      setAccessError(t.administratorExpired);
+      resetToolState();
+    };
+    const recheck = () => {
+      if (document.visibilityState !== 'visible') return;
+      api<RollAccessSession>('/roll-access/session')
+        .then(applyAccessSession)
+        .catch((error) => {
+          if (error instanceof ApiError && [401, 403].includes(error.status)) deny();
+        });
+    };
+    const interval = window.setInterval(recheck, 60_000);
+    document.addEventListener('visibilitychange', recheck);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', recheck);
+    };
+  }, [administratorAccess, t.administratorExpired]);
+
   const verifyAccess = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setAccessWorking(true);
     try {
-      const data = await api<{ expires_at: string }>('/roll-access/verify', {
+      const data = await api<RollAccessSession>('/roll-access/verify', {
         method: 'POST',
         body: JSON.stringify({ access_key: accessKey }),
       });
-      setAccessExpiresAt(data.expires_at);
+      applyAccessSession(data);
       setAccessKey('');
       setAccessError('');
     } catch (error) {
@@ -245,17 +288,10 @@ export default function RollPage() {
 
   const endAccess = async () => {
     await api('/roll-access/logout', { method: 'POST' }).catch(() => undefined);
+    setAdministratorAccess(false);
     setAccessExpiresAt(null);
     setAccessError('');
-    setDiceResult(null);
-    setDiceHistory([]);
-    setLeftInput('');
-    setRightInput('');
-    setPairs([]);
-    setAutoFillPasses(true);
-    setShufflePasses([1, 1]);
-    setShuffleClicks([0, 0]);
-    setMode('dice');
+    resetToolState();
   };
 
   const rollDice = () => {
@@ -317,7 +353,7 @@ export default function RollPage() {
     return <main className="roll-page"><div className="route-loading" role="status">{t.accessChecking}</div></main>;
   }
 
-  if (!accessExpiresAt) {
+  if (!administratorAccess && !accessExpiresAt) {
     return (
       <main className="roll-page roll-access-page">
         <header className="site-header policy-header roll-header">
@@ -348,7 +384,7 @@ export default function RollPage() {
         </Link>
         <nav className="policy-nav" aria-label={locale === 'zh' ? '实用工具页面导航' : 'Utilities navigation'}>
           <Link className="policy-home-link" to="/"><ArrowLeft size={16} />{t.home}</Link>
-          <button type="button" className="policy-home-link roll-access-logout" onClick={endAccess}><LogOut size={16} />{t.endAccess}</button>
+          {!administratorAccess && <button type="button" className="policy-home-link roll-access-logout" onClick={endAccess}><LogOut size={16} />{t.endAccess}</button>}
           <button
             type="button"
             className="language-button"
@@ -365,7 +401,9 @@ export default function RollPage() {
         <h1>{t.title}</h1>
         <p>{t.intro}</p>
         <div className="roll-local-note"><span />{t.localNote}</div>
-        <div className="roll-access-expiry"><KeyRound size={14} />{t.accessUntil(new Date(accessExpiresAt).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en'))}</div>
+        <div className="roll-access-expiry"><KeyRound size={14} />{administratorAccess
+          ? t.administratorAccess
+          : t.accessUntil(new Date(accessExpiresAt!).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en'))}</div>
       </section>
 
       <section className="roll-tool shell" aria-label={locale === 'zh' ? '实用工具' : 'Utilities'}>
