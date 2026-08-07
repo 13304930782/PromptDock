@@ -1,69 +1,55 @@
 import { useEffect, useState } from 'react';
-import {
-  ArrowLeft,
-  Dice5,
-  ListChecks,
-  Plus,
-  ShieldCheck,
-  Shuffle,
-  Trash2,
-} from 'lucide-react';
+import { ArrowLeft, Dice5, ListChecks, ShieldCheck, Shuffle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { secureRandomInt } from '../lib/random';
+import { randomPairs, secureRandomInt } from '../lib/random';
 import { usePublicLocale } from '../lib/locale';
 
-type Mode = 'dice' | 'forms';
+type Mode = 'dice' | 'matching';
+type Pair = [string, string];
 
-type RandomForm = {
-  id: number;
-  name: string;
-  items: string;
-  result: string;
-  rolls: number;
-  history: string[];
+const pipPositions: Record<number, number[]> = {
+  1: [5],
+  2: [1, 9],
+  3: [1, 5, 9],
+  4: [1, 3, 7, 9],
+  5: [1, 3, 5, 7, 9],
+  6: [1, 3, 4, 6, 7, 9],
 };
-
-const diceSides = [4, 6, 8, 10, 12, 20, 100];
-const diceCounts = Array.from({ length: 10 }, (_, index) => index + 1);
 
 const rollCopy = {
   zh: {
     languageName: 'EN',
     home: '返回首页',
-    eyebrow: 'CueGrove Random',
-    title: '简单、清楚的随机工具',
-    intro: '只保留掷骰子与表单随机。所有计算都在你的浏览器中完成，不上传填写内容。',
-    diceTab: '骰子',
-    formsTab: '表单随机',
-    diceTitle: '掷骰子',
-    diceBody: '选择骰子数量与面数，然后生成一组随机点数。',
-    diceCount: '骰子数量',
-    diceSides: '骰子面数',
+    eyebrow: 'CueGrove Utilities',
+    title: '简单、清楚的实用工具',
+    intro: '一个传统六面骰，以及两列内容的随机一一配对。所有计算都在你的浏览器中完成。',
+    diceTab: '六面骰',
+    matchingTab: '随机配对',
+    diceTitle: '掷六面骰',
+    diceBody: '固定使用传统六面骰，结果只会是 1 到 6。',
     rollDice: '掷骰子',
     rollAgain: '再掷一次',
-    total: '总点数',
-    waitingDice: '设置好骰子后，点击按钮开始。',
+    result: '本次点数',
+    waitingDice: '点击按钮掷出骰子',
     diceHistory: '最近结果',
-    noHistory: '还没有随机记录',
-    formsTitle: '表单随机',
-    formsBody: '每行填写一个选项。重复行会按出现次数增加被抽中的概率。',
-    addForm: '添加表单',
-    rollAll: '全部随机',
-    formName: '表单名称',
-    formNameFallback: '未命名表单',
-    options: '随机选项',
-    optionsPlaceholder: '每行一个选项\n例如：\n北京\n上海\n广州',
-    optionCount: (count: number) => `${count} 个有效选项`,
-    emptyOptions: '请先填写至少一个选项',
-    rollForm: '随机这个表单',
-    removeForm: '删除表单',
-    currentResult: '当前结果',
-    waitingForm: '等待随机',
-    rollCount: (count: number) => `已随机 ${count} 次`,
-    maxForms: '最多可同时使用 4 个表单。',
+    noHistory: '还没有掷骰记录',
+    matchingTitle: '两列随机配对',
+    matchingBody: '左右两边各填一列内容，每行一个项目。两边数量相等后即可随机一一配对。',
+    leftTitle: '左侧内容',
+    rightTitle: '右侧内容',
+    leftPlaceholder: '每行一个项目\n例如：\n小林\n小周\n小陈',
+    rightPlaceholder: '每行一个项目\n例如：\n任务 A\n任务 B\n任务 C',
+    itemCount: (count: number) => `${count} 项`,
+    emptyHint: '请填写左右两列内容',
+    mismatchHint: (left: number, right: number) => `数量不一致：左侧 ${left} 项，右侧 ${right} 项`,
+    readyHint: (count: number) => `数量一致，可以生成 ${count} 组配对`,
+    match: '开始随机配对',
+    rematch: '重新随机配对',
+    matchResult: '配对结果',
+    pairNumber: (number: number) => `第 ${number} 组`,
+    localNote: '本地计算 · 不保存填写内容 · 不记录 IP',
     noticeTitle: '使用须知',
     noticeBody: '本工具仅用于娱乐、教学、桌游及日常随机选择，不提供投注、支付、奖金、赔率或结算功能。严禁用于赌博、欺诈及其他违法活动。使用者应自行遵守所在地法律法规；随机结果不构成财务、法律或其他专业依据。',
-    localNote: '本地计算 · 不保存填写内容 · 不记录 IP',
     footerLine: '安静、可靠、尊重隐私的个人工具',
     privacy: '隐私承诺',
     security: '安全承诺',
@@ -71,123 +57,97 @@ const rollCopy = {
   en: {
     languageName: '中文',
     home: 'Back home',
-    eyebrow: 'CueGrove Random',
-    title: 'Randomness, kept simple',
-    intro: 'Just dice and form draws. Everything runs in your browser, and your entries are never uploaded.',
-    diceTab: 'Dice',
-    formsTab: 'Form draw',
-    diceTitle: 'Roll dice',
-    diceBody: 'Choose how many dice to roll and how many sides each die has.',
-    diceCount: 'Number of dice',
-    diceSides: 'Sides per die',
-    rollDice: 'Roll dice',
+    eyebrow: 'CueGrove Utilities',
+    title: 'Simple, useful random tools',
+    intro: 'A traditional six-sided die and one-to-one random matching between two lists. Everything runs in your browser.',
+    diceTab: 'Six-sided die',
+    matchingTab: 'Random matching',
+    diceTitle: 'Roll a six-sided die',
+    diceBody: 'A traditional six-sided die with results from 1 to 6 only.',
+    rollDice: 'Roll die',
     rollAgain: 'Roll again',
-    total: 'Total',
-    waitingDice: 'Choose your dice, then roll.',
+    result: 'Result',
+    waitingDice: 'Press the button to roll',
     diceHistory: 'Recent results',
-    noHistory: 'No results yet',
-    formsTitle: 'Form draw',
-    formsBody: 'Enter one option per line. Repeated lines receive proportionally more chances to be selected.',
-    addForm: 'Add form',
-    rollAll: 'Draw all',
-    formName: 'Form name',
-    formNameFallback: 'Untitled form',
-    options: 'Options',
-    optionsPlaceholder: 'One option per line\nFor example:\nBeijing\nShanghai\nGuangzhou',
-    optionCount: (count: number) => `${count} valid option${count === 1 ? '' : 's'}`,
-    emptyOptions: 'Add at least one option first',
-    rollForm: 'Draw from this form',
-    removeForm: 'Remove form',
-    currentResult: 'Current result',
-    waitingForm: 'Waiting for a draw',
-    rollCount: (count: number) => `${count} draw${count === 1 ? '' : 's'}`,
-    maxForms: 'You can use up to 4 forms at once.',
+    noHistory: 'No rolls yet',
+    matchingTitle: 'Match two lists',
+    matchingBody: 'Enter one item per line on each side. When both lists have the same number of items, they can be matched one to one at random.',
+    leftTitle: 'Left list',
+    rightTitle: 'Right list',
+    leftPlaceholder: 'One item per line\nFor example:\nAlex\nBlair\nCasey',
+    rightPlaceholder: 'One item per line\nFor example:\nTask A\nTask B\nTask C',
+    itemCount: (count: number) => `${count} item${count === 1 ? '' : 's'}`,
+    emptyHint: 'Enter items in both lists',
+    mismatchHint: (left: number, right: number) => `Counts differ: ${left} on the left and ${right} on the right`,
+    readyHint: (count: number) => `Counts match. Ready to create ${count} pair${count === 1 ? '' : 's'}`,
+    match: 'Create random matches',
+    rematch: 'Match again',
+    matchResult: 'Matches',
+    pairNumber: (number: number) => `Pair ${number}`,
+    localNote: 'Calculated locally · Entries are not stored · No IP logging',
     noticeTitle: 'Acceptable use',
     noticeBody: 'This tool is intended only for entertainment, education, tabletop games, and everyday random choices. It does not provide betting, payments, prizes, odds, or settlement. Gambling, fraud, and any other unlawful use are prohibited. You are responsible for following local laws, and results are not financial, legal, or other professional advice.',
-    localNote: 'Calculated locally · Entries are not stored · No IP logging',
     footerLine: 'Calm, dependable tools that respect your privacy',
     privacy: 'Privacy Promise',
     security: 'Security Commitment',
   },
 } as const;
 
-function createForm(id: number, locale: 'zh' | 'en'): RandomForm {
-  return {
-    id,
-    name: locale === 'zh' ? `表单 ${id}` : `Form ${id}`,
-    items: '',
-    result: '',
-    rolls: 0,
-    history: [],
-  };
+function itemsFrom(value: string) {
+  return value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
 }
 
-function optionsFrom(items: string) {
-  return items.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+function DieFace({ value, small = false }: { value: number; small?: boolean }) {
+  return (
+    <span className={`die-face${small ? ' small' : ''}`} aria-label={String(value)}>
+      {Array.from({ length: 9 }, (_, index) => (
+        <i key={index} className={pipPositions[value].includes(index + 1) ? 'visible' : ''} />
+      ))}
+    </span>
+  );
 }
 
 export default function RollPage() {
   const [locale, setLocale] = usePublicLocale();
   const [mode, setMode] = useState<Mode>('dice');
-  const [sides, setSides] = useState(6);
-  const [diceCount, setDiceCount] = useState(2);
-  const [diceResult, setDiceResult] = useState<number[]>([]);
-  const [diceHistory, setDiceHistory] = useState<number[][]>([]);
-  const [forms, setForms] = useState<RandomForm[]>(() => [createForm(1, locale), createForm(2, locale)]);
+  const [dieResult, setDieResult] = useState<number | null>(null);
+  const [diceHistory, setDiceHistory] = useState<number[]>([]);
+  const [leftInput, setLeftInput] = useState('');
+  const [rightInput, setRightInput] = useState('');
+  const [pairs, setPairs] = useState<Pair[]>([]);
   const t = rollCopy[locale];
+  const leftItems = itemsFrom(leftInput);
+  const rightItems = itemsFrom(rightInput);
+  const countsMatch = leftItems.length > 0 && leftItems.length === rightItems.length;
 
   useEffect(() => {
     document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
-    document.title = locale === 'zh' ? '随机工具 — CueGrove' : 'Random Tool — CueGrove';
+    document.title = locale === 'zh' ? '实用工具 — CueGrove' : 'Utilities — CueGrove';
     window.scrollTo({ top: 0 });
-    setForms((current) => current.map((form) => {
-      if (form.name !== `表单 ${form.id}` && form.name !== `Form ${form.id}`) return form;
-      return { ...form, name: locale === 'zh' ? `表单 ${form.id}` : `Form ${form.id}` };
-    }));
   }, [locale]);
 
-  const rollDice = () => {
-    const result = Array.from({ length: diceCount }, () => secureRandomInt(sides) + 1);
-    setDiceResult(result);
-    setDiceHistory((history) => [result, ...history].slice(0, 6));
+  const rollDie = () => {
+    const result = secureRandomInt(6) + 1;
+    setDieResult(result);
+    setDiceHistory((history) => [result, ...history].slice(0, 8));
   };
 
-  const drawForm = (form: RandomForm) => {
-    const options = optionsFrom(form.items);
-    if (!options.length) return form;
-    const result = options[secureRandomInt(options.length)];
-    return {
-      ...form,
-      result,
-      rolls: form.rolls + 1,
-      history: [result, ...form.history].slice(0, 4),
-    };
+  const matchLists = () => {
+    if (!countsMatch) return;
+    setPairs(randomPairs(leftItems, rightItems) as Pair[]);
   };
 
-  const updateForm = (id: number, change: Partial<RandomForm>) => {
-    setForms((current) => current.map((form) => (form.id === id ? { ...form, ...change } : form)));
+  const updateList = (side: 'left' | 'right', value: string) => {
+    if (side === 'left') setLeftInput(value);
+    else setRightInput(value);
+    setPairs([]);
   };
 
-  const rollForm = (id: number) => {
-    setForms((current) => current.map((form) => (form.id === id ? drawForm(form) : form)));
-  };
-
-  const rollAllForms = () => setForms((current) => current.map(drawForm));
-
-  const addForm = () => {
-    setForms((current) => {
-      if (current.length >= 4) return current;
-      const id = Math.max(...current.map((form) => form.id)) + 1;
-      return [...current, createForm(id, locale)];
-    });
-  };
-
-  const removeForm = (id: number) => {
-    setForms((current) => (current.length <= 1 ? current : current.filter((form) => form.id !== id)));
-  };
-
-  const diceTotal = diceResult.reduce((sum, value) => sum + value, 0);
-  const hasFormOptions = forms.some((form) => optionsFrom(form.items).length > 0);
+  const matchHint = !leftItems.length && !rightItems.length
+    ? t.emptyHint
+    : countsMatch
+      ? t.readyHint(leftItems.length)
+      : t.mismatchHint(leftItems.length, rightItems.length);
 
   return (
     <main className="roll-page">
@@ -196,10 +156,8 @@ export default function RollPage() {
           <img src="/cuegrove-logo.png" alt="" />
           <span>CueGrove</span>
         </Link>
-        <nav className="policy-nav" aria-label={locale === 'zh' ? '随机工具页面导航' : 'Random tool navigation'}>
-          <Link className="policy-home-link" to="/">
-            <ArrowLeft size={16} />{t.home}
-          </Link>
+        <nav className="policy-nav" aria-label={locale === 'zh' ? '实用工具页面导航' : 'Utilities navigation'}>
+          <Link className="policy-home-link" to="/"><ArrowLeft size={16} />{t.home}</Link>
           <button
             type="button"
             className="language-button"
@@ -218,25 +176,13 @@ export default function RollPage() {
         <div className="roll-local-note"><span />{t.localNote}</div>
       </section>
 
-      <section className="roll-tool shell" aria-label={locale === 'zh' ? '随机工具' : 'Random tool'}>
-        <div className="roll-tabs" role="tablist" aria-label={locale === 'zh' ? '随机方式' : 'Random mode'}>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === 'dice'}
-            className={mode === 'dice' ? 'active' : ''}
-            onClick={() => setMode('dice')}
-          >
+      <section className="roll-tool shell" aria-label={locale === 'zh' ? '实用工具' : 'Utilities'}>
+        <div className="roll-tabs" role="tablist" aria-label={locale === 'zh' ? '工具类型' : 'Utility type'}>
+          <button type="button" role="tab" aria-selected={mode === 'dice'} className={mode === 'dice' ? 'active' : ''} onClick={() => setMode('dice')}>
             <Dice5 size={19} />{t.diceTab}
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === 'forms'}
-            className={mode === 'forms' ? 'active' : ''}
-            onClick={() => setMode('forms')}
-          >
-            <ListChecks size={19} />{t.formsTab}
+          <button type="button" role="tab" aria-selected={mode === 'matching'} className={mode === 'matching' ? 'active' : ''} onClick={() => setMode('matching')}>
+            <ListChecks size={19} />{t.matchingTab}
           </button>
         </div>
 
@@ -247,154 +193,80 @@ export default function RollPage() {
                 <h2>{t.diceTitle}</h2>
                 <p>{t.diceBody}</p>
               </div>
-              <div className="dice-controls">
-                <label>
-                  <span>{t.diceCount}</span>
-                  <select value={diceCount} onChange={(event) => setDiceCount(Number(event.target.value))}>
-                    {diceCounts.map((count) => <option key={count} value={count}>{count}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <span>{t.diceSides}</span>
-                  <select value={sides} onChange={(event) => setSides(Number(event.target.value))}>
-                    {diceSides.map((side) => <option key={side} value={side}>D{side}</option>)}
-                  </select>
-                </label>
-              </div>
-              <button type="button" className="roll-primary" onClick={rollDice}>
-                <Dice5 size={20} />{diceResult.length ? t.rollAgain : t.rollDice}
+              <button type="button" className="roll-primary" onClick={rollDie}>
+                <Dice5 size={20} />{dieResult ? t.rollAgain : t.rollDice}
               </button>
             </div>
 
             <div className="dice-result-panel" aria-live="polite">
-              {diceResult.length ? (
-                <>
-                  <div className="dice-total">
-                    <span>{t.total}</span>
-                    <strong key={`${diceTotal}-${diceHistory.length}`}>{diceTotal}</strong>
-                  </div>
-                  <div className="dice-values" aria-label={diceResult.join(', ')}>
-                    {diceResult.map((value, index) => (
-                      <span key={`${diceHistory.length}-${index}`}>{value}</span>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="roll-empty-state">
-                  <Dice5 size={38} />
-                  <p>{t.waitingDice}</p>
+              {dieResult ? (
+                <div className="die-result" key={`${dieResult}-${diceHistory.length}`}>
+                  <DieFace value={dieResult} />
+                  <div><span>{t.result}</span><strong>{dieResult}</strong></div>
                 </div>
+              ) : (
+                <div className="roll-empty-state"><Dice5 size={38} /><p>{t.waitingDice}</p></div>
               )}
             </div>
 
             <aside className="dice-history-card">
               <h3>{t.diceHistory}</h3>
               {diceHistory.length ? (
-                <ol>
-                  {diceHistory.map((result, index) => (
-                    <li key={`${index}-${result.join('-')}`}>
-                      <span>{result.join(' · ')}</span>
-                      <strong>{result.reduce((sum, value) => sum + value, 0)}</strong>
-                    </li>
-                  ))}
-                </ol>
+                <ol>{diceHistory.map((value, index) => <li key={`${index}-${value}`}><DieFace value={value} small /><strong>{value}</strong></li>)}</ol>
               ) : <p>{t.noHistory}</p>}
             </aside>
           </div>
         ) : (
-          <div className="forms-panel" role="tabpanel">
-            <div className="forms-toolbar">
-              <div className="roll-section-heading">
-                <h2>{t.formsTitle}</h2>
-                <p>{t.formsBody}</p>
-              </div>
-              <div className="forms-actions">
-                <button type="button" className="roll-secondary" onClick={addForm} disabled={forms.length >= 4} title={forms.length >= 4 ? t.maxForms : undefined}>
-                  <Plus size={18} />{t.addForm}
-                </button>
-                <button type="button" className="roll-primary" onClick={rollAllForms} disabled={!hasFormOptions}>
-                  <Shuffle size={18} />{t.rollAll}
-                </button>
-              </div>
+          <div className="matching-panel" role="tabpanel">
+            <div className="roll-section-heading matching-heading">
+              <h2>{t.matchingTitle}</h2>
+              <p>{t.matchingBody}</p>
             </div>
 
-            <div className="random-forms-grid">
-              {forms.map((form) => {
-                const optionCount = optionsFrom(form.items).length;
-                return (
-                  <article className="random-form-card" key={form.id}>
-                    <div className="random-form-title-row">
-                      <label>
-                        <span className="visually-hidden">{t.formName}</span>
-                        <input
-                          value={form.name}
-                          maxLength={32}
-                          placeholder={t.formNameFallback}
-                          onChange={(event) => updateForm(form.id, { name: event.target.value })}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="icon-button"
-                        onClick={() => removeForm(form.id)}
-                        disabled={forms.length <= 1}
-                        aria-label={t.removeForm}
-                        title={t.removeForm}
-                      >
-                        <Trash2 size={17} />
-                      </button>
-                    </div>
-
-                    <div className={`form-result${form.result ? ' has-result' : ''}`} aria-live="polite">
-                      <span>{t.currentResult}</span>
-                      <strong key={`${form.id}-${form.rolls}`}>{form.result || t.waitingForm}</strong>
-                      <small>{t.rollCount(form.rolls)}</small>
-                    </div>
-
-                    <label className="random-options-field">
-                      <span>{t.options}</span>
-                      <textarea
-                        rows={7}
-                        maxLength={5000}
-                        value={form.items}
-                        placeholder={t.optionsPlaceholder}
-                        onChange={(event) => updateForm(form.id, { items: event.target.value })}
-                      />
-                      <small className={optionCount ? '' : 'empty'}>{optionCount ? t.optionCount(optionCount) : t.emptyOptions}</small>
-                    </label>
-
-                    <button type="button" className="roll-form-button" onClick={() => rollForm(form.id)} disabled={!optionCount}>
-                      <Shuffle size={17} />{t.rollForm}
-                    </button>
-
-                    {form.history.length > 1 && (
-                      <div className="form-history" aria-label={t.diceHistory}>
-                        {form.history.slice(1).map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
+            <div className="matching-inputs">
+              <label>
+                <span><strong>{t.leftTitle}</strong><small>{t.itemCount(leftItems.length)}</small></span>
+                <textarea rows={10} maxLength={5000} value={leftInput} placeholder={t.leftPlaceholder} onChange={(event) => updateList('left', event.target.value)} />
+              </label>
+              <div className="matching-divider" aria-hidden="true"><Shuffle size={20} /></div>
+              <label>
+                <span><strong>{t.rightTitle}</strong><small>{t.itemCount(rightItems.length)}</small></span>
+                <textarea rows={10} maxLength={5000} value={rightInput} placeholder={t.rightPlaceholder} onChange={(event) => updateList('right', event.target.value)} />
+              </label>
             </div>
-            {forms.length >= 4 && <p className="max-forms-note">{t.maxForms}</p>}
+
+            <div className={`matching-status${countsMatch ? ' ready' : ''}`} role="status">{matchHint}</div>
+            <button type="button" className="roll-primary matching-button" onClick={matchLists} disabled={!countsMatch}>
+              <Shuffle size={19} />{pairs.length ? t.rematch : t.match}
+            </button>
+
+            {pairs.length > 0 && (
+              <section className="matching-results" aria-labelledby="matching-results-title" aria-live="polite">
+                <h3 id="matching-results-title">{t.matchResult}</h3>
+                <ol>
+                  {pairs.map(([left, right], index) => (
+                    <li key={`${index}-${left}-${right}`}>
+                      <small>{t.pairNumber(index + 1)}</small>
+                      <span>{left}</span>
+                      <Shuffle size={16} aria-hidden="true" />
+                      <span>{right}</span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
           </div>
         )}
       </section>
 
       <section className="roll-notice shell" aria-labelledby="roll-notice-title">
         <ShieldCheck size={24} />
-        <div>
-          <h2 id="roll-notice-title">{t.noticeTitle}</h2>
-          <p>{t.noticeBody}</p>
-        </div>
+        <div><h2 id="roll-notice-title">{t.noticeTitle}</h2><p>{t.noticeBody}</p></div>
       </section>
 
       <footer className="site-footer shell">
         <div className="footer-brand">
-          <div className="brand-lockup">
-            <img src="/cuegrove-logo.png" alt="" />
-            <span>CueGrove</span>
-          </div>
+          <div className="brand-lockup"><img src="/cuegrove-logo.png" alt="" /><span>CueGrove</span></div>
           <p>{t.footerLine}</p>
         </div>
         <div className="footer-links">

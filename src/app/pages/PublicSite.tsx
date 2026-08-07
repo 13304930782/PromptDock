@@ -124,7 +124,6 @@ export default function PublicSite() {
           <div className="mobile-menu-links" id="mobile-site-navigation">
             <a href="#philosophy" onClick={closeMobileMenu}>{t.navStory}</a>
             <a href="#promptdock" onClick={closeMobileMenu}>{t.navProduct}</a>
-            <Link to="/roll" onClick={closeMobileMenu}>{locale === 'zh' ? '随机工具' : 'Random tool'}</Link>
           </div>
           <a className="nav-apply" href="#early-access" onClick={closeMobileMenu}>{t.navApply}</a>
           <button type="button" className="language-button" onClick={toggleLocale} aria-label="Switch language">
@@ -355,7 +354,7 @@ export default function PublicSite() {
           <p>{t.footerLine}</p>
         </div>
         <div className="footer-links">
-          <Link to="/roll">{locale === 'zh' ? '随机工具' : 'Random tool'}</Link>
+          <Link to="/roll">{locale === 'zh' ? '实用工具' : 'Utilities'}</Link>
           <Link to="/privacy-promise">{t.footerPrivacy}</Link>
           <Link to="/security">{t.footerSecurity}</Link>
           <Link to="/feedback">{locale === 'zh' ? '测试反馈' : 'Tester feedback'}</Link>
