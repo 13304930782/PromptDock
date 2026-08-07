@@ -20,6 +20,7 @@ const FeedbackPage = lazy(() => import('./pages/FeedbackPage'));
 const FeedbackInfoPage = lazy(() => import('./pages/FeedbackInfoPage'));
 const PrivacyPromisePage = lazy(() => import('./pages/PrivacyPromisePage'));
 const PublicSite = lazy(() => import('./pages/PublicSite'));
+const RollPage = lazy(() => import('./pages/RollPage'));
 const SecurityCommitmentPage = lazy(() => import('./pages/SecurityCommitmentPage'));
 
 const AdminLoginPage = lazy(async () => {
@@ -90,6 +91,7 @@ export default function App() {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<PublicSite />} />
+        <Route path="/roll" element={<RollPage />} />
         <Route path="/privacy-promise" element={<PrivacyPromisePage />} />
         <Route path="/security" element={<SecurityCommitmentPage />} />
         <Route path="/feedback/:token" element={<FeedbackPage />} />

@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "pnpm --dir server test",
+    "test": "node --test test/*.test.js && pnpm --dir server test",
     "server:dev": "pnpm --dir server dev",
     "server:start": "pnpm --dir server start"
   },
