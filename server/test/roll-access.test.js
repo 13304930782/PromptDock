@@ -8,9 +8,11 @@ const {
   accessKeyExpiry,
   generateAccessKey,
   hashAccessKey,
+  normalizeAccessKeyId,
   normalizeAccessKeyIds,
+  rollAccessIdFromPayload,
 } = require('../src/lib/rollAccess');
-const { optionalAdminSession, requireRollKeyIssuer } = require('../src/middleware/auth');
+const { issueSession, optionalAdminSession, requireAdmin, requireRollKeyIssuer } = require('../src/middleware/auth');
 
 test('creates a strong access key and stores only its stable hash', () => {
   const key = generateAccessKey((size) => Buffer.alloc(size, 7));
@@ -30,6 +32,24 @@ test('normalizes unique access-key ids for bulk deletion', () => {
   assert.equal(normalizeAccessKeyIds([]), null);
   assert.equal(normalizeAccessKeyIds([1, 0]), null);
   assert.equal(normalizeAccessKeyIds(Array.from({ length: 101 }, (_, index) => index + 1)), null);
+  for (const invalid of [true, false, null, '1e3', '0x10', '', 1.5, -1, 0, '9007199254740992']) {
+    assert.equal(normalizeAccessKeyIds([invalid]), null, `accepted invalid id: ${String(invalid)}`);
+  }
+});
+
+test('accepts only positive decimal access-key ids', () => {
+  assert.equal(normalizeAccessKeyId(12), 12);
+  assert.equal(normalizeAccessKeyId('12'), 12);
+  for (const invalid of [true, null, '1e3', '0x10', '01', '', 1.5, -1, 0, '9007199254740992']) {
+    assert.equal(normalizeAccessKeyId(invalid), null, `accepted invalid id: ${String(invalid)}`);
+  }
+});
+
+test('accepts only roll-access JWT payloads for tool sessions', () => {
+  assert.equal(rollAccessIdFromPayload({ id: 4, purpose: 'roll-access' }), 4);
+  assert.equal(rollAccessIdFromPayload({ id: 4, purpose: 'admin' }), null);
+  assert.equal(rollAccessIdFromPayload({ id: 4, purpose: 'mfa-login' }), null);
+  assert.equal(rollAccessIdFromPayload({ id: Number.MAX_SAFE_INTEGER + 1, purpose: 'roll-access' }), null);
 });
 
 test('only owners and the designated administrator may issue tool keys', () => {
@@ -69,9 +89,52 @@ test('an active administrator session bypasses the temporary tool key', async (t
     db.query = originalQuery;
   });
 
-  const token = jwt.sign({ id: 7 }, config.jwtSecret, { expiresIn: '5m' });
+  const token = jwt.sign({ id: 7, purpose: 'admin' }, config.jwtSecret, { expiresIn: '5m' });
   const admin = await optionalAdminSession({ cookies: { [config.cookie.name]: token } });
 
   assert.equal(admin.id, 7);
   assert.equal(admin.role, 'admin');
+});
+
+test('tool and MFA JWTs cannot become administrator sessions', async (t) => {
+  const originalSecret = config.jwtSecret;
+  const originalQuery = db.query;
+  config.jwtSecret = 'test-secret-that-is-at-least-32-characters';
+  let queryCalls = 0;
+  db.query = async () => {
+    queryCalls += 1;
+    return [[{ id: 1, role: 'owner', status: 'active' }]];
+  };
+  t.after(() => {
+    config.jwtSecret = originalSecret;
+    db.query = originalQuery;
+  });
+
+  for (const purpose of ['roll-access', 'mfa-login']) {
+    const token = jwt.sign({ id: 1, purpose }, config.jwtSecret, { expiresIn: '5m' });
+    const request = { cookies: { [config.cookie.name]: token } };
+    const response = {
+      statusCode: 200,
+      body: null,
+      status(code) { this.statusCode = code; return this; },
+      json(body) { this.body = body; return this; },
+    };
+    let nextCalls = 0;
+    await requireAdmin(request, response, () => { nextCalls += 1; });
+    assert.equal(response.statusCode, 401);
+    assert.equal(nextCalls, 0);
+    assert.equal(await optionalAdminSession(request), null);
+  }
+  assert.equal(queryCalls, 0);
+});
+
+test('administrator sessions are signed with an explicit purpose', (t) => {
+  const originalSecret = config.jwtSecret;
+  config.jwtSecret = 'test-secret-that-is-at-least-32-characters';
+  t.after(() => { config.jwtSecret = originalSecret; });
+  let token = '';
+  issueSession({ cookie(_name, value) { token = value; } }, { id: 9 });
+  const payload = jwt.verify(token, config.jwtSecret);
+  assert.equal(payload.id, 9);
+  assert.equal(payload.purpose, 'admin');
 });

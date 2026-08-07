@@ -1,10 +1,18 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
+const { randomUUID } = require('crypto');
 const db = require('../db');
 const config = require('../config');
 const { optionalAdminSession, requireAdmin, requireRollKeyIssuer } = require('../middleware/auth');
-const { accessKeyExpiry, generateAccessKey, hashAccessKey, normalizeAccessKeyIds } = require('../lib/rollAccess');
+const {
+  accessKeyExpiry,
+  generateAccessKey,
+  hashAccessKey,
+  normalizeAccessKeyId,
+  normalizeAccessKeyIds,
+  rollAccessIdFromPayload,
+} = require('../lib/rollAccess');
 
 const publicRouter = express.Router();
 const adminRouter = express.Router();
@@ -65,6 +73,38 @@ function publicAccessKey(row) {
   };
 }
 
+async function inTransaction(work) {
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    const result = await work(connection);
+    await connection.commit();
+    return result;
+  } catch (error) {
+    await connection.rollback().catch(() => undefined);
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+async function recordKeyAudit(connection, entries) {
+  if (!entries.length) return;
+  const placeholders = entries.map(() => '(?, ?, ?, ?, ?)').join(',');
+  const values = entries.flatMap((entry) => [
+    entry.keyId,
+    entry.keyPrefix,
+    entry.adminId,
+    entry.action,
+    entry.batchId || null,
+  ]);
+  await connection.query(
+    `INSERT INTO roll_access_key_audit (key_id, key_prefix, admin_id, action, batch_id)
+     VALUES ${placeholders}`,
+    values,
+  );
+}
+
 publicRouter.post('/verify', verifyLimit, async (req, res, next) => {
   try {
     ensureJwtConfigured();
@@ -109,8 +149,8 @@ publicRouter.get('/session', async (req, res, next) => {
     const token = req.cookies?.[COOKIE_NAME];
     if (!token) return res.status(401).json({ message: 'A tool access key is required.' });
     const payload = jwt.verify(token, config.jwtSecret);
-    const accessKeyId = Number(payload.id);
-    if (payload.purpose !== 'roll-access' || !Number.isInteger(accessKeyId) || accessKeyId < 1) {
+    const accessKeyId = rollAccessIdFromPayload(payload);
+    if (!accessKeyId) {
       const error = new Error('Invalid access session.');
       error.code = 'INVALID_ROLL_SESSION';
       throw error;
@@ -163,19 +203,29 @@ adminRouter.post('/', async (req, res, next) => {
   try {
     const accessKey = generateAccessKey();
     const expiresAt = accessKeyExpiry();
-    const [result] = await db.query(
-      `INSERT INTO roll_access_keys (key_hash, key_prefix, created_by, expires_at)
-       VALUES (?, ?, ?, ?)`,
-      [hashAccessKey(accessKey), accessKey.slice(0, 11), req.admin.id, expiresAt],
-    );
-    const [rows] = await db.query(
-      `SELECT rak.*, au.name AS created_by_name
-       FROM roll_access_keys rak
-       LEFT JOIN admin_users au ON au.id=rak.created_by
-       WHERE rak.id=? LIMIT 1`,
-      [result.insertId],
-    );
-    res.status(201).json({ access_key: accessKey, record: publicAccessKey(rows[0]) });
+    const keyPrefix = accessKey.slice(0, 11);
+    const record = await inTransaction(async (connection) => {
+      const [result] = await connection.query(
+        `INSERT INTO roll_access_keys (key_hash, key_prefix, created_by, expires_at)
+         VALUES (?, ?, ?, ?)`,
+        [hashAccessKey(accessKey), keyPrefix, req.admin.id, expiresAt],
+      );
+      await recordKeyAudit(connection, [{
+        keyId: result.insertId,
+        keyPrefix,
+        adminId: req.admin.id,
+        action: 'create',
+      }]);
+      const [rows] = await connection.query(
+        `SELECT rak.*, au.name AS created_by_name
+         FROM roll_access_keys rak
+         LEFT JOIN admin_users au ON au.id=rak.created_by
+         WHERE rak.id=? LIMIT 1`,
+        [result.insertId],
+      );
+      return rows[0];
+    });
+    res.status(201).json({ access_key: accessKey, record: publicAccessKey(record) });
   } catch (error) {
     next(error);
   }
@@ -183,13 +233,24 @@ adminRouter.post('/', async (req, res, next) => {
 
 adminRouter.post('/:id/revoke', async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id < 1) return res.status(400).json({ message: 'Access-key id is invalid.' });
-    const [result] = await db.query(
-      'UPDATE roll_access_keys SET revoked_at=COALESCE(revoked_at, UTC_TIMESTAMP()) WHERE id=?',
-      [id],
-    );
-    if (!result.affectedRows) return res.status(404).json({ message: 'Access key not found.' });
+    const id = normalizeAccessKeyId(req.params.id);
+    if (!id) return res.status(400).json({ message: 'Access-key id is invalid.' });
+    const revoked = await inTransaction(async (connection) => {
+      const [rows] = await connection.query(
+        'SELECT id, key_prefix FROM roll_access_keys WHERE id=? AND revoked_at IS NULL FOR UPDATE',
+        [id],
+      );
+      if (!rows[0]) return false;
+      await connection.query('UPDATE roll_access_keys SET revoked_at=UTC_TIMESTAMP() WHERE id=?', [id]);
+      await recordKeyAudit(connection, [{
+        keyId: id,
+        keyPrefix: rows[0].key_prefix,
+        adminId: req.admin.id,
+        action: 'revoke',
+      }]);
+      return true;
+    });
+    if (!revoked) return res.status(404).json({ message: 'Access key not found or already revoked.' });
     res.json({ message: 'Access key revoked.' });
   } catch (error) {
     next(error);
@@ -201,8 +262,26 @@ adminRouter.delete('/', async (req, res, next) => {
     const ids = normalizeAccessKeyIds(req.body.ids);
     if (!ids) return res.status(400).json({ message: 'Select between 1 and 100 valid access keys.' });
     const placeholders = ids.map(() => '?').join(',');
-    const [result] = await db.query(`DELETE FROM roll_access_keys WHERE id IN (${placeholders})`, ids);
-    res.json({ deleted: result.affectedRows });
+    const deleted = await inTransaction(async (connection) => {
+      const [rows] = await connection.query(
+        `SELECT id, key_prefix FROM roll_access_keys WHERE id IN (${placeholders}) FOR UPDATE`,
+        ids,
+      );
+      if (!rows.length) return 0;
+      const batchId = randomUUID();
+      await recordKeyAudit(connection, rows.map((row) => ({
+        keyId: row.id,
+        keyPrefix: row.key_prefix,
+        adminId: req.admin.id,
+        action: 'bulk_delete',
+        batchId,
+      })));
+      const rowIds = rows.map((row) => row.id);
+      const rowPlaceholders = rowIds.map(() => '?').join(',');
+      const [result] = await connection.query(`DELETE FROM roll_access_keys WHERE id IN (${rowPlaceholders})`, rowIds);
+      return result.affectedRows;
+    });
+    res.json({ deleted });
   } catch (error) {
     next(error);
   }
@@ -210,10 +289,24 @@ adminRouter.delete('/', async (req, res, next) => {
 
 adminRouter.delete('/:id', async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id < 1) return res.status(400).json({ message: 'Access-key id is invalid.' });
-    const [result] = await db.query('DELETE FROM roll_access_keys WHERE id=?', [id]);
-    if (!result.affectedRows) return res.status(404).json({ message: 'Access key not found.' });
+    const id = normalizeAccessKeyId(req.params.id);
+    if (!id) return res.status(400).json({ message: 'Access-key id is invalid.' });
+    const deleted = await inTransaction(async (connection) => {
+      const [rows] = await connection.query(
+        'SELECT id, key_prefix FROM roll_access_keys WHERE id=? FOR UPDATE',
+        [id],
+      );
+      if (!rows[0]) return false;
+      await recordKeyAudit(connection, [{
+        keyId: id,
+        keyPrefix: rows[0].key_prefix,
+        adminId: req.admin.id,
+        action: 'delete',
+      }]);
+      await connection.query('DELETE FROM roll_access_keys WHERE id=?', [id]);
+      return true;
+    });
+    if (!deleted) return res.status(404).json({ message: 'Access key not found.' });
     res.json({ deleted: 1 });
   } catch (error) {
     next(error);

@@ -37,8 +37,13 @@ function publicAdmin(user) {
 
 function issueSession(res, user) {
   ensureJwtConfigured();
-  const token = jwt.sign({ id: user.id }, config.jwtSecret, { expiresIn: '7d' });
+  const token = jwt.sign({ id: user.id, purpose: 'admin' }, config.jwtSecret, { expiresIn: '7d' });
   res.cookie(config.cookie.name, token, cookieOptions());
+}
+
+function adminIdFromPayload(payload) {
+  const id = Number(payload.id);
+  return payload.purpose === 'admin' && Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
 function clearSession(res) {
@@ -53,9 +58,11 @@ async function requireAdmin(req, res, next) {
     const token = req.cookies?.[config.cookie.name];
     if (!token) return res.status(401).json({ message: 'Administrator sign-in is required.' });
     const payload = jwt.verify(token, config.jwtSecret);
+    const adminId = adminIdFromPayload(payload);
+    if (!adminId) return res.status(401).json({ message: 'Administrator session is invalid.' });
     const [rows] = await db.query(
       'SELECT id, name, email, role, status, can_issue_roll_keys, mfa_enabled_at FROM admin_users WHERE id=? LIMIT 1',
-      [payload.id],
+      [adminId],
     );
     const admin = rows[0];
     if (!admin) return res.status(401).json({ message: 'Administrator session is no longer valid.' });
@@ -79,9 +86,11 @@ async function optionalAdminSession(req) {
   } catch {
     return null;
   }
+  const adminId = adminIdFromPayload(payload);
+  if (!adminId) return null;
   const [rows] = await db.query(
     'SELECT id, name, email, role, status, can_issue_roll_keys, mfa_enabled_at FROM admin_users WHERE id=? LIMIT 1',
-    [payload.id],
+    [adminId],
   );
   const admin = rows[0];
   return admin?.status === 'active' && ['owner', 'admin'].includes(admin.role) ? admin : null;
