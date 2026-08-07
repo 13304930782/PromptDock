@@ -101,3 +101,13 @@ The backup format and SwiftData schema both remain at version 1. Future model ch
 A free Personal Team supports local development and widget testing. A DMG can be created without a paid account, but public Developer ID signing, notarization, and Mac App Store distribution require the Apple Developer Program. An unsigned or unnotarized DMG may trigger Gatekeeper warnings on other Macs.
 
 PromptDock is available under the [MIT License](LICENSE).
+
+## CueGrove website
+
+This repository also contains the independent CueGrove brand website and PromptDock Early Access workflow:
+
+- `src/` contains the bilingual React/Vite public site and protected administrator UI.
+- `server/` contains the isolated Express, MySQL, authentication, review, and SMTP service.
+- `Brand/CueGrove/` contains the CueGrove source brand assets.
+
+Use `pnpm dev` for the frontend, `pnpm server:dev` for the API, `pnpm build` for the production frontend, and `pnpm test` for backend validation and branded-email tests. Production setup and recovery instructions are in [CUEGROVE_DEPLOY.md](CUEGROVE_DEPLOY.md).

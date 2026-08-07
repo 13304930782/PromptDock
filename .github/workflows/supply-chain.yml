@@ -1,0 +1,79 @@
+name: Supply chain security
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - codex/cuegrove-site
+  schedule:
+    - cron: '23 19 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supply-chain-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    name: Review dependency changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Block newly introduced high-risk dependencies
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+          # RSC/server actions are not present in this static client-only site.
+          # Time-limited exception: SUPPLY_CHAIN_SECURITY.md (review 2026-08-29).
+          allow-ghsas: GHSA-qwww-vcr4-c8h2
+
+  production-audit:
+    name: Audit production dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install exactly locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Block high and critical production vulnerabilities
+        run: pnpm audit --prod --audit-level high
+
+  secret-scan:
+    name: Scan repository history for secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out full repository history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect hard-coded credentials and tokens
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
