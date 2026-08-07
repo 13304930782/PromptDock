@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Dice5, ListChecks, ShieldCheck, Shuffle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { randomOrder, randomSwap, secureRandomInt } from '../lib/random';
+import { randomOrder, secureRandomInt } from '../lib/random';
 import { usePublicLocale } from '../lib/locale';
 
 type Mode = 'dice' | 'matching';
@@ -35,7 +35,7 @@ const rollCopy = {
     diceHistory: '最近结果',
     noHistory: '还没有掷骰记录',
     matchingTitle: '两列随机配对',
-    matchingBody: '先分别手动调换左右两列，每点一次只随机一次；完成目标次数后，再基于调换后的内容随机生成最终配对。',
+    matchingBody: '先分别手动随机左右两列，每点一次都会将整列完整随机排序；完成目标次数后，再基于排序结果随机生成最终配对。',
     leftTitle: '左侧内容',
     rightTitle: '右侧内容',
     leftPlaceholder: '每行一个项目\n例如：\n小林\n小周\n小陈',
@@ -43,8 +43,8 @@ const rollCopy = {
     itemCount: (count: number) => `${count} 项`,
     emptyHint: '请填写左右两列内容',
     mismatchHint: (left: number, right: number) => `数量不一致：左侧 ${left} 项，右侧 ${right} 项`,
-    readyHint: (count: number) => `两列调换已完成，可以生成 ${count} 组配对`,
-    progressHint: '请先分别完成左右两列的随机调换',
+    readyHint: (count: number) => `两列随机排序已完成，可以生成 ${count} 组配对`,
+    progressHint: '请先分别完成左右两列的随机排序',
     match: '生成最终随机匹配',
     rematch: '重新生成最终匹配',
     autoFill: '骰子点数自动填入随机次数',
@@ -52,10 +52,10 @@ const rollCopy = {
     manualFillHint: '已关闭自动填充，可分别修改两列次数',
     leftShuffle: '左列随机次数',
     rightShuffle: '右列随机次数',
-    shuffleLeft: '随机调换左列一次',
-    shuffleRight: '随机调换右列一次',
+    shuffleLeft: '完整随机左列一次',
+    shuffleRight: '完整随机右列一次',
     shuffleProgress: (done: number, target: number) => `已完成 ${done} / ${target} 次`,
-    shuffleDone: '两列调换完成',
+    shuffleDone: '两列随机排序完成',
     diceValues: (left: number, right: number) => `本次骰子点数：${left} · ${right}`,
     matchResult: '最终随机匹配',
     localNote: '本地计算 · 不保存填写内容 · 不记录 IP',
@@ -82,7 +82,7 @@ const rollCopy = {
     diceHistory: 'Recent results',
     noHistory: 'No rolls yet',
     matchingTitle: 'Match two lists',
-    matchingBody: 'Randomize the left and right lists manually first. Each click swaps once; after both targets are complete, create random final pairs from those results.',
+    matchingBody: 'Randomize the left and right lists manually first. Each click fully shuffles one list; after both targets are complete, create random final pairs from those results.',
     leftTitle: 'Left list',
     rightTitle: 'Right list',
     leftPlaceholder: 'One item per line\nFor example:\nAlex\nBlair\nCasey',
@@ -91,7 +91,7 @@ const rollCopy = {
     emptyHint: 'Enter items in both lists',
     mismatchHint: (left: number, right: number) => `Counts differ: ${left} on the left and ${right} on the right`,
     readyHint: (count: number) => `Both lists are ready. Create ${count} final pair${count === 1 ? '' : 's'}`,
-    progressHint: 'Complete the manual shuffles for both lists first',
+    progressHint: 'Complete the full manual shuffles for both lists first',
     match: 'Create final random pairs',
     rematch: 'Create final pairs again',
     autoFill: 'Auto-fill shuffle counts from dice',
@@ -99,10 +99,10 @@ const rollCopy = {
     manualFillHint: 'Auto-fill is off. You can edit each count separately',
     leftShuffle: 'Left shuffle count',
     rightShuffle: 'Right shuffle count',
-    shuffleLeft: 'Shuffle left list once',
-    shuffleRight: 'Shuffle right list once',
+    shuffleLeft: 'Fully shuffle left once',
+    shuffleRight: 'Fully shuffle right once',
     shuffleProgress: (done: number, target: number) => `${done} / ${target} completed`,
-    shuffleDone: 'Both lists are ready',
+    shuffleDone: 'Both lists are fully shuffled',
     diceValues: (left: number, right: number) => `Latest dice values: ${left} · ${right}`,
     matchResult: 'Final random pairs',
     localNote: 'Calculated locally · Entries are not stored · No IP logging',
@@ -194,8 +194,8 @@ export default function RollPage() {
 
   const shuffleListOnce = (side: 0 | 1) => {
     if (!countsMatch || shuffleClicks[side] >= shufflePasses[side]) return;
-    if (side === 0) setLeftInput(randomSwap(leftItems).join('\n'));
-    else setRightInput(randomSwap(rightItems).join('\n'));
+    if (side === 0) setLeftInput(randomOrder(leftItems).join('\n'));
+    else setRightInput(randomOrder(rightItems).join('\n'));
     setShuffleClicks((current) => side === 0 ? [current[0] + 1, current[1]] : [current[0], current[1] + 1]);
     setPairs([]);
   };

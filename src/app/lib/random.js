@@ -11,17 +11,6 @@ export function secureRandomInt(maxExclusive, fill = crypto.getRandomValues.bind
   return value[0] % maxExclusive;
 }
 
-export function randomSwap(items, randomInt = secureRandomInt) {
-  const result = [...items];
-  if (result.length < 2) return result;
-
-  const firstIndex = randomInt(result.length);
-  let secondIndex = randomInt(result.length - 1);
-  if (secondIndex >= firstIndex) secondIndex += 1;
-  [result[firstIndex], result[secondIndex]] = [result[secondIndex], result[firstIndex]];
-  return result;
-}
-
 export function randomOrder(items, randomInt = secureRandomInt) {
   const result = [...items];
   for (let index = result.length - 1; index > 0; index -= 1) {
