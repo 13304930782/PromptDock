@@ -35,7 +35,7 @@ const rollCopy = {
     diceHistory: '最近结果',
     noHistory: '还没有掷骰记录',
     matchingTitle: '两列随机配对',
-    matchingBody: '左右两边各填一列内容，每行一个项目。两边数量相等后即可随机一一配对。',
+    matchingBody: '左右各填一列内容。每次操作会掷出两个骰子，左骰点数决定左列洗牌次数，右骰点数决定右列洗牌次数。',
     leftTitle: '左侧内容',
     rightTitle: '右侧内容',
     leftPlaceholder: '每行一个项目\n例如：\n小林\n小周\n小陈',
@@ -44,10 +44,12 @@ const rollCopy = {
     emptyHint: '请填写左右两列内容',
     mismatchHint: (left: number, right: number) => `数量不一致：左侧 ${left} 项，右侧 ${right} 项`,
     readyHint: (count: number) => `数量一致，可以生成 ${count} 组配对`,
-    match: '开始随机配对',
-    rematch: '再次随机',
-    matchCount: (count: number) => `已随机 ${count} 次`,
-    matchResult: '配对结果',
+    match: '掷骰并随机排序',
+    rematch: '再次掷骰并随机',
+    rollRule: '左骰控制左列，右骰控制右列',
+    leftShuffle: (count: number) => `左列随机 ${count} 次`,
+    rightShuffle: (count: number) => `右列随机 ${count} 次`,
+    matchResult: '随机排序结果',
     localNote: '本地计算 · 不保存填写内容 · 不记录 IP',
     noticeTitle: '使用须知',
     noticeBody: '本工具仅用于娱乐、教学、桌游及日常随机选择，不提供投注、支付、奖金、赔率或结算功能。严禁用于赌博、欺诈及其他违法活动。使用者应自行遵守所在地法律法规；随机结果不构成财务、法律或其他专业依据。',
@@ -72,7 +74,7 @@ const rollCopy = {
     diceHistory: 'Recent results',
     noHistory: 'No rolls yet',
     matchingTitle: 'Match two lists',
-    matchingBody: 'Enter one item per line on each side. When both lists have the same number of items, they can be matched one to one at random.',
+    matchingBody: 'Enter one list on each side. Each run rolls two dice: the left die controls how many times the left list is shuffled, and the right die controls the right list.',
     leftTitle: 'Left list',
     rightTitle: 'Right list',
     leftPlaceholder: 'One item per line\nFor example:\nAlex\nBlair\nCasey',
@@ -81,10 +83,12 @@ const rollCopy = {
     emptyHint: 'Enter items in both lists',
     mismatchHint: (left: number, right: number) => `Counts differ: ${left} on the left and ${right} on the right`,
     readyHint: (count: number) => `Counts match. Ready to create ${count} pair${count === 1 ? '' : 's'}`,
-    match: 'Create random matches',
-    rematch: 'Match again',
-    matchCount: (count: number) => `${count} random match${count === 1 ? '' : 'es'}`,
-    matchResult: 'Matches',
+    match: 'Roll dice and randomize',
+    rematch: 'Roll and randomize again',
+    rollRule: 'Left die controls the left list; right die controls the right list',
+    leftShuffle: (count: number) => `Left shuffled ${count} time${count === 1 ? '' : 's'}`,
+    rightShuffle: (count: number) => `Right shuffled ${count} time${count === 1 ? '' : 's'}`,
+    matchResult: 'Randomized order',
     localNote: 'Calculated locally · Entries are not stored · No IP logging',
     noticeTitle: 'Acceptable use',
     noticeBody: 'This tool is intended only for entertainment, education, tabletop games, and everyday random choices. It does not provide betting, payments, prizes, odds, or settlement. Gambling, fraud, and any other unlawful use are prohibited. You are responsible for following local laws, and results are not financial, legal, or other professional advice.',
@@ -116,7 +120,7 @@ export default function RollPage() {
   const [leftInput, setLeftInput] = useState('');
   const [rightInput, setRightInput] = useState('');
   const [pairs, setPairs] = useState<Pair[]>([]);
-  const [matchCount, setMatchCount] = useState(0);
+  const [matchingRoll, setMatchingRoll] = useState<DiceRoll | null>(null);
   const t = rollCopy[locale];
   const leftItems = itemsFrom(leftInput);
   const rightItems = itemsFrom(rightInput);
@@ -128,23 +132,25 @@ export default function RollPage() {
     window.scrollTo({ top: 0 });
   }, [locale]);
 
-  const rollDie = () => {
+  const rollDice = () => {
     const result: DiceRoll = [secureRandomInt(6) + 1, secureRandomInt(6) + 1];
     setDiceResult(result);
     setDiceHistory((history) => [result, ...history].slice(0, 8));
+    return result;
   };
 
   const matchLists = () => {
     if (!countsMatch) return;
-    setPairs(randomPairs(leftItems, rightItems) as Pair[]);
-    setMatchCount((count) => count + 1);
+    const roll = rollDice();
+    setMatchingRoll(roll);
+    setPairs(randomPairs(leftItems, rightItems, roll[0], roll[1]) as Pair[]);
   };
 
   const updateList = (side: 'left' | 'right', value: string) => {
     if (side === 'left') setLeftInput(value);
     else setRightInput(value);
     setPairs([]);
-    setMatchCount(0);
+    setMatchingRoll(null);
   };
 
   const matchHint = !leftItems.length && !rightItems.length
@@ -197,7 +203,7 @@ export default function RollPage() {
                 <h2>{t.diceTitle}</h2>
                 <p>{t.diceBody}</p>
               </div>
-              <button type="button" className="roll-primary" onClick={rollDie}>
+              <button type="button" className="roll-primary" onClick={rollDice}>
                 <Dice5 size={20} />{diceResult ? t.rollAgain : t.rollDice}
               </button>
             </div>
@@ -249,7 +255,12 @@ export default function RollPage() {
 
             <div className="matching-meta">
               <div className={`matching-status${countsMatch ? ' ready' : ''}`} role="status">{matchHint}</div>
-              <strong>{t.matchCount(matchCount)}</strong>
+              {matchingRoll ? (
+                <div className="matching-rolls">
+                  <span><DieFace value={matchingRoll[0]} small />{t.leftShuffle(matchingRoll[0])}</span>
+                  <span><DieFace value={matchingRoll[1]} small />{t.rightShuffle(matchingRoll[1])}</span>
+                </div>
+              ) : <strong>{t.rollRule}</strong>}
             </div>
             <button type="button" className="roll-primary matching-button" onClick={matchLists} disabled={!countsMatch}>
               <Shuffle size={19} />{pairs.length ? t.rematch : t.match}

@@ -19,11 +19,17 @@ test('secureRandomInt validates its range', () => {
   assert.throws(() => secureRandomInt(1.5), RangeError);
 });
 
-test('randomPairs creates a one-to-one match and rejects unequal lists', () => {
-  const pairs = randomPairs(['A', 'B', 'C'], ['1', '2', '3'], () => 0);
+test('randomPairs independently shuffles each list for the requested passes', () => {
+  let reads = 0;
+  const pairs = randomPairs(['A', 'B', 'C'], ['1', '2', '3'], 2, 3, () => {
+    reads += 1;
+    return 0;
+  });
 
-  assert.deepEqual(pairs, [['B', '2'], ['C', '3'], ['A', '1']]);
+  assert.deepEqual(pairs, [['C', '1'], ['A', '2'], ['B', '3']]);
+  assert.equal(reads, 10);
   assert.deepEqual(pairs.flatMap(([left]) => left).sort(), ['A', 'B', 'C']);
   assert.deepEqual(pairs.flatMap(([, right]) => right).sort(), ['1', '2', '3']);
   assert.throws(() => randomPairs(['A'], ['1', '2']), RangeError);
+  assert.throws(() => randomPairs(['A'], ['1'], 0, 1), RangeError);
 });

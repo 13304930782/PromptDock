@@ -2904,7 +2904,23 @@ input[type='password']::-webkit-caps-lock-indicator {
   font-size: 12px;
 }
 
+.matching-rolls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.matching-rolls > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--forest-900);
+  font-size: 12px;
+  font-weight: 750;
+}
+
 .matching-button {
+  display: flex;
   min-width: 230px;
   margin: 18px auto 0;
 }
@@ -3112,6 +3128,17 @@ input[type='password']::-webkit-caps-lock-indicator {
     align-items: flex-start;
     flex-direction: column;
     gap: 6px;
+  }
+
+  .matching-rolls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .matching-rolls > span {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .roll-notice {
