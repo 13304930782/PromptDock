@@ -178,6 +178,9 @@ export default function RollPage() {
   const rightItems = itemsFrom(rightInput);
   const countsMatch = leftItems.length > 0 && leftItems.length === rightItems.length;
   const shufflesComplete = countsMatch && shuffleClicks.every((count, index) => count >= shufflePasses[index]);
+  const accessStatusLabel = administratorAccess
+    ? t.administratorBadge
+    : accessExpiresAt ? t.accessUntil(new Date(accessExpiresAt).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en')) : '';
 
   const applyAccessSession = (session: RollAccessSession) => {
     setAdministratorAccess(session.administrator === true);
@@ -385,7 +388,10 @@ export default function RollPage() {
           <span>CueGrove</span>
         </Link>
         <nav className="policy-nav" aria-label={locale === 'zh' ? '实用工具页面导航' : 'Utilities navigation'}>
-          {administratorAccess && <span className="roll-admin-session" title={t.administratorAccess}><ShieldCheck size={15} /><span>{t.administratorBadge}</span></span>}
+          <span className="roll-admin-session" title={administratorAccess ? t.administratorAccess : accessStatusLabel}>
+            {administratorAccess ? <ShieldCheck size={15} /> : <KeyRound size={15} />}
+            <span>{accessStatusLabel}</span>
+          </span>
           <Link className="policy-home-link" to="/"><ArrowLeft size={16} />{t.home}</Link>
           {!administratorAccess && <button type="button" className="policy-home-link roll-access-logout" onClick={endAccess}><LogOut size={16} />{t.endAccess}</button>}
           <button
@@ -404,7 +410,6 @@ export default function RollPage() {
         <h1>{t.title}</h1>
         <p>{t.intro}</p>
         <div className="roll-local-note"><span />{t.localNote}</div>
-        {!administratorAccess && <div className="roll-access-expiry"><KeyRound size={14} />{t.accessUntil(new Date(accessExpiresAt!).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en'))}</div>}
       </section>
 
       <section className="roll-tool shell" aria-label={locale === 'zh' ? '实用工具' : 'Utilities'}>

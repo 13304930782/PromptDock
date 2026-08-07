@@ -2749,15 +2749,6 @@ input[type='password']::-webkit-caps-lock-indicator {
   cursor: pointer;
 }
 
-.roll-access-expiry {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 10px;
-  color: var(--muted);
-  font-size: 11px;
-}
-
 .roll-admin-session {
   display: inline-flex;
   align-items: center;
