@@ -2684,7 +2684,14 @@ input[type='password']::-webkit-caps-lock-indicator {
   animation: roll-result-in 280ms ease-out both;
 }
 
-.die-result > div > span {
+.die-pair,
+.history-dice-pair {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.die-total > span {
   display: block;
   color: var(--leaf-300);
   font-size: 11px;
@@ -2693,7 +2700,7 @@ input[type='password']::-webkit-caps-lock-indicator {
   text-transform: uppercase;
 }
 
-.die-result > div > strong {
+.die-total > strong {
   display: block;
   margin-top: 4px;
   color: var(--white);
@@ -2743,6 +2750,10 @@ input[type='password']::-webkit-caps-lock-indicator {
 .die-face.small i {
   width: 5px;
   height: 5px;
+}
+
+.history-dice-pair {
+  gap: 6px;
 }
 
 .roll-empty-state {
@@ -3090,10 +3101,14 @@ input[type='password']::-webkit-caps-lock-indicator {
     text-align: center;
   }
 
+  .die-pair {
+    gap: 10px;
+  }
+
   .die-face {
-    width: 132px;
-    height: 132px;
-    padding: 21px;
+    width: 120px;
+    height: 120px;
+    padding: 18px;
   }
 
   .roll-notice {

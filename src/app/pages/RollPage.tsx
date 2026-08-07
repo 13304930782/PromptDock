@@ -6,6 +6,7 @@ import { usePublicLocale } from '../lib/locale';
 
 type Mode = 'dice' | 'matching';
 type Pair = [string, string];
+type DiceRoll = [number, number];
 
 const pipPositions: Record<number, number[]> = {
   1: [5],
@@ -22,15 +23,15 @@ const rollCopy = {
     home: '返回首页',
     eyebrow: 'CueGrove Utilities',
     title: '简单、清楚的实用工具',
-    intro: '一个传统六面骰，以及两列内容的随机一一配对。所有计算都在你的浏览器中完成。',
-    diceTab: '六面骰',
+    intro: '两个传统六面骰，以及两列内容的随机一一配对。所有计算都在你的浏览器中完成。',
+    diceTab: '两个六面骰',
     matchingTab: '随机配对',
-    diceTitle: '掷六面骰',
-    diceBody: '固定使用传统六面骰，结果只会是 1 到 6。',
+    diceTitle: '掷两个六面骰',
+    diceBody: '同时掷出两个传统六面骰，每个骰子的结果都是 1 到 6。',
     rollDice: '掷骰子',
     rollAgain: '再掷一次',
-    result: '本次点数',
-    waitingDice: '点击按钮掷出骰子',
+    result: '合计点数',
+    waitingDice: '点击按钮同时掷出两个骰子',
     diceHistory: '最近结果',
     noHistory: '还没有掷骰记录',
     matchingTitle: '两列随机配对',
@@ -59,15 +60,15 @@ const rollCopy = {
     home: 'Back home',
     eyebrow: 'CueGrove Utilities',
     title: 'Simple, useful random tools',
-    intro: 'A traditional six-sided die and one-to-one random matching between two lists. Everything runs in your browser.',
-    diceTab: 'Six-sided die',
+    intro: 'Two traditional six-sided dice and one-to-one random matching between two lists. Everything runs in your browser.',
+    diceTab: 'Two dice',
     matchingTab: 'Random matching',
-    diceTitle: 'Roll a six-sided die',
-    diceBody: 'A traditional six-sided die with results from 1 to 6 only.',
-    rollDice: 'Roll die',
+    diceTitle: 'Roll two six-sided dice',
+    diceBody: 'Roll two traditional six-sided dice together. Each result is between 1 and 6.',
+    rollDice: 'Roll dice',
     rollAgain: 'Roll again',
-    result: 'Result',
-    waitingDice: 'Press the button to roll',
+    result: 'Total',
+    waitingDice: 'Press the button to roll both dice',
     diceHistory: 'Recent results',
     noHistory: 'No rolls yet',
     matchingTitle: 'Match two lists',
@@ -110,8 +111,8 @@ function DieFace({ value, small = false }: { value: number; small?: boolean }) {
 export default function RollPage() {
   const [locale, setLocale] = usePublicLocale();
   const [mode, setMode] = useState<Mode>('dice');
-  const [dieResult, setDieResult] = useState<number | null>(null);
-  const [diceHistory, setDiceHistory] = useState<number[]>([]);
+  const [diceResult, setDiceResult] = useState<DiceRoll | null>(null);
+  const [diceHistory, setDiceHistory] = useState<DiceRoll[]>([]);
   const [leftInput, setLeftInput] = useState('');
   const [rightInput, setRightInput] = useState('');
   const [pairs, setPairs] = useState<Pair[]>([]);
@@ -127,8 +128,8 @@ export default function RollPage() {
   }, [locale]);
 
   const rollDie = () => {
-    const result = secureRandomInt(6) + 1;
-    setDieResult(result);
+    const result: DiceRoll = [secureRandomInt(6) + 1, secureRandomInt(6) + 1];
+    setDiceResult(result);
     setDiceHistory((history) => [result, ...history].slice(0, 8));
   };
 
@@ -194,15 +195,18 @@ export default function RollPage() {
                 <p>{t.diceBody}</p>
               </div>
               <button type="button" className="roll-primary" onClick={rollDie}>
-                <Dice5 size={20} />{dieResult ? t.rollAgain : t.rollDice}
+                <Dice5 size={20} />{diceResult ? t.rollAgain : t.rollDice}
               </button>
             </div>
 
             <div className="dice-result-panel" aria-live="polite">
-              {dieResult ? (
-                <div className="die-result" key={`${dieResult}-${diceHistory.length}`}>
-                  <DieFace value={dieResult} />
-                  <div><span>{t.result}</span><strong>{dieResult}</strong></div>
+              {diceResult ? (
+                <div className="die-result" key={`${diceResult.join('-')}-${diceHistory.length}`}>
+                  <div className="die-pair">
+                    <DieFace value={diceResult[0]} />
+                    <DieFace value={diceResult[1]} />
+                  </div>
+                  <div className="die-total"><span>{t.result}</span><strong>{diceResult[0] + diceResult[1]}</strong></div>
                 </div>
               ) : (
                 <div className="roll-empty-state"><Dice5 size={38} /><p>{t.waitingDice}</p></div>
@@ -212,7 +216,12 @@ export default function RollPage() {
             <aside className="dice-history-card">
               <h3>{t.diceHistory}</h3>
               {diceHistory.length ? (
-                <ol>{diceHistory.map((value, index) => <li key={`${index}-${value}`}><DieFace value={value} small /><strong>{value}</strong></li>)}</ol>
+                <ol>{diceHistory.map((roll, index) => (
+                  <li key={`${index}-${roll.join('-')}`}>
+                    <span className="history-dice-pair"><DieFace value={roll[0]} small /><DieFace value={roll[1]} small /></span>
+                    <strong>{roll[0] + roll[1]}</strong>
+                  </li>
+                ))}</ol>
               ) : <p>{t.noHistory}</p>}
             </aside>
           </div>
