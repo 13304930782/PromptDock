@@ -8,6 +8,7 @@ const {
   accessKeyExpiry,
   generateAccessKey,
   hashAccessKey,
+  normalizeAccessKeyIds,
 } = require('../src/lib/rollAccess');
 const { optionalAdminSession, requireRollKeyIssuer } = require('../src/middleware/auth');
 
@@ -22,6 +23,13 @@ test('temporary tool access expires exactly 24 hours after creation', () => {
   const now = Date.UTC(2026, 7, 8, 12, 0, 0);
   assert.equal(accessKeyExpiry(now).getTime() - now, ACCESS_KEY_LIFETIME_MS);
   assert.equal(ACCESS_KEY_LIFETIME_MS, 24 * 60 * 60 * 1000);
+});
+
+test('normalizes unique access-key ids for bulk deletion', () => {
+  assert.deepEqual(normalizeAccessKeyIds([3, '2', 3]), [3, 2]);
+  assert.equal(normalizeAccessKeyIds([]), null);
+  assert.equal(normalizeAccessKeyIds([1, 0]), null);
+  assert.equal(normalizeAccessKeyIds(Array.from({ length: 101 }, (_, index) => index + 1)), null);
 });
 
 test('only owners and the designated administrator may issue tool keys', () => {

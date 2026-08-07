@@ -76,6 +76,7 @@ const rollCopy = {
     accessInvalid: '访问密钥无效或已过期，请检查后重试。',
     accessUntil: (date: string) => `访问有效期至 ${date}`,
     administratorAccess: '管理员身份已验证，无需临时密钥',
+    administratorBadge: '管理员访问',
     administratorExpired: '管理员登录已失效，请重新登录后台或使用临时密钥。',
     endAccess: '退出工具',
   },
@@ -135,6 +136,7 @@ const rollCopy = {
     accessInvalid: 'This access key is invalid or expired. Check it and try again.',
     accessUntil: (date: string) => `Access valid until ${date}`,
     administratorAccess: 'Administrator session verified — no temporary key required',
+    administratorBadge: 'Administrator access',
     administratorExpired: 'Your administrator session ended. Sign in again or use a temporary key.',
     endAccess: 'End access',
   },
@@ -383,6 +385,7 @@ export default function RollPage() {
           <span>CueGrove</span>
         </Link>
         <nav className="policy-nav" aria-label={locale === 'zh' ? '实用工具页面导航' : 'Utilities navigation'}>
+          {administratorAccess && <span className="roll-admin-session" title={t.administratorAccess}><ShieldCheck size={15} /><span>{t.administratorBadge}</span></span>}
           <Link className="policy-home-link" to="/"><ArrowLeft size={16} />{t.home}</Link>
           {!administratorAccess && <button type="button" className="policy-home-link roll-access-logout" onClick={endAccess}><LogOut size={16} />{t.endAccess}</button>}
           <button
@@ -401,9 +404,7 @@ export default function RollPage() {
         <h1>{t.title}</h1>
         <p>{t.intro}</p>
         <div className="roll-local-note"><span />{t.localNote}</div>
-        <div className="roll-access-expiry"><KeyRound size={14} />{administratorAccess
-          ? t.administratorAccess
-          : t.accessUntil(new Date(accessExpiresAt!).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en'))}</div>
+        {!administratorAccess && <div className="roll-access-expiry"><KeyRound size={14} />{t.accessUntil(new Date(accessExpiresAt!).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en'))}</div>}
       </section>
 
       <section className="roll-tool shell" aria-label={locale === 'zh' ? '实用工具' : 'Utilities'}>

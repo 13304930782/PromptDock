@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 const config = require('../config');
 const { optionalAdminSession, requireAdmin, requireRollKeyIssuer } = require('../middleware/auth');
-const { accessKeyExpiry, generateAccessKey, hashAccessKey } = require('../lib/rollAccess');
+const { accessKeyExpiry, generateAccessKey, hashAccessKey, normalizeAccessKeyIds } = require('../lib/rollAccess');
 
 const publicRouter = express.Router();
 const adminRouter = express.Router();
@@ -191,6 +191,30 @@ adminRouter.post('/:id/revoke', async (req, res, next) => {
     );
     if (!result.affectedRows) return res.status(404).json({ message: 'Access key not found.' });
     res.json({ message: 'Access key revoked.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.delete('/', async (req, res, next) => {
+  try {
+    const ids = normalizeAccessKeyIds(req.body.ids);
+    if (!ids) return res.status(400).json({ message: 'Select between 1 and 100 valid access keys.' });
+    const placeholders = ids.map(() => '?').join(',');
+    const [result] = await db.query(`DELETE FROM roll_access_keys WHERE id IN (${placeholders})`, ids);
+    res.json({ deleted: result.affectedRows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.delete('/:id', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) return res.status(400).json({ message: 'Access-key id is invalid.' });
+    const [result] = await db.query('DELETE FROM roll_access_keys WHERE id=?', [id]);
+    if (!result.affectedRows) return res.status(404).json({ message: 'Access key not found.' });
+    res.json({ deleted: 1 });
   } catch (error) {
     next(error);
   }

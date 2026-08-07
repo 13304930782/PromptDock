@@ -2387,13 +2387,36 @@ input[type='password']::-webkit-caps-lock-indicator {
   overflow: hidden;
 }
 
+.roll-key-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  min-height: 42px;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.roll-key-toolbar .button {
+  min-height: 38px;
+  padding: 0 14px;
+}
+
 .roll-key-list-head,
 .roll-key-row {
   display: grid;
-  grid-template-columns: 0.9fr 1fr 1.25fr 0.45fr 0.7fr auto;
+  grid-template-columns: 26px 0.85fr 0.95fr 1.2fr 0.4fr 0.65fr 1fr;
   align-items: center;
   gap: 14px;
   padding: 14px 18px;
+}
+
+.roll-key-list-head input,
+.roll-key-row > input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--forest-800);
 }
 
 .roll-key-list-head {
@@ -2417,10 +2440,20 @@ input[type='password']::-webkit-caps-lock-indicator {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+.roll-key-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .roll-key-row .text-button {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+
+.roll-key-row .text-button.danger {
+  color: #a13e3e;
 }
 
 .roll-key-row .text-button:disabled {
@@ -2428,8 +2461,8 @@ input[type='password']::-webkit-caps-lock-indicator {
   opacity: 0.4;
 }
 
-.roll-key-list-head > :nth-child(4),
-.roll-key-row > :nth-child(4) {
+.roll-key-list-head > :nth-child(5),
+.roll-key-row > :nth-child(5) {
   justify-self: center;
   text-align: center;
 }
@@ -2723,6 +2756,20 @@ input[type='password']::-webkit-caps-lock-indicator {
   margin-top: 10px;
   color: var(--muted);
   font-size: 11px;
+}
+
+.roll-admin-session {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid rgba(31, 115, 83, 0.18);
+  border-radius: 999px;
+  color: var(--forest-700);
+  background: rgba(112, 188, 91, 0.08);
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
 }
 
 .roll-page {
@@ -3592,6 +3639,10 @@ input[type='password']::-webkit-caps-lock-indicator {
     display: none;
   }
 
+  .roll-admin-session span {
+    display: none;
+  }
+
   .roll-tabs button {
     padding-inline: 10px;
   }
@@ -3710,7 +3761,7 @@ input[type='password']::-webkit-caps-lock-indicator {
 
   .roll-key-list-head,
   .roll-key-row {
-    min-width: 760px;
+    min-width: 920px;
   }
 
   .mfa-management-grid {
