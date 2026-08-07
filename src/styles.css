@@ -1747,7 +1747,7 @@ input[type='password']::-webkit-caps-lock-indicator {
 }
 
 .admin-sidebar-user {
-  margin-top: auto;
+  margin-top: 0;
   padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 14px;
@@ -1762,6 +1762,50 @@ input[type='password']::-webkit-caps-lock-indicator {
   color: white;
   font-size: 12px;
   text-overflow: ellipsis;
+}
+
+.admin-language-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  margin: auto 0 14px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #9fbbb0;
+  background: rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+}
+
+.admin-language-switch span {
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.admin-language-switch span.active {
+  color: var(--forest-950);
+  background: #f7f5ee;
+}
+
+.admin-login-panel {
+  position: relative;
+}
+
+.admin-auth-language {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  padding: 8px 11px;
+  border: 1px solid #d9e1db;
+  border-radius: 10px;
+  color: var(--forest-800);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
 }
 
 .admin-main {
@@ -2382,6 +2426,12 @@ input[type='password']::-webkit-caps-lock-indicator {
 .roll-key-row .text-button:disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+
+.roll-key-list-head > :nth-child(4),
+.roll-key-row > :nth-child(4) {
+  justify-self: center;
+  text-align: center;
 }
 
 .toggle-label input {

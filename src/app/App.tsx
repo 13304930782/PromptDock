@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { api } from './lib/api';
+import { AdminLocaleProvider, useAdminLocale } from './lib/adminLocale';
 import type { AdminUser } from './types';
 
 const AdminShell = lazy(() => import('./components/AdminShell'));
@@ -56,7 +57,8 @@ function ProtectedAdmin({
   checking: boolean;
   children: ReactNode;
 }) {
-  if (checking) return <div className="admin-page empty-admin">Checking administrator session…</div>;
+  const { locale } = useAdminLocale();
+  if (checking) return <div className="admin-page empty-admin">{locale === 'zh' ? '正在检查管理员会话…' : 'Checking administrator session…'}</div>;
   if (!user) return <Navigate to="/admin/login" replace />;
   return <AdminShell user={user}>{children}</AdminShell>;
 }
@@ -89,8 +91,9 @@ export default function App() {
   }, [checkSession, isAdminArea]);
 
   return (
-    <Suspense fallback={<RouteFallback />}>
-      <Routes>
+    <AdminLocaleProvider>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
         <Route path="/" element={<PublicSite />} />
         <Route path="/roll" element={<RollPage />} />
         <Route path="/privacy-promise" element={<PrivacyPromisePage />} />
@@ -108,7 +111,8 @@ export default function App() {
         <Route path="/admin/feedback" element={<ProtectedAdmin user={user} checking={checking}>{user?.role === 'owner' ? <AdminFeedbackPage /> : <Navigate to="/admin/early-access" replace />}</ProtectedAdmin>} />
         <Route path="/admin" element={<Navigate to="/admin/early-access" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+        </Routes>
+      </Suspense>
+    </AdminLocaleProvider>
   );
 }
