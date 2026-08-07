@@ -142,7 +142,10 @@ struct EditorView: View {
     }
     private func synchronizeVariables() {
         let fields = promptTemplate.fields
-        let old = Dictionary(uniqueKeysWithValues: variableDrafts.map { ($0.name, $0) })
+        let old = Dictionary(
+            variableDrafts.map { ($0.name, $0) },
+            uniquingKeysWith: { _, latest in latest }
+        )
         variableDrafts = fields.enumerated().map { index, field in
             var value = old[field.name] ?? TemplateVariableDraft(name: field.name, order: index, isRepeatable: field.isRepeatable)
             value.isRepeatable = field.isRepeatable

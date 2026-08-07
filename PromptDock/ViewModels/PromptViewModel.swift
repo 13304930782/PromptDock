@@ -233,7 +233,7 @@ final class PromptViewModel: ObservableObject {
         selectedPromptIDs = selectedPromptID.map { [$0] } ?? []
     }
 
-    func updateSelection(_ ids: Set<UUID>) {
+    func updateSelection(_ ids: Set<UUID>, orderedBy visibleIDs: [UUID] = []) {
         let added = ids.subtracting(selectedPromptIDs)
         selectedPromptIDs = ids
         if let newlySelected = added.first {
@@ -241,7 +241,8 @@ final class PromptViewModel: ObservableObject {
         } else if let selectedPromptID, ids.contains(selectedPromptID) {
             return
         } else {
-            selectedPromptID = ids.first
+            selectedPromptID = visibleIDs.first(where: ids.contains)
+                ?? ids.sorted { $0.uuidString < $1.uuidString }.first
         }
     }
 

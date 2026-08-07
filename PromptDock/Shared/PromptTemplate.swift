@@ -27,10 +27,18 @@ struct PromptTemplate: Equatable {
     init(_ source: String) {
         self.source = source
 
-        var seen = Set<PromptTemplateVariable>()
-        fields = Self.matches(in: source).compactMap { match in
-            guard seen.insert(match.variable).inserted else { return nil }
-            return match.variable
+        var names: [String] = []
+        var kinds: [String: PromptTemplateVariable.Kind] = [:]
+        for match in Self.matches(in: source) {
+            if kinds[match.variable.name] == nil {
+                names.append(match.variable.name)
+                kinds[match.variable.name] = match.variable.kind
+            } else if match.variable.kind == .list {
+                kinds[match.variable.name] = .list
+            }
+        }
+        fields = names.map {
+            PromptTemplateVariable(name: $0, kind: kinds[$0] ?? .value)
         }
     }
 
@@ -86,10 +94,13 @@ struct PromptTemplate: Equatable {
         listSeparator: String = "、"
     ) -> String {
         let rendered = NSMutableString(string: source)
+        let kinds = Dictionary(
+            uniqueKeysWithValues: fields.map { ($0.name, $0.kind) }
+        )
 
         for match in Self.matches(in: source).reversed() {
             let replacement: String?
-            switch match.variable.kind {
+            switch kinds[match.variable.name] ?? match.variable.kind {
             case .value:
                 replacement = values[match.variable.name]
             case .list:

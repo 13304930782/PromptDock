@@ -311,6 +311,7 @@ struct AIRewriteView: View {
     @State private var errorMessage: String?
     @State private var task: Task<Void, Never>?
     @State private var isGenerating = false
+    @State private var generation = 0
 
     private var configuration: AIProviderConfiguration { AppPreferences.aiConfiguration }
 
@@ -380,16 +381,20 @@ struct AIRewriteView: View {
 
     private func generate() {
         task?.cancel(); candidate = nil; errorMessage = nil; isGenerating = true
+        generation += 1
+        let currentGeneration = generation
         task = Task {
             do {
                 let key = try AIKeychainStore.load(for: configuration.provider)
                 let result = try await AITemplateService().rewritePrompt(content: originalContent, goal: goal, additionalInstructions: additionalInstructions, usesChinese: usesChinese, configuration: configuration, apiKey: key)
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, generation == currentGeneration else { return }
                 candidate = result
             } catch is CancellationError {
             } catch {
+                guard generation == currentGeneration else { return }
                 errorMessage = error.localizedDescription
             }
+            guard generation == currentGeneration else { return }
             isGenerating = false
         }
     }

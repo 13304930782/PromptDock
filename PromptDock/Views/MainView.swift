@@ -203,7 +203,7 @@ struct MainView: View {
                 prompts: visiblePrompts,
                 selection: Binding(
                     get: { viewModel.selectedPromptIDs },
-                    set: viewModel.updateSelection
+                    set: { viewModel.updateSelection($0, orderedBy: visiblePromptIDs) }
                 ),
                 searchText: $viewModel.searchText,
                 onCreate: { presentEditor(for: nil) },

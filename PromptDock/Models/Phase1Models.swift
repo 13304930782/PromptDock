@@ -191,7 +191,14 @@ enum Phase1Service {
             predicate: #Predicate { $0.promptID == promptID },
             sortBy: [SortDescriptor(\TemplateVariableDefinition.order)]
         ))
-        var byName = Dictionary(uniqueKeysWithValues: existing.map { ($0.name, $0) })
+        var byName: [String: TemplateVariableDefinition] = [:]
+        for definition in existing {
+            if byName[definition.name] == nil {
+                byName[definition.name] = definition
+            } else {
+                context.delete(definition)
+            }
+        }
         for (index, field) in template.fields.enumerated() where byName[field.name] == nil {
             let definition = TemplateVariableDefinition(
                 promptID: prompt.id,
@@ -247,8 +254,18 @@ enum Phase1Service {
         let existing = try context.fetch(FetchDescriptor<TemplateVariableDefinition>(
             predicate: #Predicate { $0.promptID == promptID }
         ))
-        var byName = Dictionary(uniqueKeysWithValues: existing.map { ($0.name, $0) })
-        let draftByName = Dictionary(uniqueKeysWithValues: drafts.map { ($0.name, $0) })
+        var byName: [String: TemplateVariableDefinition] = [:]
+        for definition in existing {
+            if byName[definition.name] == nil {
+                byName[definition.name] = definition
+            } else {
+                context.delete(definition)
+            }
+        }
+        let draftByName = Dictionary(
+            drafts.map { ($0.name, $0) },
+            uniquingKeysWith: { _, latest in latest }
+        )
 
         for definition in existing where !fieldNames.contains(definition.name) {
             context.delete(definition)

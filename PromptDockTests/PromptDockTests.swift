@@ -430,6 +430,25 @@ final class PromptDockTests: XCTestCase {
         )
     }
 
+    func testPromptTemplateTreatsMixedSyntaxForOneNameAsRepeatable() {
+        let template = PromptTemplate(
+            "Primary: {{file}}; all files: {{file[]}}."
+        )
+
+        XCTAssertEqual(
+            template.fields,
+            [PromptTemplateVariable(name: "file", kind: .list)]
+        )
+        XCTAssertEqual(
+            template.render(
+                values: [:],
+                repeatableValues: ["file": ["A.docx", "B.docx"]],
+                listSeparator: ", "
+            ),
+            "Primary: A.docx, B.docx; all files: A.docx, B.docx."
+        )
+    }
+
     func testPromptTemplateRequiresEveryAddedRepeatableValue() {
         let template = PromptTemplate(
             "批改标题：{{文件名[]}}"
@@ -1680,6 +1699,46 @@ final class PromptDockTests: XCTestCase {
 
         definitions = try context.fetch(FetchDescriptor<TemplateVariableDefinition>())
         XCTAssertEqual(definitions.map(\.name), ["file"])
+    }
+
+    @MainActor
+    func testVariableDefinitionsCollapseMixedSyntaxAndDuplicateDrafts() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = ModelContext(container)
+        let promptID = UUID()
+        context.insert(TemplateVariableDefinition(promptID: promptID, name: "file"))
+        context.insert(TemplateVariableDefinition(promptID: promptID, name: "file"))
+        try context.save()
+
+        try Phase1Service.syncVariableDefinitions(
+            promptID: promptID,
+            drafts: [
+                TemplateVariableDraft(name: "file", label: "First", order: 0),
+                TemplateVariableDraft(name: "file", label: "Documents", order: 1, isRepeatable: true)
+            ],
+            content: "Primary: {{file}}; all files: {{file[]}}",
+            in: context
+        )
+        try context.save()
+
+        let definitions = try context.fetch(FetchDescriptor<TemplateVariableDefinition>())
+        XCTAssertEqual(definitions.count, 1)
+        XCTAssertEqual(definitions.first?.label, "Documents")
+        XCTAssertEqual(definitions.first?.isRepeatable, true)
+    }
+
+    @MainActor
+    func testSelectionFallbackUsesVisiblePromptOrder() {
+        let first = UUID()
+        let second = UUID()
+        let third = UUID()
+        let viewModel = PromptViewModel()
+        viewModel.selectedPromptIDs = [first, second, third]
+        viewModel.selectedPromptID = first
+
+        viewModel.updateSelection([second, third], orderedBy: [first, second, third])
+
+        XCTAssertEqual(viewModel.selectedPromptID, second)
     }
 
     @MainActor
