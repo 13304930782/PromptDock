@@ -45,9 +45,9 @@ const rollCopy = {
     mismatchHint: (left: number, right: number) => `数量不一致：左侧 ${left} 项，右侧 ${right} 项`,
     readyHint: (count: number) => `数量一致，可以生成 ${count} 组配对`,
     match: '开始随机配对',
-    rematch: '重新随机配对',
+    rematch: '再次随机',
+    matchCount: (count: number) => `已随机 ${count} 次`,
     matchResult: '配对结果',
-    pairNumber: (number: number) => `第 ${number} 组`,
     localNote: '本地计算 · 不保存填写内容 · 不记录 IP',
     noticeTitle: '使用须知',
     noticeBody: '本工具仅用于娱乐、教学、桌游及日常随机选择，不提供投注、支付、奖金、赔率或结算功能。严禁用于赌博、欺诈及其他违法活动。使用者应自行遵守所在地法律法规；随机结果不构成财务、法律或其他专业依据。',
@@ -83,8 +83,8 @@ const rollCopy = {
     readyHint: (count: number) => `Counts match. Ready to create ${count} pair${count === 1 ? '' : 's'}`,
     match: 'Create random matches',
     rematch: 'Match again',
+    matchCount: (count: number) => `${count} random match${count === 1 ? '' : 'es'}`,
     matchResult: 'Matches',
-    pairNumber: (number: number) => `Pair ${number}`,
     localNote: 'Calculated locally · Entries are not stored · No IP logging',
     noticeTitle: 'Acceptable use',
     noticeBody: 'This tool is intended only for entertainment, education, tabletop games, and everyday random choices. It does not provide betting, payments, prizes, odds, or settlement. Gambling, fraud, and any other unlawful use are prohibited. You are responsible for following local laws, and results are not financial, legal, or other professional advice.',
@@ -116,6 +116,7 @@ export default function RollPage() {
   const [leftInput, setLeftInput] = useState('');
   const [rightInput, setRightInput] = useState('');
   const [pairs, setPairs] = useState<Pair[]>([]);
+  const [matchCount, setMatchCount] = useState(0);
   const t = rollCopy[locale];
   const leftItems = itemsFrom(leftInput);
   const rightItems = itemsFrom(rightInput);
@@ -136,12 +137,14 @@ export default function RollPage() {
   const matchLists = () => {
     if (!countsMatch) return;
     setPairs(randomPairs(leftItems, rightItems) as Pair[]);
+    setMatchCount((count) => count + 1);
   };
 
   const updateList = (side: 'left' | 'right', value: string) => {
     if (side === 'left') setLeftInput(value);
     else setRightInput(value);
     setPairs([]);
+    setMatchCount(0);
   };
 
   const matchHint = !leftItems.length && !rightItems.length
@@ -244,7 +247,10 @@ export default function RollPage() {
               </label>
             </div>
 
-            <div className={`matching-status${countsMatch ? ' ready' : ''}`} role="status">{matchHint}</div>
+            <div className="matching-meta">
+              <div className={`matching-status${countsMatch ? ' ready' : ''}`} role="status">{matchHint}</div>
+              <strong>{t.matchCount(matchCount)}</strong>
+            </div>
             <button type="button" className="roll-primary matching-button" onClick={matchLists} disabled={!countsMatch}>
               <Shuffle size={19} />{pairs.length ? t.rematch : t.match}
             </button>
@@ -252,12 +258,14 @@ export default function RollPage() {
             {pairs.length > 0 && (
               <section className="matching-results" aria-labelledby="matching-results-title" aria-live="polite">
                 <h3 id="matching-results-title">{t.matchResult}</h3>
+                <div className="matching-results-head" aria-hidden="true">
+                  <span>#</span><strong>{t.leftTitle}</strong><strong>{t.rightTitle}</strong>
+                </div>
                 <ol>
                   {pairs.map(([left, right], index) => (
                     <li key={`${index}-${left}-${right}`}>
-                      <small>{t.pairNumber(index + 1)}</small>
+                      <small>{index + 1}</small>
                       <span>{left}</span>
-                      <Shuffle size={16} aria-hidden="true" />
                       <span>{right}</span>
                     </li>
                   ))}

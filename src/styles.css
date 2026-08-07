@@ -2881,15 +2881,27 @@ input[type='password']::-webkit-caps-lock-indicator {
   background: var(--white);
 }
 
-.matching-status {
+.matching-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
   margin-top: 18px;
+}
+
+.matching-status {
   color: #9a5d39;
   font-size: 12px;
-  text-align: center;
 }
 
 .matching-status.ready {
   color: var(--forest-700);
+}
+
+.matching-meta > strong {
+  flex: 0 0 auto;
+  color: var(--forest-900);
+  font-size: 12px;
 }
 
 .matching-button {
@@ -2910,35 +2922,52 @@ input[type='password']::-webkit-caps-lock-indicator {
   font-size: 18px;
 }
 
-.matching-results ol {
+.matching-results-head,
+.matching-results li {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+}
+
+.matching-results-head {
+  padding: 10px 16px;
+  border: 1px solid var(--cream-200);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  color: var(--muted);
+  background: var(--cream-100);
+  font-size: 11px;
+}
+
+.matching-results ol {
   margin: 0;
   padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--cream-200);
+  border-radius: 0 0 14px 14px;
   list-style: none;
 }
 
 .matching-results li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  min-height: 88px;
-  padding: 18px;
-  border: 1px solid var(--cream-200);
-  border-radius: 16px;
+  min-height: 60px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--cream-200);
   color: var(--forest-900);
   background: var(--cream-50);
 }
 
+.matching-results li:first-child {
+  border-top: 0;
+}
+
+.matching-results li:nth-child(even) {
+  background: var(--white);
+}
+
 .matching-results li small {
-  grid-column: 1 / -1;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 750;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .matching-results li span {
@@ -2947,13 +2976,6 @@ input[type='password']::-webkit-caps-lock-indicator {
   font-weight: 750;
 }
 
-.matching-results li span:last-child {
-  text-align: right;
-}
-
-.matching-results li svg {
-  color: var(--gold-400);
-}
 
 .roll-notice {
   display: grid;
@@ -3059,16 +3081,37 @@ input[type='password']::-webkit-caps-lock-indicator {
   }
 
   .matching-inputs {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
+    gap: 7px;
   }
 
   .matching-divider {
-    margin-inline: auto;
-    transform: rotate(90deg);
+    width: 30px;
+    height: 30px;
   }
 
-  .matching-results ol {
-    grid-template-columns: 1fr;
+  .matching-inputs label > span {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .matching-inputs textarea {
+    min-height: 220px;
+    padding: 11px;
+    font-size: 13px;
+  }
+
+  .matching-results-head,
+  .matching-results li {
+    grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr);
+    padding-inline: 10px;
+  }
+
+  .matching-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .roll-notice {
