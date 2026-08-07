@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { randomPairs, secureRandomInt } from '../src/app/lib/random.js';
+import { randomOrder, randomSwap, secureRandomInt } from '../src/app/lib/random.js';
 
 test('secureRandomInt rejects overflow values instead of introducing modulo bias', () => {
   const samples = [0xffffffff, 7];
@@ -19,17 +19,23 @@ test('secureRandomInt validates its range', () => {
   assert.throws(() => secureRandomInt(1.5), RangeError);
 });
 
-test('randomPairs independently shuffles each list for the requested passes', () => {
+test('randomSwap swaps exactly two positions without mutating the input', () => {
+  const input = ['A', 'B', 'C'];
   let reads = 0;
-  const pairs = randomPairs(['A', 'B', 'C'], ['1', '2', '3'], 2, 3, () => {
+  const result = randomSwap(input, () => {
     reads += 1;
     return 0;
   });
 
-  assert.deepEqual(pairs, [['C', '1'], ['A', '2'], ['B', '3']]);
-  assert.equal(reads, 10);
-  assert.deepEqual(pairs.flatMap(([left]) => left).sort(), ['A', 'B', 'C']);
-  assert.deepEqual(pairs.flatMap(([, right]) => right).sort(), ['1', '2', '3']);
-  assert.throws(() => randomPairs(['A'], ['1', '2']), RangeError);
-  assert.throws(() => randomPairs(['A'], ['1'], 0, 1), RangeError);
+  assert.deepEqual(result, ['B', 'A', 'C']);
+  assert.deepEqual(input, ['A', 'B', 'C']);
+  assert.equal(reads, 2);
+});
+
+test('randomOrder creates a random order without mutating the input', () => {
+  const input = ['A', 'B', 'C'];
+  const result = randomOrder(input, () => 0);
+
+  assert.deepEqual(result, ['B', 'C', 'A']);
+  assert.deepEqual(input, ['A', 'B', 'C']);
 });

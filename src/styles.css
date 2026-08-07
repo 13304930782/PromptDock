@@ -2991,9 +2991,12 @@ input[type='password']::-webkit-caps-lock-indicator {
   margin-top: 16px;
 }
 
-.shuffle-pass-controls label {
+.shuffle-pass-card {
   display: grid;
   gap: 7px;
+}
+
+.shuffle-pass-card label {
   color: var(--forest-900);
   font-size: 12px;
   font-weight: 750;
@@ -3014,6 +3017,44 @@ input[type='password']::-webkit-caps-lock-indicator {
   color: var(--forest-700);
   background: var(--cream-100);
   opacity: 1;
+}
+
+.matching-shuffle-button {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--cream-200);
+  border-radius: 11px;
+  color: var(--forest-900);
+  background: var(--white);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.matching-shuffle-button > span {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.matching-shuffle-button small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.matching-shuffle-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.matching-shuffle-button:focus-visible {
+  outline: 3px solid rgba(244, 191, 79, 0.62);
+  outline-offset: 3px;
 }
 
 .matching-dice-values {
