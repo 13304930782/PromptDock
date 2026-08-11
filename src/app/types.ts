@@ -16,6 +16,13 @@ export type EarlyAccessSettings = {
   notify_on_new_application: boolean;
 };
 
+export type PromptDockRelease = {
+  available: boolean;
+  file_name: string;
+  size: number;
+  updated_at: string | null;
+};
+
 export type MailSettings = {
   configured: boolean;
   source: 'environment' | 'database';

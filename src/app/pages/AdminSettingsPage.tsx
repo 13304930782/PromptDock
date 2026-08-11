@@ -1,8 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Database, LockKeyhole, Send } from 'lucide-react';
+import { Database, LockKeyhole, Send, Upload } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAdminLocale } from '../lib/adminLocale';
-import type { AdminUser, EarlyAccessSettings, MailSettings } from '../types';
+import type { AdminUser, EarlyAccessSettings, MailSettings, PromptDockRelease } from '../types';
 
 type MailForm = MailSettings & {
   password: string;
@@ -14,6 +14,8 @@ export default function AdminSettingsPage({ user }: { user: AdminUser }) {
   const zh = locale === 'zh';
   const [settings, setSettings] = useState<EarlyAccessSettings | null>(null);
   const [mail, setMail] = useState<MailForm | null>(null);
+  const [release, setRelease] = useState<PromptDockRelease | null>(null);
+  const [releaseFile, setReleaseFile] = useState<File | null>(null);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [working, setWorking] = useState('');
@@ -24,9 +26,13 @@ export default function AdminSettingsPage({ user }: { user: AdminUser }) {
       user.role === 'owner'
         ? api<{ settings: MailSettings }>('/admin/settings/mail')
         : Promise.resolve(null),
-    ]).then(([settingsData, mailData]) => {
+      user.role === 'owner'
+        ? api<{ release: PromptDockRelease }>('/admin/releases/promptdock')
+        : Promise.resolve(null),
+    ]).then(([settingsData, mailData, releaseData]) => {
       setSettings(settingsData.settings);
       if (mailData) setMail({ ...mailData.settings, password: '', clear_password: false });
+      if (releaseData) setRelease(releaseData.release);
     }).catch((loadError) => setError(loadError instanceof Error ? loadError.message : (zh ? '无法加载设置。' : 'Unable to load settings.')));
     // The signed-in role remains stable for the lifetime of this page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,6 +52,41 @@ export default function AdminSettingsPage({ user }: { user: AdminUser }) {
       setError('');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : (zh ? '无法保存设置。' : 'Unable to save settings.'));
+    } finally {
+      setWorking('');
+    }
+  };
+
+  const uploadRelease = async () => {
+    if (!releaseFile) return;
+    if (!releaseFile.name.toLowerCase().endsWith('.dmg')) {
+      setError(zh ? '只允许上传 DMG 安装包。' : 'Only DMG installers can be uploaded.');
+      return;
+    }
+    if (releaseFile.size > 128 * 1024 * 1024) {
+      setError(zh ? '安装包不能超过 128 MB。' : 'The installer cannot exceed 128 MB.');
+      return;
+    }
+
+    setWorking('release');
+    setNotice('');
+    setError('');
+    try {
+      const data = await api<{ release: PromptDockRelease; settings: EarlyAccessSettings }>('/admin/releases/promptdock', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-apple-diskimage',
+          'X-File-Name': encodeURIComponent(releaseFile.name),
+        },
+        body: releaseFile,
+        timeoutMs: 5 * 60 * 1000,
+      });
+      setRelease(data.release);
+      setSettings(data.settings);
+      setReleaseFile(null);
+      setNotice(zh ? 'PromptDock 安装包已上传，下载地址已自动更新。' : 'PromptDock installer uploaded and the download URL was updated.');
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : (zh ? '无法上传安装包。' : 'Unable to upload the installer.'));
     } finally {
       setWorking('');
     }
@@ -110,6 +151,29 @@ export default function AdminSettingsPage({ user }: { user: AdminUser }) {
               <p className="settings-hint">{zh ? '更改批次后，同一邮箱可在未来的批次中再次申请。' : 'Changing the cohort allows the same email to apply again in a future round.'}</p>
               <label>PromptDock {zh ? '下载地址' : 'download URL'}<input type="url" value={settings.download_url} onChange={(event) => setSettings({ ...settings, download_url: event.target.value })} placeholder="https://…" /></label>
               <p className="settings-hint">{zh ? '配置此链接之前无法通过申请。' : 'Approval remains disabled until this link is configured.'}</p>
+              {user.role === 'owner' && (
+                <div className="release-upload-panel">
+                  <div>
+                    <strong>{zh ? '上传 PromptDock 安装包' : 'Upload PromptDock installer'}</strong>
+                    <p className="settings-hint">
+                      {release?.available
+                        ? `${release.file_name} · ${(release.size / 1024 / 1024).toFixed(1)} MB · ${new Date(release.updated_at!).toLocaleString()}`
+                        : (zh ? '还没有通过后台上传安装包。' : 'No installer has been uploaded from the admin console yet.')}
+                    </p>
+                  </div>
+                  <input
+                    key={release?.updated_at || 'empty'}
+                    type="file"
+                    accept=".dmg,application/x-apple-diskimage"
+                    onChange={(event) => setReleaseFile(event.target.files?.[0] || null)}
+                  />
+                  <button className="button button-secondary" type="button" disabled={Boolean(working) || !releaseFile} onClick={uploadRelease}>
+                    <Upload size={16} />
+                    {working === 'release' ? (zh ? '上传中…' : 'Uploading…') : (zh ? '上传并设为当前版本' : 'Upload as current release')}
+                  </button>
+                  <p className="settings-hint">{zh ? '仅支持最大 128 MB 的有效 DMG。新文件会原子替换当前下载版本。' : 'Valid DMG files up to 128 MB are accepted. A new upload atomically replaces the current download.'}</p>
+                </div>
+              )}
               <label>{zh ? '反馈地址' : 'Feedback URL'}<input type="url" value={settings.feedback_url} onChange={(event) => setSettings({ ...settings, feedback_url: event.target.value })} placeholder="https://…" /></label>
               <label>{zh ? '通知邮箱' : 'Notification email'}<input type="email" value={settings.notify_email} onChange={(event) => setSettings({ ...settings, notify_email: event.target.value })} placeholder="mooncci@cuegroveapp.com" /></label>
               <label className="toggle-label">

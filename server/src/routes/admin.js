@@ -7,6 +7,7 @@ const { getSetting, saveSetting } = require('../lib/settings');
 const { mailReady, resolveMailConfig, sendDecisionEmail, sendTestEmail } = require('../lib/mailer');
 const { encryptSecret } = require('../lib/secrets');
 const { issueFeedbackToken } = require('./feedback');
+const { isDmg, releaseInfo, saveRelease } = require('../lib/releaseStorage');
 const { isEmail, isHttpUrl, normalizeEmail, passwordError, string } = require('../lib/validation');
 
 const router = express.Router();
@@ -440,6 +441,47 @@ router.put('/settings/early-access', async (req, res, next) => {
     next(error);
   }
 });
+
+router.get('/releases/promptdock', requireOwner, async (_req, res, next) => {
+  try {
+    res.json({ release: await releaseInfo() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post(
+  '/releases/promptdock',
+  requireOwner,
+  express.raw({ type: ['application/x-apple-diskimage', 'application/octet-stream'], limit: '128mb' }),
+  async (req, res, next) => {
+    try {
+      let fileName = '';
+      try {
+        fileName = decodeURIComponent(req.get('x-file-name') || '');
+      } catch {
+        return res.status(400).json({ message: 'The upload file name is invalid.' });
+      }
+      if (!fileName.toLowerCase().endsWith('.dmg')) {
+        return res.status(400).json({ message: 'Only DMG installers can be uploaded.' });
+      }
+      if (!isDmg(req.body)) {
+        return res.status(400).json({ message: 'The uploaded file is not a valid DMG image.' });
+      }
+
+      const release = await saveRelease(req.body);
+      const current = await getSetting('early_access');
+      const settings = {
+        ...current,
+        download_url: `${config.siteUrl}/api/releases/promptdock`,
+      };
+      await saveSetting('early_access', settings);
+      return res.json({ release, settings });
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
 
 router.get('/settings/mail', requireOwner, async (_req, res, next) => {
   try {

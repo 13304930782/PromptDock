@@ -17,6 +17,7 @@ node_modules/
 dist/
 server/node_modules/
 server/.env
+server/uploads/
 .env
 npm-debug.log*
 

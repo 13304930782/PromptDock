@@ -6,6 +6,7 @@ const earlyAccessRoutes = require('./routes/earlyAccess');
 const adminRoutes = require('./routes/admin');
 const feedbackRoutes = require('./routes/feedback');
 const rollAccessRoutes = require('./routes/rollAccess');
+const releaseRoutes = require('./routes/releases');
 const { requireSameOrigin } = require('./middleware/security');
 const config = require('./config');
 
@@ -32,6 +33,7 @@ function createApp() {
   app.use('/api/early-access', earlyAccessRoutes);
   app.use('/api/feedback', feedbackRoutes.router);
   app.use('/api/roll-access', rollAccessRoutes.publicRouter);
+  app.use('/api/releases', releaseRoutes);
   app.use('/api/admin/feedback', feedbackRoutes.adminRouter);
   app.use('/api/admin/roll-access-keys', rollAccessRoutes.adminRouter);
   app.use('/api/admin', adminRoutes);
@@ -42,6 +44,9 @@ function createApp() {
 
   app.use((error, _req, res, _next) => {
     console.error('[server]', error);
+    if (error.type === 'entity.too.large') {
+      return res.status(413).json({ message: 'The uploaded file is too large.' });
+    }
     if (error.type === 'entity.parse.failed') {
       return res.status(400).json({ message: 'Request body must contain valid JSON.' });
     }
