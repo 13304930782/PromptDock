@@ -4,6 +4,10 @@ const config = require('../config');
 
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
+function databaseFlag(value) {
+  return value === true || value === 1 || value === '1';
+}
+
 function ensureJwtConfigured() {
   if (!config.jwtSecret || config.jwtSecret.length < 32) {
     const error = new Error('JWT_SECRET must contain at least 32 characters.');
@@ -30,7 +34,7 @@ function publicAdmin(user) {
     name: user.name,
     email: user.email,
     role: user.role,
-    can_issue_roll_keys: Boolean(user.can_issue_roll_keys),
+    can_issue_roll_keys: databaseFlag(user.can_issue_roll_keys),
     mfa_enabled: Boolean(user.mfa_enabled_at),
   };
 }
@@ -104,14 +108,14 @@ function requireOwner(req, res, next) {
 }
 
 function requireRollKeyIssuer(req, res, next) {
-  if (req.admin?.role !== 'owner' && !req.admin?.can_issue_roll_keys) {
+  if (req.admin?.role !== 'owner' && !databaseFlag(req.admin?.can_issue_roll_keys)) {
     return res.status(403).json({ message: 'Tool access-key permission is required for this action.' });
   }
   next();
 }
 
 function requireManagementAdmin(req, res, next) {
-  if (req.admin?.role === 'admin' && req.admin?.can_issue_roll_keys) {
+  if (req.admin?.role === 'admin' && databaseFlag(req.admin?.can_issue_roll_keys)) {
     return res.status(403).json({ message: 'This account is limited to issuing tool access keys.' });
   }
   next();
@@ -119,6 +123,7 @@ function requireManagementAdmin(req, res, next) {
 
 module.exports = {
   clearSession,
+  databaseFlag,
   issueSession,
   publicAdmin,
   optionalAdminSession,

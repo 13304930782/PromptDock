@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { createApp } = require('../src/app');
 const config = require('../src/config');
 const db = require('../src/db');
+const { adminRouter: feedbackAdminRouter } = require('../src/routes/feedback');
 
 async function startServer(t) {
   const server = createApp().listen(0, '127.0.0.1');
@@ -11,6 +12,13 @@ async function startServer(t) {
   await new Promise((resolve) => server.once('listening', resolve));
   return `http://127.0.0.1:${server.address().port}`;
 }
+
+test('feedback administration explicitly keeps the management-account gate', () => {
+  const middlewareNames = feedbackAdminRouter.stack
+    .filter((layer) => !layer.route)
+    .map((layer) => layer.handle.name);
+  assert.deepEqual(middlewareNames.slice(0, 3), ['requireAdmin', 'requireManagementAdmin', 'requireOwner']);
+});
 
 test('applies a restrictive CSP to API responses', async (t) => {
   const baseUrl = await startServer(t);

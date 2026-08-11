@@ -3,6 +3,8 @@ const { RELEASE_FILE_NAME, releaseFilePath, releaseInfo } = require('../lib/rele
 
 const router = express.Router();
 
+// Intentionally public: approved testers receive this unlisted direct URL.
+// The URL is a distribution convenience, not an access-control boundary.
 router.get('/promptdock', async (_req, res, next) => {
   try {
     const info = await releaseInfo();

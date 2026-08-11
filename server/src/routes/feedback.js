@@ -5,7 +5,7 @@ const db = require('../db');
 const config = require('../config');
 const { sendFeedbackNotification } = require('../lib/mailer');
 const { getSetting } = require('../lib/settings');
-const { requireAdmin, requireOwner } = require('../middleware/auth');
+const { requireAdmin, requireManagementAdmin, requireOwner } = require('../middleware/auth');
 const { string } = require('../lib/validation');
 
 const router = express.Router();
@@ -193,7 +193,7 @@ router.post('/:token([A-Za-z0-9_-]{40,80})/:id/replies', replyLimit, async (req,
   }
 });
 
-adminRouter.use(requireAdmin, requireOwner);
+adminRouter.use(requireAdmin, requireManagementAdmin, requireOwner);
 
 adminRouter.get('/', async (req, res, next) => {
   try {

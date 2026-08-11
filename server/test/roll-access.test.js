@@ -13,12 +13,20 @@ const {
   rollAccessIdFromPayload,
 } = require('../src/lib/rollAccess');
 const {
+  databaseFlag,
   issueSession,
   optionalAdminSession,
   requireAdmin,
   requireManagementAdmin,
   requireRollKeyIssuer,
 } = require('../src/middleware/auth');
+
+test('parses database permission flags without treating string zero as enabled', () => {
+  for (const enabled of [true, 1, '1']) assert.equal(databaseFlag(enabled), true);
+  for (const disabled of [false, 0, '0', null, undefined, '', 'true']) {
+    assert.equal(databaseFlag(disabled), false, `enabled unexpected value: ${String(disabled)}`);
+  }
+});
 
 test('creates a strong access key and stores only its stable hash', () => {
   const key = generateAccessKey((size) => Buffer.alloc(size, 7));
@@ -70,9 +78,11 @@ test('only owners and the designated administrator may issue tool keys', () => {
 
   requireRollKeyIssuer({ admin: { role: 'owner', can_issue_roll_keys: false } }, response, next);
   requireRollKeyIssuer({ admin: { role: 'admin', can_issue_roll_keys: true } }, response, next);
+  requireRollKeyIssuer({ admin: { role: 'admin', can_issue_roll_keys: '1' } }, response, next);
   requireRollKeyIssuer({ admin: { role: 'admin', can_issue_roll_keys: false } }, response, next);
+  requireRollKeyIssuer({ admin: { role: 'admin', can_issue_roll_keys: '0' } }, response, next);
 
-  assert.equal(nextCalls, 2);
+  assert.equal(nextCalls, 3);
   assert.equal(response.statusCode, 403);
   assert.match(response.body.message, /permission/i);
 });
@@ -89,9 +99,11 @@ test('the designated key issuer cannot use general management routes', () => {
 
   requireManagementAdmin({ admin: { role: 'owner', can_issue_roll_keys: false } }, response, next);
   requireManagementAdmin({ admin: { role: 'admin', can_issue_roll_keys: false } }, response, next);
+  requireManagementAdmin({ admin: { role: 'admin', can_issue_roll_keys: '0' } }, response, next);
   requireManagementAdmin({ admin: { role: 'admin', can_issue_roll_keys: true } }, response, next);
+  requireManagementAdmin({ admin: { role: 'admin', can_issue_roll_keys: '1' } }, response, next);
 
-  assert.equal(nextCalls, 2);
+  assert.equal(nextCalls, 3);
   assert.equal(response.statusCode, 403);
   assert.match(response.body.message, /limited/i);
 });

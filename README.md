@@ -111,3 +111,5 @@ This repository also contains the independent CueGrove brand website and PromptD
 - `Brand/CueGrove/` contains the CueGrove source brand assets.
 
 Use `pnpm dev` for the frontend, `pnpm server:dev` for the API, `pnpm build` for the production frontend, and `pnpm test` for backend validation and branded-email tests. Production setup and recovery instructions are in [CUEGROVE_DEPLOY.md](CUEGROVE_DEPLOY.md).
+
+The PromptDock DMG endpoint is intentionally an unlisted direct download for approved Early Access recipients. Possession of that URL is not strict authorization: recipients can share it, and the server does not require an administrator session to download the current build. Use authenticated, expiring links if future releases require enforced per-user access.

@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const config = require('../config');
-const { requireAdmin, requireManagementAdmin, requireOwner } = require('../middleware/auth');
+const { databaseFlag, requireAdmin, requireManagementAdmin, requireOwner } = require('../middleware/auth');
 const { getSetting, saveSetting } = require('../lib/settings');
 const { mailReady, resolveMailConfig, sendDecisionEmail, sendTestEmail } = require('../lib/mailer');
 const { encryptSecret } = require('../lib/secrets');
@@ -20,7 +20,7 @@ function publicManagedAdmin(user) {
     email: user.email,
     role: user.role,
     status: user.status,
-    can_issue_roll_keys: Boolean(user.can_issue_roll_keys),
+    can_issue_roll_keys: databaseFlag(user.can_issue_roll_keys),
     failed_login_count: user.failed_login_count,
     locked_until: user.locked_until,
     last_login_at: user.last_login_at,
