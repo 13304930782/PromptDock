@@ -1,0 +1,5 @@
+Contact: mailto:security@cuegroveapp.com?subject=%5BSecurity%5D%20
+Expires: 2027-07-27T00:00:00.000Z
+Preferred-Languages: en, zh
+Canonical: https://cuegroveapp.com/.well-known/security.txt
+Policy: https://cuegroveapp.com/security

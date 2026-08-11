@@ -1,0 +1,15 @@
+packages:
+  - .
+  - server
+
+allowBuilds:
+  esbuild: true
+
+overrides:
+  nanoid: 3.3.17
+
+auditConfig:
+  ignoreGhsas:
+    # CueGrove uses React Router only in declarative browser mode. The affected
+    # React Server Components action path is not present. Review by 2026-08-29.
+    - GHSA-qwww-vcr4-c8h2
