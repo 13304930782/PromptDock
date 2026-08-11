@@ -43,7 +43,7 @@ export function AdminLoginPage({ onLogin }: { onLogin: (user: AdminUser) => void
 
   const finishLogin = (user: AdminUser) => {
     onLogin(user);
-    navigate('/admin/early-access', { replace: true });
+    navigate(user.role === 'admin' && user.can_issue_roll_keys ? '/admin/roll-access' : '/admin/early-access', { replace: true });
   };
 
   const submitPassword = async (event: FormEvent) => {

@@ -94,7 +94,7 @@ export default function AdminUsersPage() {
   return (
     <>
       <div className="admin-topline">
-        <div><h1>{zh ? '管理员' : 'Administrators'}</h1><p>{zh ? '创建账号、管理角色，并指定一名管理员签发工具访问密钥。' : 'Create accounts, manage roles, and designate one administrator to issue tool access keys.'}</p></div>
+        <div><h1>{zh ? '管理员' : 'Administrators'}</h1><p>{zh ? '创建账号、管理角色，并指定一名只能签发 24 小时工具密钥的账号。' : 'Create accounts, manage roles, and designate one account limited to issuing 24-hour tool keys.'}</p></div>
         <span className="owner-count"><ShieldCheck size={16} />{zh ? `${activeOwners} 名有效站长` : `${activeOwners} active owner${activeOwners === 1 ? '' : 's'}`}</span>
       </div>
       {notice && <div className="admin-alert">{notice}</div>}

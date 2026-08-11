@@ -84,8 +84,13 @@ const AdminUserCard = memo(function AdminUserCard({
             disabled={draft.role !== 'admin' || draft.status !== 'active'}
             onChange={(event) => setDraft({ ...draft, can_issue_roll_keys: event.target.checked })}
           />
-          <span>{zh ? '允许此管理员签发 24 小时工具访问密钥' : 'Allow this administrator to issue 24-hour tool access keys'}</span>
+          <span>{zh ? '限制此账号只能签发 24 小时工具访问密钥' : 'Restrict this account to issuing 24-hour tool access keys'}</span>
         </label>
+        {draft.can_issue_roll_keys && (
+          <p className="settings-hint">{zh
+            ? '启用后，此账号不能访问内测申请、站点设置、用户反馈或管理员管理。'
+            : 'When enabled, this account cannot access applications, site settings, feedback, or administrator management.'}</p>
+        )}
         <button className="button button-secondary" type="button" disabled={disabled} onClick={() => onSave(user.id, draft)}>{zh ? '保存账号' : 'Save account'}</button>
         <div className="password-reset-row">
           <label>{zh ? '新密码' : 'New password'}<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} autoComplete="new-password" autoCapitalize="none" spellCheck={false} placeholder={zh ? '至少 8 个字符' : '8+ characters'} /></label>

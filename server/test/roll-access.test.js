@@ -12,7 +12,13 @@ const {
   normalizeAccessKeyIds,
   rollAccessIdFromPayload,
 } = require('../src/lib/rollAccess');
-const { issueSession, optionalAdminSession, requireAdmin, requireRollKeyIssuer } = require('../src/middleware/auth');
+const {
+  issueSession,
+  optionalAdminSession,
+  requireAdmin,
+  requireManagementAdmin,
+  requireRollKeyIssuer,
+} = require('../src/middleware/auth');
 
 test('creates a strong access key and stores only its stable hash', () => {
   const key = generateAccessKey((size) => Buffer.alloc(size, 7));
@@ -69,6 +75,25 @@ test('only owners and the designated administrator may issue tool keys', () => {
   assert.equal(nextCalls, 2);
   assert.equal(response.statusCode, 403);
   assert.match(response.body.message, /permission/i);
+});
+
+test('the designated key issuer cannot use general management routes', () => {
+  let nextCalls = 0;
+  const next = () => { nextCalls += 1; };
+  const response = {
+    statusCode: 200,
+    body: null,
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; },
+  };
+
+  requireManagementAdmin({ admin: { role: 'owner', can_issue_roll_keys: false } }, response, next);
+  requireManagementAdmin({ admin: { role: 'admin', can_issue_roll_keys: false } }, response, next);
+  requireManagementAdmin({ admin: { role: 'admin', can_issue_roll_keys: true } }, response, next);
+
+  assert.equal(nextCalls, 2);
+  assert.equal(response.statusCode, 403);
+  assert.match(response.body.message, /limited/i);
 });
 
 test('an active administrator session bypasses the temporary tool key', async (t) => {

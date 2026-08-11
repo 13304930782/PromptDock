@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const config = require('../config');
-const { requireAdmin, requireOwner } = require('../middleware/auth');
+const { requireAdmin, requireManagementAdmin, requireOwner } = require('../middleware/auth');
 const { getSetting, saveSetting } = require('../lib/settings');
 const { mailReady, resolveMailConfig, sendDecisionEmail, sendTestEmail } = require('../lib/mailer');
 const { encryptSecret } = require('../lib/secrets');
@@ -11,7 +11,7 @@ const { isDmg, releaseInfo, saveRelease } = require('../lib/releaseStorage');
 const { isEmail, isHttpUrl, normalizeEmail, passwordError, string } = require('../lib/validation');
 
 const router = express.Router();
-router.use(requireAdmin);
+router.use(requireAdmin, requireManagementAdmin);
 
 function publicManagedAdmin(user) {
   return {

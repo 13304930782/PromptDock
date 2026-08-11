@@ -110,12 +110,20 @@ function requireRollKeyIssuer(req, res, next) {
   next();
 }
 
+function requireManagementAdmin(req, res, next) {
+  if (req.admin?.role === 'admin' && req.admin?.can_issue_roll_keys) {
+    return res.status(403).json({ message: 'This account is limited to issuing tool access keys.' });
+  }
+  next();
+}
+
 module.exports = {
   clearSession,
   issueSession,
   publicAdmin,
   optionalAdminSession,
   requireAdmin,
+  requireManagementAdmin,
   requireOwner,
   requireRollKeyIssuer,
 };

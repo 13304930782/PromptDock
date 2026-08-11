@@ -63,6 +63,12 @@ function ProtectedAdmin({
   return <AdminShell user={user}>{children}</AdminShell>;
 }
 
+function adminHome(user: AdminUser | null) {
+  return user?.role === 'admin' && user.can_issue_roll_keys
+    ? '/admin/roll-access'
+    : '/admin/early-access';
+}
+
 export default function App() {
   const location = useLocation();
   const isAdminArea = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
@@ -100,16 +106,16 @@ export default function App() {
         <Route path="/security" element={<SecurityCommitmentPage />} />
         <Route path="/feedback/:token" element={<FeedbackPage />} />
         <Route path="/feedback" element={<FeedbackInfoPage />} />
-        <Route path="/admin/login" element={user ? <Navigate to="/admin/early-access" replace /> : <AdminLoginPage onLogin={setUser} />} />
+        <Route path="/admin/login" element={user ? <Navigate to={adminHome(user)} replace /> : <AdminLoginPage onLogin={setUser} />} />
         <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/admin/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/admin/early-access" element={<ProtectedAdmin user={user} checking={checking}><AdminApplicationsPage user={user!} /></ProtectedAdmin>} />
-        <Route path="/admin/settings" element={<ProtectedAdmin user={user} checking={checking}><AdminSettingsPage user={user!} /></ProtectedAdmin>} />
+        <Route path="/admin/early-access" element={<ProtectedAdmin user={user} checking={checking}>{user?.role === 'admin' && user.can_issue_roll_keys ? <Navigate to="/admin/roll-access" replace /> : <AdminApplicationsPage user={user!} />}</ProtectedAdmin>} />
+        <Route path="/admin/settings" element={<ProtectedAdmin user={user} checking={checking}>{user?.role === 'admin' && user.can_issue_roll_keys ? <Navigate to="/admin/roll-access" replace /> : <AdminSettingsPage user={user!} />}</ProtectedAdmin>} />
         <Route path="/admin/security" element={<ProtectedAdmin user={user} checking={checking}><AdminSecurityPage user={user!} onUserChange={setUser} /></ProtectedAdmin>} />
         <Route path="/admin/roll-access" element={<ProtectedAdmin user={user} checking={checking}>{user?.role === 'owner' || user?.can_issue_roll_keys ? <AdminRollAccessPage /> : <Navigate to="/admin/early-access" replace />}</ProtectedAdmin>} />
         <Route path="/admin/users" element={<ProtectedAdmin user={user} checking={checking}>{user?.role === 'owner' ? <AdminUsersPage /> : <Navigate to="/admin/early-access" replace />}</ProtectedAdmin>} />
         <Route path="/admin/feedback" element={<ProtectedAdmin user={user} checking={checking}>{user?.role === 'owner' ? <AdminFeedbackPage /> : <Navigate to="/admin/early-access" replace />}</ProtectedAdmin>} />
-        <Route path="/admin" element={<Navigate to="/admin/early-access" replace />} />
+        <Route path="/admin" element={<Navigate to={adminHome(user)} replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

@@ -8,6 +8,7 @@ export default function AdminShell({ user, children }: { user: AdminUser; childr
   const navigate = useNavigate();
   const { locale, setLocale } = useAdminLocale();
   const zh = locale === 'zh';
+  const keyIssuerOnly = user.role === 'admin' && user.can_issue_roll_keys;
   const logout = async () => {
     await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
     navigate('/admin/login', { replace: true });
@@ -21,12 +22,16 @@ export default function AdminShell({ user, children }: { user: AdminUser; childr
           <span>CueGrove</span>
         </a>
         <nav className="admin-nav" aria-label={zh ? '后台管理' : 'Admin'}>
-          <NavLink to="/admin/early-access">
-            <Sprout size={18} /><span>{zh ? '内测申请' : 'Early Access'}</span>
-          </NavLink>
-          <NavLink to="/admin/settings">
-            <Settings size={18} /><span>{zh ? '设置' : 'Settings'}</span>
-          </NavLink>
+          {!keyIssuerOnly && (
+            <NavLink to="/admin/early-access">
+              <Sprout size={18} /><span>{zh ? '内测申请' : 'Early Access'}</span>
+            </NavLink>
+          )}
+          {!keyIssuerOnly && (
+            <NavLink to="/admin/settings">
+              <Settings size={18} /><span>{zh ? '设置' : 'Settings'}</span>
+            </NavLink>
+          )}
           <NavLink to="/admin/security">
             <ShieldCheck size={18} /><span>{zh ? '安全' : 'Security'}</span>
           </NavLink>
@@ -60,7 +65,9 @@ export default function AdminShell({ user, children }: { user: AdminUser; childr
         </button>
         <div className="admin-sidebar-user">
           <strong>{user.name}</strong>
-          {user.email} · {zh ? (user.role === 'owner' ? '站长' : '管理员') : user.role}
+          {user.email} · {keyIssuerOnly
+            ? (zh ? '24 小时密钥签发人' : '24-hour key issuer')
+            : (zh ? (user.role === 'owner' ? '站长' : '管理员') : user.role)}
         </div>
       </aside>
       <div className="admin-main">{children}</div>
