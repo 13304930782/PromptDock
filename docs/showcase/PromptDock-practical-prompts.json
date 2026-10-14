@@ -1,0 +1,384 @@
+{
+  "formatVersion": 2,
+  "createdAt": 1791994724.6257238,
+  "appVersion": "1.2.0",
+  "prompts": [
+    {
+      "id": "4a57e42a-3f57-47b4-9742-9b44e1751965",
+      "title": "英语作文逐段批改",
+      "category": "Teaching",
+      "content": "你是一位高中英语教师。请批改以下作文：\n\n{{作文}}\n\n批改要求：\n1. 先概括文章的观点与结构。\n2. 按段落指出语法、搭配和衔接问题，给出原句、建议改写及原因。\n3. 保留学生原意，不加入原文没有的事实。\n4. 最后给出三个最值得练习的知识点和一篇参考修改稿。\n\n学生水平：{{年级}}；目标字数：{{字数}}。",
+      "createdDate": 1791994724.6257238,
+      "updatedDate": 1791994724.6257238,
+      "isFavorite": true
+    },
+    {
+      "id": "ba520e9d-60d4-48ac-938f-0b39aa3b4ba8",
+      "title": "阅读课教案设计",
+      "category": "Teaching",
+      "content": "请为 {{年级}} 学生设计一节 {{时长}} 分钟的阅读课。\n教学材料：{{课文}}\n\n输出教学目标、课前准备、课堂流程和课后作业。每个环节写明时间、教师提问、学生任务及理解检查方式。提供一项基础练习和一项进阶练习。",
+      "createdDate": 1791994664.6257238,
+      "updatedDate": 1791994664.6257238,
+      "isFavorite": false
+    },
+    {
+      "id": "1fdcfb63-7e12-4618-a0a2-d0fe7ff0fa9c",
+      "title": "知识点分层练习",
+      "category": "Teaching",
+      "content": "围绕 {{知识点}} 为 {{年级}} 学生设计练习：基础题 4 道、应用题 3 道、综合题 2 道。\n先输出题目，再单独列出答案与讲解；说明每题考查的能力。避免超出学生已有知识：{{已学内容}}。",
+      "createdDate": 1791994604.6257238,
+      "updatedDate": 1791994604.6257238,
+      "isFavorite": false
+    },
+    {
+      "id": "02340711-55c6-4476-9383-cc91525adf9b",
+      "title": "会议纪要与行动清单",
+      "category": "Writing",
+      "content": "请根据下面的会议记录整理纪要：\n{{会议记录}}\n\n依次输出：会议主题、关键结论、待解决问题、行动清单。行动清单列出任务、负责人和截止日期；记录里没有的信息写“待确认”。区分已经决定的事项与讨论中的建议。",
+      "createdDate": 1791994544.6257238,
+      "updatedDate": 1791994544.6257238,
+      "isFavorite": true
+    },
+    {
+      "id": "38328fad-dd34-4cb5-8c48-cdfeb3a6c8c2",
+      "title": "产品更新说明",
+      "category": "Writing",
+      "content": "请把以下改动整理为用户能读懂的产品更新说明。\n产品：{{产品名}}\n改动：{{改动列表[]}}\n\n先用一句话说明本次更新的主要价值，再按新增、改进、修复组织内容。每条说明用户会看到什么变化，避免开发术语与夸大表述。",
+      "createdDate": 1791994484.6257238,
+      "updatedDate": 1791994484.6257238,
+      "isFavorite": false
+    },
+    {
+      "id": "9d5cf41a-6760-4d62-9082-a139bfe65ef4",
+      "title": "中文文案精简润色",
+      "category": "Writing",
+      "content": "请润色下面的中文文案：\n{{原文}}\n\n读者：{{目标读者}}；使用场景：{{场景}}。\n保留原意和关键事实，删去重复、空话和不自然的转折。给出修改稿，并简要解释三处主要修改。",
+      "createdDate": 1791994424.6257238,
+      "updatedDate": 1791994424.6257238,
+      "isFavorite": false
+    },
+    {
+      "id": "f3e8a481-2518-416e-bffd-391db5e21eb6",
+      "title": "Bug 定位与最小修复",
+      "category": "Coding",
+      "content": "请协助定位以下问题：\n预期行为：{{预期行为}}\n实际行为：{{实际行为}}\n相关代码与日志：{{代码与日志}}\n\n先给出可复现步骤，再沿调用链找根因。证据不足时明确需要补充什么。给出范围最小的修复和一个能在修复前失败、修复后通过的回归测试，不加入无关重构。",
+      "createdDate": 1791994364.6257238,
+      "updatedDate": 1791994364.6257238,
+      "isFavorite": true
+    },
+    {
+      "id": "c1cf29f1-e114-45d7-b97b-f51389983c78",
+      "title": "接口测试用例设计",
+      "category": "Coding",
+      "content": "请为以下接口设计测试用例：\n{{接口定义}}\n\n覆盖正常请求、参数边界、无权限、重复提交及依赖失败。按输入、前置条件、预期状态码、预期响应与数据副作用列出表格。没有定义的契约标为待确认，不自行假设。",
+      "createdDate": 1791994304.6257238,
+      "updatedDate": 1791994304.6257238,
+      "isFavorite": false
+    },
+    {
+      "id": "958b36a6-5b07-43ee-a09f-15179e2c999b",
+      "title": "长文摘要与事实核对",
+      "category": "AI",
+      "content": "请阅读以下材料：\n{{材料}}\n\n输出一段不超过 {{字数}} 字的摘要和五条关键事实。区分事实、作者观点与推测；涉及数字、日期和引文时保留来源位置。材料未提供的信息直接注明，不补造。",
+      "createdDate": 1791994244.6257238,
+      "updatedDate": 1791994244.6257238,
+      "isFavorite": false
+    },
+    {
+      "id": "3ded7cd6-3c71-402d-b953-7509c3bcc7b5",
+      "title": "需求拆解与验收标准",
+      "category": "AI",
+      "content": "请把下面的需求拆成可交付任务：\n{{需求}}\n\n先列出核心用户流程，再列任务及其验收标准。把必须完成的内容和可延后事项分开，指出影响实现的未知条件。每条验收标准应能通过具体操作验证。",
+      "createdDate": 1791994184.6257238,
+      "updatedDate": 1791994184.6257238,
+      "isFavorite": true
+    }
+  ],
+  "categories": [
+    {
+      "id": "09824b6a-ac71-42cd-a33c-07e7cbbbb91c",
+      "name": "Teaching",
+      "systemImage": "graduationcap",
+      "sortOrder": 0,
+      "createdDate": 1791994724.6257238,
+      "isBuiltIn": true,
+      "iconKind": "sfSymbol"
+    },
+    {
+      "id": "fe09e841-2efe-42ab-9c62-34a2493800b5",
+      "name": "Coding",
+      "systemImage": "chevron.left.forwardslash.chevron.right",
+      "sortOrder": 1,
+      "createdDate": 1791994724.6257238,
+      "isBuiltIn": true,
+      "iconKind": "sfSymbol"
+    },
+    {
+      "id": "cf6991c0-f176-4c32-a706-63a03a5c7f1c",
+      "name": "AI",
+      "systemImage": "sparkles",
+      "sortOrder": 2,
+      "createdDate": 1791994724.6257238,
+      "isBuiltIn": true,
+      "iconKind": "sfSymbol"
+    },
+    {
+      "id": "d459e671-941a-49b3-8bb1-469594578cd5",
+      "name": "Writing",
+      "systemImage": "pencil.line",
+      "sortOrder": 3,
+      "createdDate": 1791994724.6257238,
+      "isBuiltIn": true,
+      "iconKind": "sfSymbol"
+    }
+  ],
+  "versions": [],
+  "tags": [
+    {
+      "id": "5c1f4d95-55da-41e9-887b-2bccc32450ef",
+      "name": "常用",
+      "color": "blue",
+      "promptIDs": [
+        "4a57e42a-3f57-47b4-9742-9b44e1751965",
+        "02340711-55c6-4476-9383-cc91525adf9b",
+        "f3e8a481-2518-416e-bffd-391db5e21eb6",
+        "3ded7cd6-3c71-402d-b953-7509c3bcc7b5"
+      ],
+      "createdAt": 1791994724.6257238
+    },
+    {
+      "id": "32aa4f8a-ff44-42ba-a5c6-ed73ada1b819",
+      "name": "课堂准备",
+      "color": "green",
+      "promptIDs": [
+        "4a57e42a-3f57-47b4-9742-9b44e1751965",
+        "ba520e9d-60d4-48ac-938f-0b39aa3b4ba8",
+        "1fdcfb63-7e12-4618-a0a2-d0fe7ff0fa9c"
+      ],
+      "createdAt": 1791994724.6257238
+    },
+    {
+      "id": "dc8ebb08-f858-4f45-84db-c0f980b45509",
+      "name": "工作效率",
+      "color": "orange",
+      "promptIDs": [
+        "02340711-55c6-4476-9383-cc91525adf9b",
+        "38328fad-dd34-4cb5-8c48-cdfeb3a6c8c2",
+        "9d5cf41a-6760-4d62-9082-a139bfe65ef4"
+      ],
+      "createdAt": 1791994724.6257238
+    }
+  ],
+  "smartCollections": [
+    {
+      "id": "c8457f3d-4413-44b4-bc1f-d9d0978b5a02",
+      "name": "教学工作台",
+      "query": "",
+      "category": "Teaching",
+      "tagIDs": [],
+      "favoriteOnly": false,
+      "matchAll": true,
+      "createdAt": 1791994724.6257238
+    }
+  ],
+  "variableDefinitions": [
+    {
+      "id": "15b7f4eb-bbd2-4999-a77c-4a986f5eb826",
+      "promptID": "4a57e42a-3f57-47b4-9742-9b44e1751965",
+      "name": "作文",
+      "label": "作文",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "1e64ed3d-57e8-4915-9f88-7e85225e33a6",
+      "promptID": "4a57e42a-3f57-47b4-9742-9b44e1751965",
+      "name": "年级",
+      "label": "年级",
+      "defaultValue": "",
+      "order": 1,
+      "isRepeatable": false
+    },
+    {
+      "id": "56196954-e950-4f77-b34d-9423ba661186",
+      "promptID": "4a57e42a-3f57-47b4-9742-9b44e1751965",
+      "name": "字数",
+      "label": "字数",
+      "defaultValue": "",
+      "order": 2,
+      "isRepeatable": false
+    },
+    {
+      "id": "24735df1-4147-4e9d-ae01-5e71c7e4ec33",
+      "promptID": "ba520e9d-60d4-48ac-938f-0b39aa3b4ba8",
+      "name": "年级",
+      "label": "年级",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "1c8a4f28-bb83-4fd7-9a00-eb5d35b10026",
+      "promptID": "ba520e9d-60d4-48ac-938f-0b39aa3b4ba8",
+      "name": "时长",
+      "label": "时长",
+      "defaultValue": "",
+      "order": 1,
+      "isRepeatable": false
+    },
+    {
+      "id": "8b1e59a4-d052-419e-890f-49a8ca848664",
+      "promptID": "ba520e9d-60d4-48ac-938f-0b39aa3b4ba8",
+      "name": "课文",
+      "label": "课文",
+      "defaultValue": "",
+      "order": 2,
+      "isRepeatable": false
+    },
+    {
+      "id": "939e88e0-4d7e-4abf-adae-e6894602b475",
+      "promptID": "1fdcfb63-7e12-4618-a0a2-d0fe7ff0fa9c",
+      "name": "知识点",
+      "label": "知识点",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "32b022ce-6c39-4752-81ec-2b758828b45b",
+      "promptID": "1fdcfb63-7e12-4618-a0a2-d0fe7ff0fa9c",
+      "name": "年级",
+      "label": "年级",
+      "defaultValue": "",
+      "order": 1,
+      "isRepeatable": false
+    },
+    {
+      "id": "f45e1eaa-8349-4424-aaf9-dcfcb203a35d",
+      "promptID": "1fdcfb63-7e12-4618-a0a2-d0fe7ff0fa9c",
+      "name": "已学内容",
+      "label": "已学内容",
+      "defaultValue": "",
+      "order": 2,
+      "isRepeatable": false
+    },
+    {
+      "id": "07572450-5302-4f0b-ae83-37e177b73d05",
+      "promptID": "02340711-55c6-4476-9383-cc91525adf9b",
+      "name": "会议记录",
+      "label": "会议记录",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "63ad7498-351a-44e1-a2db-616e4f8ed9a7",
+      "promptID": "38328fad-dd34-4cb5-8c48-cdfeb3a6c8c2",
+      "name": "产品名",
+      "label": "产品名",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "7dff8b05-4752-4186-ada2-5b70270f0655",
+      "promptID": "38328fad-dd34-4cb5-8c48-cdfeb3a6c8c2",
+      "name": "改动列表",
+      "label": "改动列表",
+      "defaultValue": "",
+      "order": 1,
+      "isRepeatable": true
+    },
+    {
+      "id": "c3856e5e-fb4f-409a-a17b-3f932f5c3664",
+      "promptID": "9d5cf41a-6760-4d62-9082-a139bfe65ef4",
+      "name": "原文",
+      "label": "原文",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "dcd89fa6-b971-4cff-a56c-0387edb7d86e",
+      "promptID": "9d5cf41a-6760-4d62-9082-a139bfe65ef4",
+      "name": "目标读者",
+      "label": "目标读者",
+      "defaultValue": "",
+      "order": 1,
+      "isRepeatable": false
+    },
+    {
+      "id": "0b290100-682c-4626-8789-81a558fbe6bc",
+      "promptID": "9d5cf41a-6760-4d62-9082-a139bfe65ef4",
+      "name": "场景",
+      "label": "场景",
+      "defaultValue": "",
+      "order": 2,
+      "isRepeatable": false
+    },
+    {
+      "id": "4013892e-6c84-48b4-a05b-7b89a5db06f7",
+      "promptID": "f3e8a481-2518-416e-bffd-391db5e21eb6",
+      "name": "预期行为",
+      "label": "预期行为",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "cf25c31e-8fbe-4236-b080-7dfe320faede",
+      "promptID": "f3e8a481-2518-416e-bffd-391db5e21eb6",
+      "name": "实际行为",
+      "label": "实际行为",
+      "defaultValue": "",
+      "order": 1,
+      "isRepeatable": false
+    },
+    {
+      "id": "8e91c688-3967-4756-86f8-9413a310fb21",
+      "promptID": "f3e8a481-2518-416e-bffd-391db5e21eb6",
+      "name": "代码与日志",
+      "label": "代码与日志",
+      "defaultValue": "",
+      "order": 2,
+      "isRepeatable": false
+    },
+    {
+      "id": "c8a9c114-cd3d-44a8-87ca-263b12adfb29",
+      "promptID": "c1cf29f1-e114-45d7-b97b-f51389983c78",
+      "name": "接口定义",
+      "label": "接口定义",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "7aa70d80-c0ff-415b-8c62-ec96322fee83",
+      "promptID": "958b36a6-5b07-43ee-a09f-15179e2c999b",
+      "name": "材料",
+      "label": "材料",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "1fd13dd8-06d8-4bcf-baba-584c5df9c013",
+      "promptID": "958b36a6-5b07-43ee-a09f-15179e2c999b",
+      "name": "字数",
+      "label": "字数",
+      "defaultValue": "",
+      "order": 1,
+      "isRepeatable": false
+    },
+    {
+      "id": "ac04eb6e-3512-4439-8c99-17a01eb40f14",
+      "promptID": "3ded7cd6-3c71-402d-b953-7509c3bcc7b5",
+      "name": "需求",
+      "label": "需求",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    }
+  ]
+}
