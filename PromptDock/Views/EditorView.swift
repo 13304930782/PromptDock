@@ -1,7 +1,9 @@
 import AppKit
 import SwiftUI
+import SwiftData
 
 struct EditorView: View {
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @Environment(\.openWindow) private var openWindow
@@ -12,6 +14,10 @@ struct EditorView: View {
     private let onSave: (PromptDraft) throws -> Void
     private let usesChinese: Bool
 
+    @State private var baselineDate: Date?
+    @State private var recoveredDraft: LocalEditorDraft?
+    @State private var didCheckRecovery = false
+    @State private var persistenceFailed = false
     @State private var title: String
     @State private var category: String
     @State private var content: String
@@ -35,6 +41,7 @@ struct EditorView: View {
         onSave: @escaping (PromptDraft) throws -> Void
     ) {
         self.prompt = prompt
+        _baselineDate = State(initialValue: prompt?.updatedDate)
         self.categories = categories
         self.tags = tags
         self.usesChinese = usesChinese ?? false
@@ -115,12 +122,33 @@ struct EditorView: View {
             .formStyle(.grouped)
             .navigationTitle(prompt == nil ? (usesChinese ? "新建提示词" : "New Prompt") : (usesChinese ? "编辑提示词" : "Edit Prompt"))
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(usesChinese ? "取消" : "Cancel") { dismiss() }.keyboardShortcut(.cancelAction) }
+                ToolbarItem(placement: .cancellationAction) { Button(usesChinese ? "取消" : "Cancel") { discardDraft(); dismiss() }.keyboardShortcut(.cancelAction) }
                 ToolbarItem(placement: .confirmationAction) { Button(usesChinese ? "保存" : "Save", action: save).keyboardShortcut(.defaultAction).disabled(!draft.isValid) }
             }
         }
         .frame(minWidth: 600, minHeight: 620)
-        .onAppear(perform: synchronizeVariables)
+        .onAppear {
+            synchronizeVariables()
+            guard !didCheckRecovery else { return }
+            do { recoveredDraft = try LocalDraftStore.load(promptID: prompt?.id) }
+            catch { errorMessage = error.localizedDescription; persistenceFailed = true }
+            didCheckRecovery = true
+        }
+        .onChange(of: draft) { persistDraft() }
+        .alert(usesChinese ? "恢复未保存的草稿？" : "Recover Unsaved Draft?", isPresented: Binding(get: { recoveredDraft != nil }, set: { if !$0 { recoveredDraft = nil } })) {
+            Button(usesChinese ? "恢复" : "Recover") {
+                guard let saved = recoveredDraft else { return }
+                baselineDate = saved.baselineDate
+                title = saved.draft.title; category = saved.draft.category
+                content = saved.draft.content; isFavorite = saved.draft.isFavorite
+                selectedTagIDs = saved.draft.tagIDs; variableDrafts = saved.draft.variableDefinitions
+                newTagNames = saved.draft.newTagNames
+                recoveredDraft = nil
+            }
+            Button(usesChinese ? "丢弃草稿" : "Discard Draft", role: .destructive) { discardDraft(); recoveredDraft = nil }
+        } message: {
+            Text(usesChinese ? "草稿仅保存在本机；保存时会检查原记录是否发生变化。" : "Drafts stay on this Mac. Saving checks whether the original record changed.")
+        }
         .onChange(of: content) { synchronizeVariables() }
         .sheet(isPresented: $isRewritePresented) {
             AIRewriteView(title: title, originalContent: content, usesChinese: usesChinese) { content = $0; isRewritePresented = false }
@@ -161,7 +189,26 @@ struct EditorView: View {
         let new = repeatable ? "{{\(name)[]}}" : "{{\(name)}}"
         content = content.replacingOccurrences(of: old, with: new)
     }
-    private func save() { do { try onSave(draft); dismiss() } catch { errorMessage = error.localizedDescription } }
+    private func persistDraft() {
+        guard didCheckRecovery, recoveredDraft == nil, !persistenceFailed else { return }
+        do { try LocalDraftStore.save(LocalEditorDraft(promptID: prompt?.id, baselineDate: baselineDate, draft: draft)) }
+        catch { persistenceFailed = true; errorMessage = error.localizedDescription }
+    }
+    private func discardDraft() {
+        do { try LocalDraftStore.remove(promptID: prompt?.id) }
+        catch { errorMessage = error.localizedDescription }
+    }
+    private func save() {
+        do {
+            if let prompt {
+                let deleted = try modelContext.fetch(FetchDescriptor<TrashEntry>()).contains { $0.promptID == prompt.id }
+                guard !deleted, !prompt.isDeleted, prompt.updatedDate == baselineDate else { throw PromptValidationError.staleDraft }
+            }
+            try onSave(draft)
+            discardDraft()
+            dismiss()
+        } catch { errorMessage = error.localizedDescription }
+    }
 }
 
 private struct SelectablePromptTextEditor: NSViewRepresentable {
@@ -205,4 +252,33 @@ private struct SelectablePromptTextEditor: NSViewRepresentable {
 
 private struct EditorView_Previews: PreviewProvider {
     static var previews: some View { EditorView(prompt: nil, categories: [PromptCategory(name: "Teaching", sortOrder: 0)], usesChinese: false) { _ in } }
+}
+
+
+struct LocalEditorDraft: Codable {
+    var promptID: UUID?
+    var baselineDate: Date?
+    var draft: PromptDraft
+}
+
+enum LocalDraftStore {
+    private static var directory: URL {
+        URL.applicationSupportDirectory.appendingPathComponent("PromptDock/Drafts")
+    }
+    private static func url(_ id: UUID?) -> URL {
+        directory.appendingPathComponent((id?.uuidString ?? "new-prompt") + ".json")
+    }
+    static func load(promptID: UUID?) throws -> LocalEditorDraft? {
+        guard !AppEnvironment.isTesting, FileManager.default.fileExists(atPath: url(promptID).path) else { return nil }
+        return try JSONDecoder().decode(LocalEditorDraft.self, from: Data(contentsOf: url(promptID)))
+    }
+    static func save(_ draft: LocalEditorDraft) throws {
+        guard !AppEnvironment.isTesting else { return }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try JSONEncoder().encode(draft).write(to: url(draft.promptID), options: .atomic)
+    }
+    static func remove(promptID: UUID?) throws {
+        guard !AppEnvironment.isTesting, FileManager.default.fileExists(atPath: url(promptID).path) else { return }
+        try FileManager.default.removeItem(at: url(promptID))
+    }
 }

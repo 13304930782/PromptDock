@@ -165,7 +165,8 @@ final class PromptDockTests: XCTestCase {
 
         try viewModel.deletePrompt(createdPrompt, in: context)
         savedPrompts = try context.fetch(FetchDescriptor<Prompt>())
-        XCTAssertTrue(savedPrompts.isEmpty)
+        XCTAssertEqual(savedPrompts.count, 1)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<TrashEntry>()).map(\.promptID), [createdPrompt.id])
     }
 
     @MainActor
@@ -1603,7 +1604,7 @@ final class PromptDockTests: XCTestCase {
         context.insert(TemplateVariableDefinition(promptID: first.id, name: "name"))
         try context.save()
 
-        try Phase1Service.delete(prompts: [first], tags: [tag], in: context)
+        try Phase1Service.permanentlyDelete(prompts: [first], tags: [tag], in: context)
 
         XCTAssertEqual(try context.fetch(FetchDescriptor<Prompt>()).map(\.id), [second.id])
         XCTAssertEqual(tag.promptIDs, [second.id])
@@ -1934,5 +1935,91 @@ extension PromptDockTests {
         XCTAssertEqual(attempts, 1)
         try? await Task.sleep(for: .milliseconds(100))
         XCTAssertEqual(attempts, 1, "Permission denial must not trigger automatic retries")
+    }
+}
+
+extension PromptDockTests {
+    @MainActor
+    func testTrashRestorePreservesIdentityAndAssociatedRecords() throws {
+        let context = try DataService.makeModelContainer(isStoredInMemoryOnly: true).mainContext
+        let prompt = Prompt(title: "Keep", category: "AI", content: "Hello {{name}}")
+        let tag = PromptTag(name: "Tag", promptIDs: [prompt.id])
+        context.insert(prompt)
+        context.insert(tag)
+        context.insert(PromptVersion(promptID: prompt.id, title: "Before", category: "AI", content: "Before"))
+        context.insert(TemplateVariableDefinition(promptID: prompt.id, name: "name", defaultValue: "World"))
+        try context.save()
+        try TrashService.move([prompt], in: context)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<TrashEntry>()).count, 1)
+        try TrashService.restore([prompt.id], in: context)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<TrashEntry>()).isEmpty)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Prompt>()).first?.id, prompt.id)
+        XCTAssertEqual(tag.promptIDs, [prompt.id])
+        XCTAssertEqual(try context.fetch(FetchDescriptor<PromptVersion>()).count, 1)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<TemplateVariableDefinition>()).first?.defaultValue, "World")
+    }
+
+    @MainActor
+    func testTrashExpiresOnlyAfterThirtyDays() throws {
+        let context = try DataService.makeModelContainer(isStoredInMemoryOnly: true).mainContext
+        let prompt = Prompt(title: "Expire", category: "AI", content: "Content")
+        context.insert(prompt)
+        try context.save()
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        try TrashService.move([prompt], in: context, now: now)
+        try TrashService.purgeExpired(in: context, now: now.addingTimeInterval(29 * 86400))
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Prompt>()).count, 1)
+        try TrashService.purgeExpired(in: context, now: now.addingTimeInterval(30 * 86400))
+        XCTAssertTrue(try context.fetch(FetchDescriptor<Prompt>()).isEmpty)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<TrashEntry>()).isEmpty)
+    }
+
+    @MainActor
+    func testV1BackupWithoutNewFieldsStillDecodes() throws {
+        let context = try DataService.makeModelContainer(isStoredInMemoryOnly: true).mainContext
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: BackupService.encode(BackupService.makeBackup(in: context))) as? [String: Any])
+        object["formatVersion"] = 1
+        for key in ["versions", "tags", "smartCollections", "variableDefinitions", "trash"] { object.removeValue(forKey: key) }
+        let decoded = try BackupService.decode(JSONSerialization.data(withJSONObject: object))
+        XCTAssertTrue(decoded.trash.isEmpty)
+        XCTAssertTrue(decoded.variableDefinitions.isEmpty)
+    }
+
+    @MainActor
+    func testV3BackupRoundTripIncludesTrashAndWhitespace() throws {
+        let context = try DataService.makeModelContainer(isStoredInMemoryOnly: true).mainContext
+        let prompt = Prompt(title: "Whitespace", category: "AI", content: "\n  keep indentation  \n")
+        context.insert(prompt)
+        try context.save()
+        try TrashService.move([prompt], in: context)
+        let backup = try BackupService.makeBackup(in: context)
+        let restored = try DataService.makeModelContainer(isStoredInMemoryOnly: true).mainContext
+        _ = try BackupService.importBackup(BackupService.decode(BackupService.encode(backup)), mode: .replace, in: restored, createsSafetyBackup: false)
+        XCTAssertEqual(try restored.fetch(FetchDescriptor<Prompt>()).first?.content, prompt.content)
+        XCTAssertEqual(try restored.fetch(FetchDescriptor<TrashEntry>()).first?.promptID, prompt.id)
+    }
+
+    @MainActor
+    func testAutomaticBackupRetainsSevenAndPausesAfterFailure() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let suite = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { try? FileManager.default.removeItem(at: folder); defaults.removePersistentDomain(forName: suite) }
+        let service = AutomaticBackupService(directory: folder, defaults: defaults)
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        for index in 0..<9 {
+            try service.backupNow(container: container, now: Date(timeIntervalSince1970: Double(1_000_000 + index * 86400)))
+        }
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil).count, 7)
+        let invalid = folder.appendingPathComponent("file")
+        try Data().write(to: invalid)
+        let failing = AutomaticBackupService(directory: invalid, defaults: defaults)
+        failing.beforeSave(container: container)
+        XCTAssertNotNil(failing.lastError)
+        try FileManager.default.removeItem(at: invalid)
+        failing.beforeSave(container: container)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: invalid.path), "Failure must pause automatic retry")
+        try failing.backupNow(container: container)
+        XCTAssertNil(failing.lastError)
     }
 }

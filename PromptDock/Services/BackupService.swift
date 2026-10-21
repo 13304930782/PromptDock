@@ -5,7 +5,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct PromptDockBackup: Codable, Equatable {
-    static let currentFormatVersion = 2
+    static let currentFormatVersion = 3
 
     var formatVersion: Int
     var createdAt: Date
@@ -16,6 +16,12 @@ struct PromptDockBackup: Codable, Equatable {
     var tags: [TagRecord] = []
     var smartCollections: [SmartCollectionRecord] = []
     var variableDefinitions: [VariableDefinitionRecord] = []
+    var trash: [TrashRecord] = []
+
+    struct TrashRecord: Codable, Equatable {
+        var promptID: UUID
+        var deletedAt: Date
+    }
 
     struct PromptRecord: Codable, Equatable {
         var id: UUID
@@ -274,6 +280,9 @@ enum BackupService {
                     order: $0.order,
                     isRepeatable: $0.isRepeatable
                 )
+            },
+            trash: try context.fetch(FetchDescriptor<TrashEntry>()).map {
+                PromptDockBackup.TrashRecord(promptID: $0.promptID, deletedAt: $0.deletedAt)
             }
         )
     }
@@ -319,6 +328,12 @@ enum BackupService {
               Set(backup.variableDefinitions.map(\.id)).count == backup.variableDefinitions.count
         else {
             throw BackupError.tooManyItems
+        }
+
+        let promptIDs = Set(backup.prompts.map(\.id))
+        guard Set(backup.trash.map(\.promptID)).count == backup.trash.count,
+              backup.trash.allSatisfy({ promptIDs.contains($0.promptID) }) else {
+            throw BackupError.invalidPrompt
         }
 
         var categoryNames = Set<String>()
@@ -374,7 +389,7 @@ enum BackupService {
         try validate(backup)
 
         let safetyBackupURL: URL?
-        if mode == .replace, createsSafetyBackup {
+        if mode == .replace, createsSafetyBackup || !AppEnvironment.isTesting {
             safetyBackupURL = try writeSafetyBackup(in: context)
         } else {
             safetyBackupURL = nil
@@ -388,7 +403,11 @@ enum BackupService {
                 try replace(with: backup, in: context)
             }
             try mergePhase1Records(backup, in: context)
-            try context.save()
+            let existingTrash = Set(try context.fetch(FetchDescriptor<TrashEntry>()).map(\.promptID))
+            for entry in backup.trash where !existingTrash.contains(entry.promptID) {
+                context.insert(TrashEntry(promptID: entry.promptID, deletedAt: entry.deletedAt))
+            }
+            try LibraryPersistence.save(context)
         } catch {
             context.rollback()
             throw error
@@ -460,6 +479,7 @@ enum BackupService {
         with backup: PromptDockBackup,
         in context: ModelContext
     ) throws {
+        for entry in try context.fetch(FetchDescriptor<TrashEntry>()) { context.delete(entry) }
         for version in try context.fetch(FetchDescriptor<PromptVersion>()) {
             context.delete(version)
         }
@@ -688,7 +708,7 @@ enum BackupService {
             id: record.id,
             title: CategoryNameIdentity.trimmed(record.title),
             category: CategoryNameIdentity.trimmed(record.category),
-            content: CategoryNameIdentity.trimmed(record.content),
+            content: record.content,
             createdDate: record.createdDate,
             updatedDate: record.updatedDate,
             isFavorite: record.isFavorite
@@ -701,7 +721,7 @@ enum BackupService {
     ) {
         prompt.title = CategoryNameIdentity.trimmed(record.title)
         prompt.category = CategoryNameIdentity.trimmed(record.category)
-        prompt.content = CategoryNameIdentity.trimmed(record.content)
+        prompt.content = record.content
         prompt.createdDate = record.createdDate
         prompt.updatedDate = record.updatedDate
         prompt.isFavorite = record.isFavorite
@@ -748,4 +768,93 @@ enum BackupService {
         return "\(version) (\(build))"
     }
 
+}
+
+
+extension PromptDockBackup {
+    enum CodingKeys: String, CodingKey {
+        case formatVersion, createdAt, appVersion, prompts, categories
+        case versions, tags, smartCollections, variableDefinitions, trash
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        formatVersion = try c.decode(Int.self, forKey: .formatVersion)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        appVersion = try c.decode(String.self, forKey: .appVersion)
+        prompts = try c.decode([PromptRecord].self, forKey: .prompts)
+        categories = try c.decode([CategoryRecord].self, forKey: .categories)
+        versions = try c.decodeIfPresent([VersionRecord].self, forKey: .versions) ?? []
+        tags = try c.decodeIfPresent([TagRecord].self, forKey: .tags) ?? []
+        smartCollections = try c.decodeIfPresent([SmartCollectionRecord].self, forKey: .smartCollections) ?? []
+        variableDefinitions = try c.decodeIfPresent([VariableDefinitionRecord].self, forKey: .variableDefinitions) ?? []
+        trash = try c.decodeIfPresent([TrashRecord].self, forKey: .trash) ?? []
+    }
+}
+
+/// All application saves pass here; the independent context reads the last
+/// committed state, not the pending edit that triggered the backup.
+@MainActor
+enum LibraryPersistence {
+    static func save(_ context: ModelContext) throws {
+        if !AppEnvironment.isTesting {
+            AutomaticBackupService.shared.beforeSave(container: context.container)
+        }
+        do { try context.save() } catch {
+            context.rollback()
+            throw error
+        }
+    }
+}
+
+@MainActor
+final class AutomaticBackupService: ObservableObject {
+    static let shared = AutomaticBackupService()
+    @Published private(set) var lastError: String?
+    private var completedDay: Date?
+    private let directory: URL
+    private let defaults: UserDefaults
+
+    init(directory: URL = URL.applicationSupportDirectory.appendingPathComponent("PromptDock/AutomaticBackups"), defaults: UserDefaults = .standard) {
+        self.directory = directory
+        self.defaults = defaults
+        self.completedDay = defaults.object(forKey: "automaticBackupCompletedDay") as? Date
+    }
+
+    var isEnabled: Bool {
+        get { !defaults.bool(forKey: "automaticBackupsDisabled") }
+        set { defaults.set(!newValue, forKey: "automaticBackupsDisabled") }
+    }
+
+    var directoryURL: URL { directory }
+
+    func beforeSave(container: ModelContainer, now: Date = .now) {
+        guard isEnabled, lastError == nil else { return }
+        let day = Calendar.current.startOfDay(for: now)
+        guard completedDay != day else { return }
+        do { try backupNow(container: container, now: now) }
+        catch { lastError = error.localizedDescription }
+    }
+
+    func backupNow(container: ModelContainer, now: Date = .now) throws {
+        do {
+            let context = ModelContext(container)
+            context.autosaveEnabled = false
+            let data = try BackupService.encode(BackupService.makeBackup(in: context))
+            let fm = FileManager.default
+            try fm.createDirectory(at: directory, withIntermediateDirectories: true)
+            let url = directory.appendingPathComponent("Automatic-\(now.timeIntervalSince1970)-\(UUID().uuidString).json")
+            try data.write(to: url, options: .atomic)
+            let files = try fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.creationDateKey])
+                .filter { $0.lastPathComponent.hasPrefix("Automatic-") && $0.pathExtension == "json" }
+                .sorted { $0.lastPathComponent > $1.lastPathComponent }
+            for old in files.dropFirst(7) { try fm.removeItem(at: old) }
+            completedDay = Calendar.current.startOfDay(for: now)
+            defaults.set(completedDay, forKey: "automaticBackupCompletedDay")
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+            throw error
+        }
+    }
 }

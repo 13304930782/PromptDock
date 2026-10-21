@@ -46,6 +46,7 @@ final class AppBootstrapController: ObservableObject {
             guard let self, !Task.isCancelled else { return }
             do {
                 let container = try modelContainerFactory()
+                container.mainContext.autosaveEnabled = false
                 state = .ready(
                     container,
                     AppRuntime(modelContainer: container)

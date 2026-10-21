@@ -5,7 +5,12 @@ struct MainView: View {
     @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \Prompt.updatedDate, order: .reverse)
-    private var prompts: [Prompt]
+    private var allPrompts: [Prompt]
+    @Query private var trashEntries: [TrashEntry]
+    private var prompts: [Prompt] {
+        let deleted = Set(trashEntries.map(\.promptID))
+        return allPrompts.filter { !deleted.contains($0.id) }
+    }
 
     @Query(sort: [
         SortDescriptor(\PromptCategory.sortOrder),
@@ -409,7 +414,7 @@ struct MainView: View {
             Button("Cancel", role: .cancel) {}
         } message: { prompt in
             Text(
-                "This will permanently delete “\(prompt.title)”. This action cannot be undone."
+                "This will move “\(prompt.title)” to Trash for 30 days. You can restore it from Settings."
             )
         }
         .confirmationDialog(
@@ -428,6 +433,8 @@ struct MainView: View {
             Text(actionErrorMessage ?? "An unknown error occurred.")
         }
         .onAppear {
+            do { try TrashService.purgeExpired(in: modelContext) }
+            catch { actionErrorMessage = error.localizedDescription }
             ensureCategories()
             viewModel.reconcileSelection(
                 in: prompts,
@@ -595,7 +602,7 @@ struct MainView: View {
             } else {
                 modelContext.insert(PromptTag(name: name, color: draft.color))
             }
-            try modelContext.save()
+            try LibraryPersistence.save(modelContext)
         }
     }
 
@@ -608,7 +615,7 @@ struct MainView: View {
                 collection.tagIDs.removeAll { $0 == tag.id }
             }
             modelContext.delete(tag)
-            try modelContext.save()
+            try LibraryPersistence.save(modelContext)
         }
     }
 
@@ -623,7 +630,7 @@ struct MainView: View {
             target.favoriteOnly = draft.favoriteOnly
             target.updatedWithinDays = draft.updatedWithinDays
             target.matchAll = draft.matchAll
-            try modelContext.save()
+            try LibraryPersistence.save(modelContext)
             viewModel.selectedSection = .smartCollection(target.id, target.name)
         }
     }
@@ -634,7 +641,7 @@ struct MainView: View {
                 viewModel.selectedSection = .all
             }
             modelContext.delete(collection)
-            try modelContext.save()
+            try LibraryPersistence.save(modelContext)
         }
     }
 

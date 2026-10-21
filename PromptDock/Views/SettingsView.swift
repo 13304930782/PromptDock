@@ -28,6 +28,9 @@ struct SettingsView: View {
                     Label("Collections", systemImage: "square.stack.3d.up")
                 }
 
+            TrashSettingsView()
+                .tabItem { Label("Trash", systemImage: "trash") }
+
             PrivacySettingsView()
                 .tabItem {
                     Label("Privacy", systemImage: "hand.raised")
@@ -277,7 +280,8 @@ private struct PrivacySettingsView: View {
                 Button("Retry Widget Sync") {
                     do {
                         let prompts = try modelContext.fetch(FetchDescriptor<Prompt>())
-                        WidgetSnapshotService.retry(from: prompts)
+                        let deleted = Set(try modelContext.fetch(FetchDescriptor<TrashEntry>()).map(\.promptID))
+                        WidgetSnapshotService.retry(from: prompts.filter { !deleted.contains($0.id) })
                         if let error = WidgetSnapshotService.lastError {
                             notice = BackupNotice(title: "Widget Sync Failed", message: error)
                         }
@@ -293,6 +297,8 @@ private struct PrivacySettingsView: View {
                 )
                 .foregroundStyle(.secondary)
             }
+
+            AutomaticBackupSettingsView()
 
             Section("Local Backup") {
                 HStack {
@@ -432,7 +438,8 @@ private struct PrivacySettingsView: View {
             self.importCandidate = nil
 
             let prompts = try modelContext.fetch(FetchDescriptor<Prompt>())
-            WidgetSnapshotService.refresh(from: prompts)
+            let deleted = Set(try modelContext.fetch(FetchDescriptor<TrashEntry>()).map(\.promptID))
+            WidgetSnapshotService.refresh(from: prompts.filter { !deleted.contains($0.id) })
 
             var message = String(
                 localized: "Imported \(result.promptCount) prompts and \(result.categoryCount) categories."
@@ -846,5 +853,62 @@ private final class ShortcutRecorderButton: NSButton {
         if cancelled { onCancel?() }
         updateTitle()
         window?.makeFirstResponder(nil)
+    }
+}
+
+
+private struct TrashSettingsView: View {
+    @Environment(\.modelContext) private var context
+    @Query private var entries: [TrashEntry]
+    @Query private var prompts: [Prompt]
+    @State private var selection: Set<UUID> = []
+    @State private var confirmsDelete = false
+    @State private var error: String?
+    private var deletedPrompts: [Prompt] {
+        let ids = Set(entries.map(\.promptID))
+        return prompts.filter { ids.contains($0.id) }
+    }
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text("Deleted prompts are retained for 30 days. Restoration preserves tags, variables and history.")
+            List(deletedPrompts, selection: $selection) { prompt in
+                Text(prompt.title).tag(prompt.id)
+            }
+            HStack {
+                Text("Selected: \(selection.count)")
+                Spacer()
+                Button("Restore") { perform { try TrashService.restore(selection, in: context) } }.disabled(selection.isEmpty)
+                Button("Delete Permanently", role: .destructive) { confirmsDelete = true }.disabled(selection.isEmpty)
+            }
+        }
+        .padding()
+        .confirmationDialog("Permanently delete \(selection.count) prompts?", isPresented: $confirmsDelete) {
+            Button("Delete Permanently", role: .destructive) { perform { try TrashService.permanentlyDelete(selection, in: context) } }
+        } message: { Text("This cannot be undone.") }
+        .alert("Unable to Complete Action", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button("OK") {}
+        } message: { Text(error ?? "") }
+    }
+    private func perform(_ action: () throws -> Void) {
+        do { try action(); selection = [] } catch { self.error = error.localizedDescription }
+    }
+}
+
+private struct AutomaticBackupSettingsView: View {
+    @Environment(\.modelContext) private var context
+    @ObservedObject private var service = AutomaticBackupService.shared
+    @State private var enabled = AutomaticBackupService.shared.isEnabled
+    var body: some View {
+        Section("Automatic Backups") {
+            Toggle("Back up before the first change each day", isOn: $enabled)
+                .onChange(of: enabled) { service.isEnabled = enabled }
+            Text("Keeps the latest 7 automatic backups. Drafts and AI credentials are excluded.")
+                .font(.caption)
+            HStack {
+                Button("Back Up Now / Retry") { try? service.backupNow(container: context.container) }
+                Button("Show Backup Folder") { NSWorkspace.shared.open(service.directoryURL) }
+            }
+            if let error = service.lastError { Text(error).foregroundStyle(.red).textSelection(.enabled) }
+        }
     }
 }
