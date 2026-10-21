@@ -333,6 +333,8 @@ struct AIRewriteView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
+            ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(usesChinese ? "AI 改写" : "AI Rewrite").font(.title2.bold())
@@ -394,7 +396,7 @@ struct AIRewriteView: View {
                     }
                 }
 
-            }.frame(maxHeight: .infinity)
+            }.frame(height: candidate == nil ? 160 : 220)
 
             if let candidate {
                 ScrollView {
@@ -410,6 +412,9 @@ struct AIRewriteView: View {
             }
             if let errorMessage { Label(errorMessage, systemImage: "exclamationmark.triangle").foregroundStyle(.red).font(.caption) }
 
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Divider()
             HStack {
                 if isGenerating { ProgressView().controlSize(.small); Button(usesChinese ? "取消" : "Cancel") { generation += 1; task?.cancel(); isGenerating = false; runStatus = usesChinese ? "已取消，未修改原文" : "Cancelled; original unchanged" } }
                 Spacer()
@@ -433,7 +438,7 @@ struct AIRewriteView: View {
             }
         }
         .padding(24)
-        .frame(width: 820, height: 780)
+        .frame(width: 820, height: 720)
         .onDisappear { generation += 1; task?.cancel() }
     }
 
