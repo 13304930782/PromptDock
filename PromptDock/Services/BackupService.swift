@@ -502,10 +502,11 @@ enum BackupService {
             context.delete(category)
         }
 
-        let categories = backup.categories.map(makeCategory)
+        var categories = backup.categories.map(makeCategory)
         let prompts = backup.prompts.map(makePrompt)
         categories.forEach(context.insert)
         prompts.forEach(context.insert)
+        insertMissingCategories(for: prompts, categories: &categories, in: context)
     }
 
     private static func mergePhase1Records(
