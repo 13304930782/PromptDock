@@ -25,12 +25,13 @@ final class AppBootstrapController: ObservableObject {
     private var loadTask: Task<Void, Never>?
 
     init(
+        automaticallyStart: Bool = true,
         modelContainerFactory: @escaping () throws -> ModelContainer = {
             try DataService.makeModelContainer()
         }
     ) {
         self.modelContainerFactory = modelContainerFactory
-        retry()
+        if automaticallyStart { retry() }
     }
 
     deinit {

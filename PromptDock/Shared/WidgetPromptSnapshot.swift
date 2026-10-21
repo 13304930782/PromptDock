@@ -132,14 +132,37 @@ enum WidgetSharedStore {
     static let widgetKind = "PromptDockWidget"
 
     static func save(_ snapshots: [WidgetPromptSnapshot]) throws {
+        guard !AppEnvironment.isTesting else { return }
         try WidgetSnapshotStore(
             appGroupIdentifier: appGroupIdentifier
         ).save(snapshots)
     }
 
     static func load() throws -> [WidgetPromptSnapshot] {
-        try WidgetSnapshotStore(
+        guard !AppEnvironment.isTesting else { return [] }
+        return try WidgetSnapshotStore(
             appGroupIdentifier: appGroupIdentifier
         ).load()
+    }
+}
+
+/// Shared by the app and extension. No container lookup is performed here.
+enum AppEnvironment {
+    static var isTesting: Bool {
+        isTesting(environment: ProcessInfo.processInfo.environment)
+    }
+
+    static func isTesting(environment: [String: String]) -> Bool {
+        environment["PROMPTDOCK_TESTING"] == "1"
+            || environment["XCTestConfigurationFilePath"] != nil
+            || environment["XCTestBundlePath"] != nil
+    }
+
+    static var keychainService: String {
+        #if DEBUG
+        "com.promptdock.PromptDock.Dev.ai-api-key"
+        #else
+        "com.promptdock.PromptDock.ai-api-key"
+        #endif
     }
 }

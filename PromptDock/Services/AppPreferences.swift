@@ -132,10 +132,11 @@ enum AppPreferences {
 @MainActor
 enum LoginItemService {
     static var isEnabled: Bool {
-        SMAppService.mainApp.status == .enabled
+        !AppEnvironment.isTesting && SMAppService.mainApp.status == .enabled
     }
 
     static func setEnabled(_ enabled: Bool) throws {
+        guard !AppEnvironment.isTesting else { return }
         if enabled {
             try SMAppService.mainApp.register()
         } else {

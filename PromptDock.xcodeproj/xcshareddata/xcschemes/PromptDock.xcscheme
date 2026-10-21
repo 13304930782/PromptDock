@@ -29,6 +29,9 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
+      <EnvironmentVariables>
+         <EnvironmentVariable key="PROMPTDOCK_TESTING" value="1" isEnabled="YES"/>
+      </EnvironmentVariables>
       <Testables>
          <TestableReference
             skipped = "NO"

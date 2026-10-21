@@ -430,6 +430,25 @@ final class PromptDockTests: XCTestCase {
         )
     }
 
+    func testPromptTemplateTreatsMixedSyntaxForOneNameAsRepeatable() {
+        let template = PromptTemplate(
+            "Primary: {{file}}; all files: {{file[]}}."
+        )
+
+        XCTAssertEqual(
+            template.fields,
+            [PromptTemplateVariable(name: "file", kind: .list)]
+        )
+        XCTAssertEqual(
+            template.render(
+                values: [:],
+                repeatableValues: ["file": ["A.docx", "B.docx"]],
+                listSeparator: ", "
+            ),
+            "Primary: A.docx, B.docx; all files: A.docx, B.docx."
+        )
+    }
+
     func testPromptTemplateRequiresEveryAddedRepeatableValue() {
         let template = PromptTemplate(
             "批改标题：{{文件名[]}}"
@@ -1527,6 +1546,230 @@ final class PromptDockTests: XCTestCase {
     }
 
     @MainActor
+    func testSmartCollectionCanMatchAnyCondition() {
+        let prompt = Prompt(title: "Swift", category: "Coding", content: "Actors")
+        let collection = SmartCollection(
+            name: "Broad",
+            query: "missing",
+            category: "coding",
+            matchAll: false
+        )
+
+        XCTAssertTrue(Phase1Service.matches(prompt, collection: collection, tags: []))
+        collection.matchAll = true
+        XCTAssertFalse(Phase1Service.matches(prompt, collection: collection, tags: []))
+    }
+
+    @MainActor
+    func testBulkOrganizationUpdatesPromptsAndTags() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = ModelContext(container)
+        let first = Prompt(title: "One", category: "Writing", content: "First")
+        let second = Prompt(title: "Two", category: "Writing", content: "Second")
+        let tag = PromptTag(name: "Important", color: .red)
+        [first, second].forEach(context.insert)
+        context.insert(tag)
+        try context.save()
+
+        try Phase1Service.move(prompts: [first, second], to: "Coding", in: context)
+        try Phase1Service.setTag(tag, for: [first, second], isIncluded: true, in: context)
+        try Phase1Service.setFavorite(true, for: [first, second], in: context)
+
+        XCTAssertEqual(first.category, "Coding")
+        XCTAssertEqual(second.category, "Coding")
+        XCTAssertTrue(first.isFavorite && second.isFavorite)
+        XCTAssertEqual(Set(tag.promptIDs), Set([first.id, second.id]))
+
+        try Phase1Service.setTag(tag, for: [first], isIncluded: false, in: context)
+        XCTAssertEqual(tag.promptIDs, [second.id])
+    }
+
+    @MainActor
+    func testDeletingPromptsRemovesTagsHistoryAndVariableDefinitions() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = ModelContext(container)
+        let first = Prompt(title: "One", category: "AI", content: "Hello {{name}}")
+        let second = Prompt(title: "Two", category: "AI", content: "Keep")
+        let tag = PromptTag(name: "Release", promptIDs: [first.id, second.id])
+        context.insert(first)
+        context.insert(second)
+        context.insert(tag)
+        context.insert(PromptVersion(
+            promptID: first.id,
+            title: first.title,
+            category: first.category,
+            content: first.content
+        ))
+        context.insert(TemplateVariableDefinition(promptID: first.id, name: "name"))
+        try context.save()
+
+        try Phase1Service.delete(prompts: [first], tags: [tag], in: context)
+
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Prompt>()).map(\.id), [second.id])
+        XCTAssertEqual(tag.promptIDs, [second.id])
+        XCTAssertTrue(try context.fetch(FetchDescriptor<PromptVersion>()).isEmpty)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<TemplateVariableDefinition>()).isEmpty)
+    }
+
+    @MainActor
+    func testUpdatingPromptPreservesSubmittedTagsAndVariableMetadata() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = ModelContext(container)
+        let prompt = Prompt(title: "Template", category: "AI", content: "Hello {{name}}")
+        let tag = PromptTag(name: "Reusable", promptIDs: [prompt.id])
+        let definition = TemplateVariableDefinition(
+            promptID: prompt.id,
+            name: "name",
+            label: "Recipient",
+            defaultValue: "World",
+            order: 0
+        )
+        context.insert(prompt)
+        context.insert(tag)
+        context.insert(definition)
+        try context.save()
+
+        try PromptViewModel().updatePrompt(
+            prompt,
+            from: PromptDraft(
+                title: "Updated Template",
+                category: "AI",
+                content: "Welcome {{name}}",
+                tagIDs: [tag.id],
+                variableDefinitions: [TemplateVariableDraft(definition)]
+            ),
+            tags: [tag],
+            in: context
+        )
+
+        let savedDefinition = try XCTUnwrap(
+            context.fetch(FetchDescriptor<TemplateVariableDefinition>()).first
+        )
+        XCTAssertEqual(tag.promptIDs, [prompt.id])
+        XCTAssertEqual(savedDefinition.label, "Recipient")
+        XCTAssertEqual(savedDefinition.defaultValue, "World")
+    }
+
+    @MainActor
+    func testVariableDefinitionsUseDraftMetadataAndRemoveOrphans() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = ModelContext(container)
+        let prompt = Prompt(
+            title: "Template",
+            category: "Writing",
+            content: "Review {{file[]}} for {{audience}}"
+        )
+        context.insert(prompt)
+        try context.save()
+
+        try Phase1Service.syncVariableDefinitions(
+            promptID: prompt.id,
+            drafts: [
+                TemplateVariableDraft(
+                    name: "audience",
+                    label: "Reader",
+                    defaultValue: "Students",
+                    order: 0
+                ),
+                TemplateVariableDraft(
+                    name: "file",
+                    label: "Document",
+                    order: 1,
+                    isRepeatable: true
+                )
+            ],
+            content: prompt.content,
+            in: context
+        )
+        try context.save()
+
+        var definitions = try context.fetch(FetchDescriptor<TemplateVariableDefinition>())
+        XCTAssertEqual(definitions.count, 2)
+        XCTAssertEqual(definitions.first(where: { $0.name == "audience" })?.label, "Reader")
+        XCTAssertEqual(definitions.first(where: { $0.name == "audience" })?.defaultValue, "Students")
+        XCTAssertEqual(definitions.first(where: { $0.name == "file" })?.isRepeatable, true)
+
+        try Phase1Service.syncVariableDefinitions(
+            promptID: prompt.id,
+            drafts: [],
+            content: "Review {{file[]}}",
+            in: context
+        )
+        try context.save()
+
+        definitions = try context.fetch(FetchDescriptor<TemplateVariableDefinition>())
+        XCTAssertEqual(definitions.map(\.name), ["file"])
+    }
+
+    @MainActor
+    func testVariableDefinitionsCollapseMixedSyntaxAndDuplicateDrafts() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = ModelContext(container)
+        let promptID = UUID()
+        context.insert(TemplateVariableDefinition(promptID: promptID, name: "file"))
+        context.insert(TemplateVariableDefinition(promptID: promptID, name: "file"))
+        try context.save()
+
+        try Phase1Service.syncVariableDefinitions(
+            promptID: promptID,
+            drafts: [
+                TemplateVariableDraft(name: "file", label: "First", order: 0),
+                TemplateVariableDraft(name: "file", label: "Documents", order: 1, isRepeatable: true)
+            ],
+            content: "Primary: {{file}}; all files: {{file[]}}",
+            in: context
+        )
+        try context.save()
+
+        let definitions = try context.fetch(FetchDescriptor<TemplateVariableDefinition>())
+        XCTAssertEqual(definitions.count, 1)
+        XCTAssertEqual(definitions.first?.label, "Documents")
+        XCTAssertEqual(definitions.first?.isRepeatable, true)
+    }
+
+    @MainActor
+    func testSelectionFallbackUsesVisiblePromptOrder() {
+        let first = UUID()
+        let second = UUID()
+        let third = UUID()
+        let viewModel = PromptViewModel()
+        viewModel.selectedPromptIDs = [first, second, third]
+        viewModel.selectedPromptID = first
+
+        viewModel.updateSelection([second, third], orderedBy: [first, second, third])
+
+        XCTAssertEqual(viewModel.selectedPromptID, second)
+    }
+
+    @MainActor
+    func testTagFilterAndRecentSectionUseExistingData() {
+        let tagged = Prompt(title: "Tagged", category: "AI", content: "One")
+        let other = Prompt(title: "Other", category: "AI", content: "Two")
+        let tag = PromptTag(name: "Release", promptIDs: [tagged.id])
+        let viewModel = PromptViewModel()
+
+        viewModel.selectedSection = .tag(tag.id, tag.name)
+        XCTAssertEqual(
+            viewModel.filteredPrompts(from: [tagged, other], tags: [tag]).map(\.id),
+            [tagged.id]
+        )
+
+        let prompts = (0..<25).map { index in
+            Prompt(
+                title: "Prompt \(index)",
+                category: "AI",
+                content: "Content",
+                updatedDate: Date(timeIntervalSince1970: TimeInterval(index))
+            )
+        }
+        viewModel.selectedSection = .recent
+        let recent = viewModel.filteredPrompts(from: prompts)
+        XCTAssertEqual(recent.count, 20)
+        XCTAssertEqual(recent.first?.title, "Prompt 24")
+        XCTAssertEqual(recent.last?.title, "Prompt 5")
+    }
+
+    @MainActor
     func testBackupV2RoundTripPreservesPhase1Records() throws {
         let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
         let context = ModelContext(container)
@@ -1651,5 +1894,45 @@ private final class AIStubURLProtocol: URLProtocol {
     override func stopLoading() {
         delivery?.cancel()
         delivery = nil
+    }
+}
+
+
+extension PromptDockTests {
+    func testTestEnvironmentDetectionDoesNotDependOnDebugBuild() {
+        XCTAssertTrue(AppEnvironment.isTesting(environment: ["PROMPTDOCK_TESTING": "1"]))
+        XCTAssertTrue(AppEnvironment.isTesting(environment: ["XCTestConfigurationFilePath": "/tmp/tests"]))
+        XCTAssertFalse(AppEnvironment.isTesting(environment: [:]))
+    }
+
+    @MainActor
+    func testTestHostNeverResolvesSharedContainer() throws {
+        XCTAssertTrue(AppEnvironment.isTesting)
+        XCTAssertNil(DataService.dataDirectoryURLIfAvailable())
+        let first = try DataService.makeModelContainer()
+        first.mainContext.insert(Prompt(title: "Test only", category: "Coding", content: "Private"))
+        try first.mainContext.save()
+        let second = try DataService.makeModelContainer()
+        XCTAssertTrue(try second.mainContext.fetch(FetchDescriptor<Prompt>()).isEmpty)
+        XCTAssertTrue(try WidgetSharedStore.load().isEmpty)
+    }
+
+    @MainActor
+    func testDisabledBootstrapDoesNotCallStorageFactory() async {
+        var attempts = 0
+        let bootstrap = AppBootstrapController(automaticallyStart: false) {
+            attempts += 1
+            throw CocoaError(.fileReadNoPermission)
+        }
+        await Task.yield()
+        XCTAssertEqual(attempts, 0)
+        bootstrap.retry()
+        for _ in 0..<100 {
+            if case .failed = bootstrap.state { break }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(attempts, 1)
+        try? await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(attempts, 1, "Permission denial must not trigger automatic retries")
     }
 }

@@ -16,7 +16,7 @@ private final class PromptDockAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        guard Self.wasLaunchedAtLogin else { return }
+        guard !AppEnvironment.isTesting, Self.wasLaunchedAtLogin else { return }
 
         // A main-app login item still creates the SwiftUI WindowGroup during launch.
         // Hide that initial window after services have started so login remains quiet.
@@ -49,8 +49,8 @@ struct PromptDockApp: App {
     @StateObject private var bootstrap: AppBootstrapController
 
     init() {
-        AppPreferences.registerDefaults()
-        _bootstrap = StateObject(wrappedValue: AppBootstrapController())
+        if !AppEnvironment.isTesting { AppPreferences.registerDefaults() }
+        _bootstrap = StateObject(wrappedValue: AppBootstrapController(automaticallyStart: !AppEnvironment.isTesting))
     }
 
     private var selectedLanguage: AppLanguage {
@@ -93,6 +93,9 @@ private struct BootstrapMainView: View {
 
     var body: some View {
         Group {
+            if AppEnvironment.isTesting {
+                Color.clear
+            } else {
             switch bootstrap.state {
             case .loading:
                 ProgressView("Opening PromptDock…")
@@ -107,6 +110,7 @@ private struct BootstrapMainView: View {
                     onRetry: bootstrap.retry
                 )
             }
+            }
         }
     }
 }
@@ -116,6 +120,9 @@ private struct BootstrapSettingsView: View {
 
     var body: some View {
         Group {
+            if AppEnvironment.isTesting {
+                Color.clear
+            } else {
             switch bootstrap.state {
             case .loading:
                 ProgressView("Opening PromptDock…")
@@ -129,6 +136,7 @@ private struct BootstrapSettingsView: View {
                     onRetry: bootstrap.retry
                 )
                 .frame(width: 580, height: 450)
+            }
             }
         }
     }

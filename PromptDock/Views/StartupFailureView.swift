@@ -27,7 +27,6 @@ struct StartupFailureView: View {
                 HStack {
                     Button("Copy Error Details", action: copyDetails)
                     Button("Show Data Folder in Finder", action: revealDataFolder)
-                        .disabled(dataDirectoryURL == nil)
                     Button("Quit PromptDock") { NSApp.terminate(nil) }
                 }
 
