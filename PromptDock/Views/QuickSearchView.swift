@@ -15,11 +15,21 @@ struct QuickSearchView: View {
     let onClose: () -> Void
     let onPreferredHeightChange: (CGFloat) -> Void
 
+    @Query private var tags: [PromptTag]
+    @Query private var definitions: [TemplateVariableDefinition]
+    @StateObject private var searchController = PromptSearchController()
     @State private var query = ""
     @State private var selectedPromptID: UUID?
     @State private var copiedPromptID: UUID?
     @State private var errorMessage: String?
-    @State private var results: [Prompt] = []
+    private var searchInput: PromptSearchInput {
+        PromptSearchInput(snapshots: PromptSearchService.snapshots(prompts, tags: tags, locale: locale), query: query, localeIdentifier: locale.identifier, limit: 12)
+    }
+    private var results: [Prompt] {
+        guard searchController.completedInput == searchInput else { return [] }
+        let byID = Dictionary(uniqueKeysWithValues: prompts.map { ($0.id, $0) })
+        return searchController.ids.compactMap { byID[$0] }
+    }
     @State private var templateCopyRequest: PromptTemplateCopyRequest?
     @FocusState private var isSearchFocused: Bool
 
@@ -148,7 +158,6 @@ struct QuickSearchView: View {
         }
         .onAppear {
             query = ""
-            results = []
             selectedPromptID = nil
             templateCopyRequest = nil
             onPreferredHeightChange(preferredHeight)
@@ -157,14 +166,9 @@ struct QuickSearchView: View {
                 isSearchFocused = true
             }
         }
-        .onChange(of: query) {
-            refreshResults()
-        }
-        .onChange(of: promptRevision) {
-            refreshResults()
-        }
-        .onChange(of: locale.identifier) {
-            refreshResults()
+        .task(id: searchInput) { await searchController.search(searchInput) }
+        .onChange(of: searchController.ids) {
+            if !results.contains(where: { $0.id == selectedPromptID }) { selectedPromptID = results.first?.id }
         }
         .onChange(of: preferredHeight) { _, height in
             onPreferredHeightChange(height)
@@ -293,22 +297,8 @@ struct QuickSearchView: View {
         selectedPromptID = results[nextIndex].id
     }
 
-    private func refreshResults() {
-        results = PromptSearchService.results(
-            in: prompts,
-            query: query,
-            locale: locale,
-            limit: 12
-        )
-        if let selectedPromptID,
-           results.contains(where: { $0.id == selectedPromptID }) {
-            return
-        }
-        selectedPromptID = results.first?.id
-    }
-
     private func beginCopy(_ prompt: Prompt) {
-        let request = PromptTemplateCopyRequest(prompt: prompt)
+        let request = PromptTemplateCopyRequest(prompt: prompt, definitions: definitions.filter { $0.promptID == prompt.id })
         guard request.template.hasVariables else {
             _ = finishCopy(prompt.content, promptID: prompt.id)
             return

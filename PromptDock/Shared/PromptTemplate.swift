@@ -166,3 +166,14 @@ struct PromptTemplate: Equatable {
         }
     }
 }
+
+
+extension PromptTemplate {
+    static func pastedList(_ text: String) throws -> [String] {
+        let values = text.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        guard values.count <= maximumRepeatableValueCount else {
+            throw NSError(domain: "PromptDock.Template", code: 1, userInfo: [NSLocalizedDescriptionKey: "A list can contain at most 100 items."])
+        }
+        return values.isEmpty ? [""] : values
+    }
+}

@@ -1,6 +1,386 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Trash" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回收站"
+          }
+        }
+      }
+    },
+    "Restore" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复"
+          }
+        }
+      }
+    },
+    "Delete Permanently" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "永久删除"
+          }
+        }
+      }
+    },
+    "This cannot be undone." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此操作无法撤销。"
+          }
+        }
+      }
+    },
+    "Automatic Backups" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动备份"
+          }
+        }
+      }
+    },
+    "Back up before the first change each day" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每天首次修改前自动备份"
+          }
+        }
+      }
+    },
+    "Back Up Now / Retry" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即备份／重试"
+          }
+        }
+      }
+    },
+    "Show Backup Folder" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看备份目录"
+          }
+        }
+      }
+    },
+    "Retry Widget Sync" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重试小组件同步"
+          }
+        }
+      }
+    },
+    "After a sync failure, automatic retries pause until you retry here." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步失败后将暂停自动重试，请在这里手动重试。"
+          }
+        }
+      }
+    },
+    "Keeps the latest 7 automatic backups. Drafts and AI credentials are excluded." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留最近 7 份自动备份，不包含草稿或 AI 凭据。"
+          }
+        }
+      }
+    },
+    "Deleted prompts are retained for 30 days. Restoration preserves tags, variables and history." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除的提示词保留 30 天，恢复时保留标签、变量和历史记录。"
+          }
+        }
+      }
+    },
+    "Import / Export" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入／导出"
+          }
+        }
+      }
+    },
+    "Import" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入"
+          }
+        }
+      }
+    },
+    "Export" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出"
+          }
+        }
+      }
+    },
+    "Choose JSON, Markdown or CSV Files…" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择 JSON、Markdown 或 CSV 文件…"
+          }
+        }
+      }
+    },
+    "Import valid items only" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅导入有效项"
+          }
+        }
+      }
+    },
+    "Same ID" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相同 ID 冲突"
+          }
+        }
+      }
+    },
+    "Replace the entire library (safety backup required)" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "替换整个资料库（必须先成功备份）"
+          }
+        }
+      }
+    },
+    "Preview Changes" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览更改"
+          }
+        }
+      }
+    },
+    "All current library contents will be replaced." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将替换资料库中的全部现有内容。"
+          }
+        }
+      }
+    },
+    "Confirm Import" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认导入"
+          }
+        }
+      }
+    },
+    "Scope" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "范围"
+          }
+        }
+      }
+    },
+    "Entire Library" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "整个资料库"
+          }
+        }
+      }
+    },
+    "Format" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "格式"
+          }
+        }
+      }
+    },
+    "Export…" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出…"
+          }
+        }
+      }
+    },
+    "CSV Template…" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV 模板…"
+          }
+        }
+      }
+    },
+    "Processing files…" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在处理文件…"
+          }
+        }
+      }
+    },
+    "Keep Local" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留本地"
+          }
+        }
+      }
+    },
+    "Update" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新"
+          }
+        }
+      }
+    },
+    "Save Copy" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "另存副本"
+          }
+        }
+      }
+    },
+    "Full JSON preserves the library, including Trash and history. Content packages exclude global smart collections. Markdown preserves title, content, category, tags, favorites and variables; CSV preserves only its five columns. Neither preserves history or Trash state." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完整 JSON 保留资料库、回收站和历史；部分内容包不包含全局智能集合。Markdown 保留标题、正文、分类、标签、收藏和变量；CSV 仅保留模板中的五列。后两种格式不保留历史或回收站状态。"
+          }
+        }
+      }
+    },
+    "Selected: %lld" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已选择：%lld"
+          }
+        }
+      }
+    },
+    "Permanently delete %lld prompts?" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "永久删除 %lld 条提示词？"
+          }
+        }
+      }
+    },
+    "Selected (%lld)" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已选择（%lld）"
+          }
+        }
+      }
+    },
+    "Current Filter (%lld)" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前筛选（%lld）"
+          }
+        }
+      }
+    },
+    "Valid: %lld · Invalid: %lld" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有效：%lld · 无效：%lld"
+          }
+        }
+      }
+    },
+    "Add: %lld · Update: %lld · Skip: %lld" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增：%lld · 更新：%lld · 跳过：%lld"
+          }
+        }
+      }
+    },
     "" : {
 
     },
