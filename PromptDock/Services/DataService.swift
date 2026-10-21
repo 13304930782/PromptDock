@@ -24,9 +24,16 @@ enum PromptDockSchemaV2: VersionedSchema {
     }
 }
 
+enum PromptDockSchemaV3: VersionedSchema {
+    static let versionIdentifier = Schema.Version(3, 0, 0)
+    static var models: [any PersistentModel.Type] {
+        PromptDockSchemaV2.models + [TrashEntry.self]
+    }
+}
+
 enum PromptDockMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [PromptDockSchemaV1.self, PromptDockSchemaV2.self]
+        [PromptDockSchemaV1.self, PromptDockSchemaV2.self, PromptDockSchemaV3.self]
     }
 
     static var stages: [MigrationStage] {
@@ -34,7 +41,8 @@ enum PromptDockMigrationPlan: SchemaMigrationPlan {
             .lightweight(
                 fromVersion: PromptDockSchemaV1.self,
                 toVersion: PromptDockSchemaV2.self
-            )
+            ),
+            .lightweight(fromVersion: PromptDockSchemaV2.self, toVersion: PromptDockSchemaV3.self)
         ]
     }
 }
@@ -44,7 +52,7 @@ enum DataService {
         isStoredInMemoryOnly: Bool = false,
         storeURL: URL? = nil
     ) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: PromptDockSchemaV2.self)
+        let schema = Schema(versionedSchema: PromptDockSchemaV3.self)
         let configuration: ModelConfiguration
         if let storeURL {
             configuration = ModelConfiguration(
@@ -66,11 +74,12 @@ enum DataService {
             )
         }
 
-        return try ModelContainer(
+        let container = try ModelContainer(
             for: schema,
             migrationPlan: PromptDockMigrationPlan.self,
             configurations: [configuration]
         )
+        return container
     }
 
     static func dataDirectoryURLIfAvailable() -> URL? {

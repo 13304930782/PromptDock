@@ -158,7 +158,7 @@ enum CategoryService {
         guard insertedCategory else { return }
 
         do {
-            try context.save()
+            try LibraryPersistence.save(context)
         } catch {
             context.rollback()
             throw error
@@ -194,7 +194,7 @@ enum CategoryService {
         context.insert(category)
 
         do {
-            try context.save()
+            try LibraryPersistence.save(context)
             return category
         } catch {
             context.rollback()
@@ -216,7 +216,7 @@ enum CategoryService {
         }
 
         do {
-            try context.save()
+            try LibraryPersistence.save(context)
         } catch {
             context.rollback()
             throw error
@@ -262,7 +262,7 @@ enum CategoryService {
         }
 
         do {
-            try context.save()
+            try LibraryPersistence.save(context)
             return name
         } catch {
             context.rollback()
@@ -319,7 +319,7 @@ enum CategoryService {
         }
 
         do {
-            try context.save()
+            try LibraryPersistence.save(context)
             return destination?.name
         } catch {
             context.rollback()

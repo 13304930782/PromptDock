@@ -1,7 +1,7 @@
 import SwiftData
 import SwiftUI
 
-struct PromptDraft {
+struct PromptDraft: Codable, Equatable {
     var title: String
     var category: String
     var content: String
@@ -44,7 +44,7 @@ struct PromptDraft {
     }
 }
 
-struct TemplateVariableDraft: Identifiable, Hashable {
+struct TemplateVariableDraft: Identifiable, Hashable, Codable {
     var id: String { name }
     var name: String
     var label: String
@@ -78,9 +78,12 @@ struct TemplateVariableDraft: Identifiable, Hashable {
 enum PromptValidationError: LocalizedError {
     case missingTitle
     case missingContent
+    case staleDraft
 
     var errorDescription: String? {
         switch self {
+        case .staleDraft:
+            "This prompt changed or was deleted after you started editing. Your draft is preserved. Reopen the latest record before saving."
         case .missingTitle:
             "Enter a title for the prompt."
         case .missingContent:
@@ -289,7 +292,7 @@ final class PromptViewModel: ObservableObject {
                 tags: tags,
                 in: context
             )
-            try context.save()
+            try LibraryPersistence.save(context)
             return prompt
         } catch {
             context.rollback()
@@ -326,7 +329,7 @@ final class PromptViewModel: ObservableObject {
                 tags: tags,
                 in: context
             )
-            try context.save()
+            try LibraryPersistence.save(context)
         } catch {
             context.rollback()
             throw error
@@ -351,9 +354,10 @@ final class PromptViewModel: ObservableObject {
         in context: ModelContext
     ) throws {
         prompt.isFavorite.toggle()
+        prompt.updatedDate = .now
 
         do {
-            try context.save()
+            try LibraryPersistence.save(context)
         } catch {
             context.rollback()
             throw error

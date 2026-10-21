@@ -5,7 +5,12 @@ struct QuickSearchView: View {
     @Environment(\.locale) private var locale
 
     @Query(sort: \Prompt.updatedDate, order: .reverse)
-    private var prompts: [Prompt]
+    private var allPrompts: [Prompt]
+    @Query private var trashEntries: [TrashEntry]
+    private var prompts: [Prompt] {
+        let deleted = Set(trashEntries.map(\.promptID))
+        return allPrompts.filter { !deleted.contains($0.id) }
+    }
 
     let onClose: () -> Void
     let onPreferredHeightChange: (CGFloat) -> Void

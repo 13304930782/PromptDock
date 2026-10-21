@@ -209,7 +209,7 @@ enum Phase1Service {
             context.insert(definition)
             byName[field.name] = definition
         }
-        try context.save()
+        try LibraryPersistence.save(context)
         return byName.values.sorted { $0.order < $1.order }
     }
 
@@ -304,6 +304,7 @@ enum Phase1Service {
         in context: ModelContext
     ) throws {
         let ids = Set(prompts.map(\.id))
+        for prompt in prompts { prompt.updatedDate = .now }
         if isIncluded {
             tag.promptIDs = Array(Set(tag.promptIDs).union(ids))
         } else {
@@ -317,11 +318,15 @@ enum Phase1Service {
         for prompts: [Prompt],
         in context: ModelContext
     ) throws {
-        for prompt in prompts { prompt.isFavorite = value }
+        for prompt in prompts { prompt.isFavorite = value; prompt.updatedDate = .now }
         try saveOrRollback(context)
     }
 
-    static func delete(
+    static func delete(prompts: [Prompt], tags: [PromptTag], in context: ModelContext) throws {
+        try TrashService.move(prompts, in: context)
+    }
+
+    static func permanentlyDelete(
         prompts: [Prompt],
         tags: [PromptTag],
         in context: ModelContext
@@ -340,7 +345,7 @@ enum Phase1Service {
     }
 
     private static func saveOrRollback(_ context: ModelContext) throws {
-        do { try context.save() } catch {
+        do { try LibraryPersistence.save(context) } catch {
             context.rollback()
             throw error
         }
@@ -376,4 +381,51 @@ enum Phase1Service {
 
 private extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
+}
+
+
+@Model
+final class TrashEntry {
+    @Attribute(.unique) var promptID: UUID
+    var deletedAt: Date
+    init(promptID: UUID, deletedAt: Date = .now) {
+        self.promptID = promptID
+        self.deletedAt = deletedAt
+    }
+}
+
+@MainActor
+enum TrashService {
+    static let retentionDays = 30
+
+    static func move(_ prompts: [Prompt], in context: ModelContext, now: Date = .now) throws {
+        let existing = Set(try context.fetch(FetchDescriptor<TrashEntry>()).map(\.promptID))
+        for prompt in prompts where !existing.contains(prompt.id) {
+            context.insert(TrashEntry(promptID: prompt.id, deletedAt: now))
+        }
+        try LibraryPersistence.save(context)
+    }
+
+    static func restore(_ ids: Set<UUID>, in context: ModelContext) throws {
+        for entry in try context.fetch(FetchDescriptor<TrashEntry>()) where ids.contains(entry.promptID) {
+            context.delete(entry)
+        }
+        try LibraryPersistence.save(context)
+    }
+
+    static func permanentlyDelete(_ ids: Set<UUID>, in context: ModelContext) throws {
+        let prompts = try context.fetch(FetchDescriptor<Prompt>()).filter { ids.contains($0.id) }
+        let tags = try context.fetch(FetchDescriptor<PromptTag>())
+        for entry in try context.fetch(FetchDescriptor<TrashEntry>()) where ids.contains(entry.promptID) {
+            context.delete(entry)
+        }
+        try Phase1Service.permanentlyDelete(prompts: prompts, tags: tags, in: context)
+    }
+
+    static func purgeExpired(in context: ModelContext, now: Date = .now) throws {
+        let cutoff = now.addingTimeInterval(-Double(retentionDays) * 86400)
+        let ids = Set(try context.fetch(FetchDescriptor<TrashEntry>())
+            .filter { $0.deletedAt <= cutoff }.map(\.promptID))
+        if !ids.isEmpty { try permanentlyDelete(ids, in: context) }
+    }
 }
