@@ -57,7 +57,7 @@ struct PromptCommands: Commands {
             .keyboardShortcut("n", modifiers: .command)
             .disabled(actions == nil)
 
-            Button(language.text(english: "New Window", chinese: "新建窗口")) {
+            Button(language.text(english: "Show Library", chinese: "显示资料库")) {
                 openWindow(id: "main")
             }
             .keyboardShortcut(

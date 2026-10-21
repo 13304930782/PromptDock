@@ -1,6 +1,9 @@
-# PromptDock 1.3.0-rc.1 / Build 9
+# PromptDock 1.3.0-rc.1 / Build 10
 
 ## Candidate changes / 候选版更新
+
+- Reuse a single library window from settings, import and the Show Library command.
+  设置、导入与“显示资料库”统一唤起唯一资料库窗口，关闭窗口后保留后台快捷调用。
 
 - Explicit sample installation, stable sample IDs, import preview and navigation to imported records.
   空库可主动添加样例；导入后可查看本次新增或更新内容。
@@ -63,3 +66,11 @@ These are requirements, not claims of completion:
 - Seven days of real use after freeze with no unresolved data loss, startup, permission-loop or recovery blockers.
 - Public Developer ID, notarization and downloaded-package Gatekeeper checks on another Mac.
 - Separate approval before merging main or publishing GitHub Release. Existing PRs remain unmerged until approved.
+
+## Build 10 window acceptance / 窗口人工验收
+
+- Repeatedly choose Show Library (Command-Shift-N), Open Library in Settings, and View Imported after import: the same library window should come forward.
+- Minimize the library and invoke Show Library: restore the existing window.
+- Close the library with the red button, then reopen it from the app menu or Dock. The menu-bar/global-shortcut services should remain available.
+- Settings and Template Variables Guide may remain separate utility windows.
+- Perform this after quitting the old app and installing Build 10. This does not close windows belonging to an already running older process.
