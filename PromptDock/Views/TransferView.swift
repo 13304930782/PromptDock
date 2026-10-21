@@ -13,6 +13,9 @@ struct TransferDocument: FileDocument {
 struct TransferView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openWindow) private var openWindow
+    var onShowImported: ((Set<UUID>) -> Void)? = nil
+    @State private var importedIDs: Set<UUID>?
     var selectedIDs: Set<UUID> = []
     var filteredIDs: Set<UUID> = []
     @State private var batch: TransferBatch?
@@ -35,6 +38,18 @@ struct TransferView: View {
         VStack {
             Form {
                 Section("Import") {
+                    Text("Choose files → Preview → Confirm → Done").font(.caption).foregroundStyle(.secondary)
+                    if let importedIDs {
+                        Text("Import completed.")
+                        Button("View Imported Prompts") {
+                            dismiss()
+                            if let onShowImported { onShowImported(importedIDs) }
+                            else {
+                                openWindow(id: "main")
+                                NotificationCenter.default.post(name: .init("PromptDock.showImported"), object: importedIDs)
+                            }
+                        }
+                    }
                     Button("Choose JSON, Markdown or CSV Files…") { importing = true }
                     if let batch {
                         Text("Valid: \(batch.items.count) · Invalid: \(batch.errors.count)")
@@ -43,7 +58,7 @@ struct TransferView: View {
                             Toggle("Import valid items only", isOn: $validOnly)
                         }
                         Picker("Same ID", selection: $conflict) { ForEach(TransferConflict.allCases) { Text(LocalizedStringKey($0.rawValue)).tag($0) } }
-                        Toggle("Replace the entire library (safety backup required)", isOn: $replace).disabled(batch.completeBackup == nil)
+                        if batch.completeBackup != nil { Toggle("Replace the entire library (safety backup required)", isOn: $replace) }
                         Button("Preview Changes") { makePreview() }
                             .disabled(!batch.errors.isEmpty && !validOnly)
                     }
@@ -56,7 +71,7 @@ struct TransferView: View {
                             Task { @MainActor in
                                 await Task.yield()
                                 defer { busy = false }
-                                do { try TransferService.apply(preview, in: context); self.preview = nil; batch = nil; notice = "Import completed." }
+                                do { try TransferService.apply(preview, in: context); importedIDs = preview.changedIDs; self.preview = nil; batch = nil }
                                 catch { notice = error.localizedDescription; self.preview = nil }
                             }
                         }
@@ -98,7 +113,7 @@ struct TransferView: View {
 
     @MainActor
     private func read(_ result: Result<[URL], Error>) async {
-        busy = true; progressMessage = "Processing files…"; preview = nil; defer { busy = false }
+        busy = true; progressMessage = "Processing files…"; preview = nil; batch = nil; importedIDs = nil; defer { busy = false }
         do {
             var files: [(name: String, data: Data)] = []
             var total = 0

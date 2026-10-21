@@ -2248,3 +2248,203 @@ extension PromptDockTests {
         XCTAssertNil(try LocalDraftStore.load(promptID: id, directory: directory))
     }
 }
+
+extension PromptDockTests {
+    @MainActor
+    func testSamplesAreStableAndDeletedSamplesAreNotRecreated() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let suite = "PromptDockTests.samples.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let first = try SampleLibrary.install(in: container.mainContext, defaults: defaults)
+        XCTAssertEqual(first.count, 12)
+        XCTAssertEqual(Set(SampleLibrary.batch().items.map { $0.record.id }), first)
+        XCTAssertTrue(try SampleLibrary.install(in: container.mainContext, defaults: defaults).isEmpty)
+        let prompt = try XCTUnwrap(container.mainContext.fetch(FetchDescriptor<Prompt>()).first)
+        let deletedID = prompt.id
+        container.mainContext.delete(prompt)
+        try container.mainContext.save()
+        XCTAssertTrue(try SampleLibrary.install(in: container.mainContext, defaults: defaults).isEmpty)
+        XCTAssertFalse(try container.mainContext.fetch(FetchDescriptor<Prompt>()).contains { $0.id == deletedID })
+    }
+
+    @MainActor
+    func testImportPreviewReportsOnlyAddedOrUpdatedIDs() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let local = try BackupService.makeBackup(in: container.mainContext)
+        let batch = SampleLibrary.batch()
+        let first = try TransferService.preview(batch, local: local, conflict: .keepLocal, validOnly: false, replace: false)
+        XCTAssertEqual(first.changedIDs.count, 12)
+        let second = try TransferService.preview(batch, local: first.result, conflict: .keepLocal, validOnly: false, replace: false)
+        XCTAssertTrue(second.changedIDs.isEmpty)
+        XCTAssertEqual(second.skipped, 12)
+        let updated = try TransferService.preview(batch, local: first.result, conflict: .update, validOnly: false, replace: false)
+        XCTAssertEqual(updated.changedIDs, first.changedIDs)
+    }
+
+    func testRecentUsagePersistsDeduplicatesAndCapsAt100() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = RecentUsageStore(fileURL: directory.appendingPathComponent("usage.json"))
+        var entries: [RecentUsageStore.Entry] = []
+        for i in 0..<110 { entries = RecentUsageStore.recording(UUID(), at: Date(timeIntervalSince1970: Double(i)), in: entries) }
+        XCTAssertEqual(entries.count, 100)
+        let id = entries[50].id
+        entries = RecentUsageStore.recording(id, at: .now, in: entries)
+        XCTAssertEqual(entries.first?.id, id)
+        XCTAssertEqual(Set(entries.map(\.id)).count, 100)
+        try store.record(id)
+        try store.record(id)
+        XCTAssertEqual(try store.load().map(\.id), [id])
+    }
+
+    func testRewriteRejectsRemovedRenamedAndRetypedVariables() throws {
+        let request = AIRewriteRequest(content: "Hello {{name}}: {{tasks[]}}", definitions: [], goal: .concise, instructions: "", usesChinese: false)
+        XCTAssertNoThrow(try request.validate("{{tasks[]}} for {{name}}"))
+        XCTAssertThrowsError(try request.validate("Hello {{person}}: {{tasks[]}}"))
+        XCTAssertThrowsError(try request.validate("Hello {{name}}: {{tasks}}"))
+        XCTAssertThrowsError(try request.validate("Hello {{name}}"))
+        XCTAssertThrowsError(try request.validate(""))
+    }
+
+    func testRewriteDiffPreservesBothSidesWithInsertedAndRemovedLines() {
+        let old = "alpha\nbeta\ngamma", new = "intro\nalpha\ngamma\nend"
+        let lines = RewriteDiffLine.compare(original: old, candidate: new)
+        XCTAssertEqual(lines.filter { $0.kind != .added }.map(\.text).joined(separator: "\n"), old)
+        XCTAssertEqual(lines.filter { $0.kind != .removed }.map(\.text).joined(separator: "\n"), new)
+    }
+
+    func testRewriteRequestContainsOnlyExplicitInput() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AIStubURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel(); AIStubURLProtocol.requestHandler = nil }
+        let input = AIRewriteRequest(content: "Hello {{name}}", definitions: [.init(name: "name", label: "Recipient", defaultValue: "World", order: 0)], goal: .concise, instructions: "Keep polite", usesChinese: false)
+        AIStubURLProtocol.requestHandler = { request in
+            var body = request.httpBody ?? Data()
+            if body.isEmpty, let stream = request.httpBodyStream {
+                stream.open(); defer { stream.close() }
+                var buffer = [UInt8](repeating: 0, count: 4096)
+                while stream.hasBytesAvailable {
+                    let count = stream.read(&buffer, maxLength: buffer.count)
+                    guard count > 0 else { break }
+                    body.append(contentsOf: buffer.prefix(count))
+                }
+            }
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+            let messages = try XCTUnwrap(json["messages"] as? [[String: String]])
+            XCTAssertEqual(messages.count, 1)
+            XCTAssertEqual(messages.first?["content"], input.payload)
+            let data = Data(#"{"choices":[{"message":{"content":"Welcome {{name}}"}}]}"#.utf8)
+            return .init(statusCode: 200, data: data)
+        }
+        let result = try await AITemplateService(session: session).rewrite(input, configuration: .init(provider: .custom, baseURL: "https://example.test/v1", model: "test"), apiKey: nil)
+        XCTAssertEqual(result.content, "Welcome {{name}}")
+    }
+}
+
+extension PromptDockTests {
+    @MainActor
+    func testRecentUsageFiltersMissingIDsWithoutChangingUpdatedDates() {
+        let first = Prompt(title: "First", category: "AI", content: "One")
+        let second = Prompt(title: "Second", category: "AI", content: "Two")
+        let originalDate = first.updatedDate
+        let model = PromptViewModel()
+        model.selectedSection = .recentlyUsed
+        let found = model.filteredPrompts(from: [first, second], recentIDs: [second.id, UUID(), first.id])
+        XCTAssertEqual(found.map(\.id), [second.id, first.id])
+        XCTAssertEqual(first.updatedDate, originalDate)
+        model.selectedSection = .trash
+        XCTAssertTrue(model.filteredPrompts(from: [first, second]).isEmpty)
+        XCTAssertTrue(PromptSection.librarySections.contains(.trash))
+    }
+}
+
+extension PromptDockTests {
+    @MainActor
+    func testPermissionFailureDoesNotAutomaticallyRetry() async throws {
+        var attempts = 0
+        let controller = AppBootstrapController(modelContainerFactory: {
+            attempts += 1
+            throw CocoaError(.fileReadNoPermission)
+        })
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(attempts, 1)
+        guard case .failed = controller.state else { return XCTFail("Expected a stable failed state") }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(attempts, 1)
+        controller.retry()
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(attempts, 2)
+    }
+
+    func testRewritePreservesMixedVariableSyntaxAndExcludesUnrelatedDefinitions() {
+        let input = AIRewriteRequest(content: "{{name}} and {{name[]}}", definitions: [.init(name: "unrelated", defaultValue: "SECRET OTHER PROMPT", order: 0)], goal: .concise, instructions: "", usesChinese: false)
+        XCTAssertThrowsError(try input.validate("{{name[]}}"))
+        XCTAssertFalse(input.payload.contains("SECRET OTHER PROMPT"))
+    }
+}
+
+extension PromptDockTests {
+    func testRewriteStreamSeparatesReasoningFromAdoptableText() throws {
+        var parser = RewriteStreamAccumulator()
+        try parser.consume(": keep-alive")
+        try parser.consume(#"data: {"choices":[{"delta":{"reasoning_content":"检查约束"}}]}"#)
+        try parser.consume(#"data: {"choices":[{"delta":{"content":"你好 {{name}}"}}]}"#)
+        XCTAssertEqual(parser.progress.reasoning, "检查约束")
+        XCTAssertThrowsError(try parser.result()) // Interrupted output cannot be adopted.
+        try parser.consume(#"data: {"choices":[{"delta":{},"finish_reason":"stop"}]}"#)
+        try parser.consume("data: [DONE]")
+        XCTAssertEqual(try parser.result().content, "你好 {{name}}")
+    }
+
+    func testRewriteStreamRejectsTruncationErrorsAndReasoningOnly() throws {
+        var parser = RewriteStreamAccumulator()
+        XCTAssertThrowsError(try parser.consume(#"data: {"choices":[{"delta":{},"finish_reason":"length"}]}"#))
+        XCTAssertThrowsError(try parser.consume(#"data: {"error":{"message":"failed"}}"#))
+        XCTAssertThrowsError(try parser.consume("data: broken json"))
+        try parser.consume(#"data: {"choices":[{"delta":{"reasoning_content":"thinking"}}]}"#)
+        try parser.consume("data: [DONE]")
+        XCTAssertThrowsError(try parser.result())
+    }
+
+    func testRewriteGoalsHaveDistinctEditingPolicies() {
+        let policies = AIRewriteGoal.allCases.map {
+            AIRewriteRequest(content: "Test {{feature}}", definitions: [], goal: $0, instructions: "", usesChinese: false).payload
+        }
+        XCTAssertEqual(Set(policies).count, AIRewriteGoal.allCases.count)
+        XCTAssertTrue(policies.allSatisfy { $0.contains("not executing") && $0.contains("original language") })
+    }
+}
+
+extension PromptDockTests {
+    @MainActor
+    func testDeepSeekStreamingRequestAndFinalResult() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [AIStubURLProtocol.self]
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel(); AIStubURLProtocol.requestHandler = nil }
+        AIStubURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "text/event-stream")
+            let events = """
+            data: {"choices":[{"delta":{"reasoning_content":"Check variables"}}]}
+
+            data: {"choices":[{"delta":{"content":"Hello {{name}}"}}]}
+
+            data: {"choices":[{"delta":{},"finish_reason":"stop"}]}
+
+            data: [DONE]
+
+            """
+            return .init(statusCode: 200, data: Data(events.utf8))
+        }
+        var updates: [AIRewriteProgress] = []
+        let input = AIRewriteRequest(content: "Hi {{name}}", definitions: [], goal: .tone, instructions: "", usesChinese: false)
+        let result = try await AITemplateService(session: session).rewriteStreaming(input,
+            configuration: .init(provider: .deepSeek, baseURL: "https://example.test", model: "test"),
+            apiKey: "test-key", thinking: true) { updates.append($0) }
+        XCTAssertEqual(result.content, "Hello {{name}}")
+        XCTAssertEqual(updates.last?.reasoning, "Check variables")
+        XCTAssertEqual(updates.last?.content, "Hello {{name}}")
+    }
+}

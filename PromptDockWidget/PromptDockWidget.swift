@@ -130,14 +130,14 @@ struct PromptDockWidgetEntryView: View {
                 Button(
                     "Copy Template",
                     systemImage: "curlybraces",
-                    intent: CopyPromptIntent(promptContent: prompt.content)
+                    intent: CopyPromptIntent(promptContent: prompt.content, promptID: prompt.id)
                 )
                 .buttonStyle(.bordered)
             } else {
                 Button(
                     "Copy",
                     systemImage: "doc.on.doc",
-                    intent: CopyPromptIntent(promptContent: prompt.content)
+                    intent: CopyPromptIntent(promptContent: prompt.content, promptID: prompt.id)
                 )
                 .buttonStyle(.bordered)
             }

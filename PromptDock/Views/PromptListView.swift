@@ -10,6 +10,9 @@ struct PromptListView: View {
     let onEdit: (Prompt) -> Void
     let onToggleFavorite: (Prompt) -> Void
     let onDelete: (Prompt) -> Void
+    var onImport: (() -> Void)? = nil
+    var onSamples: (() -> Void)? = nil
+    var onDuplicate: ((Prompt) -> Void)? = nil
 
     var body: some View {
         Group {
@@ -27,9 +30,9 @@ struct PromptListView: View {
                             searchText = ""
                         }
                     } else {
-                        Button("New Prompt") {
-                            onCreate()
-                        }
+                        Button("New Prompt", action: onCreate)
+                        if let onImport { Button("Import Files", action: onImport) }
+                        if let onSamples { Button("Add Samples", action: onSamples) }
                     }
                 }
             } else {
@@ -52,6 +55,7 @@ struct PromptListView: View {
                                 )
                             }
 
+                            if let onDuplicate { Button("Duplicate as New Prompt") { onDuplicate(prompt) } }
                             Divider()
 
                             Button {
@@ -73,6 +77,7 @@ struct PromptListView: View {
                                 )
                             }
 
+                            if let onDuplicate { Button("Duplicate as New Prompt") { onDuplicate(prompt) } }
                             Divider()
 
                             Button(role: .destructive) {
@@ -83,6 +88,10 @@ struct PromptListView: View {
                         }
                 }
             }
+        }
+        .onKeyPress(.return) {
+            guard selection.count == 1, let prompt = prompts.first(where: { selection.contains($0.id) }) else { return .ignored }
+            onCopy(prompt); return .handled
         }
         .navigationTitle(Text(section.localizedTitle))
         .searchable(

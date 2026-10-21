@@ -28,6 +28,8 @@ struct MainView: View {
     @StateObject private var viewModel = PromptViewModel()
     @StateObject private var searchController = PromptSearchController()
     @State private var showsTransfer = false
+    @State private var importedIDs: Set<UUID>?
+    @State private var recentUsageIDs: [UUID] = []
     @State private var editorRequest: PromptEditorRequest?
     @State private var promptPendingDeletionID: UUID?
     @State private var actionErrorMessage: String?
@@ -36,6 +38,8 @@ struct MainView: View {
     @State private var templateCopyRequest: PromptTemplateCopyRequest?
     @State private var isBulkDeletePresented = false
     @State private var rewritePromptID: UUID?
+    @State private var rewriteBaseline: Date?
+    @State private var rewriteDraft: PromptDraft?
     @State private var isCopyShortcutGuidePresented = false
     @State private var isSearchShortcutGuidePresented = false
     @State private var copyShortcutGuideToken: UUID?
@@ -57,8 +61,8 @@ struct MainView: View {
     }
 
     private var sectionPrompts: [Prompt] {
-        viewModel.filteredPrompts(from: prompts, tags: tags, collections: collections,
-            locale: selectedLanguage.locale, applySearch: false)
+        viewModel.filteredPrompts(from: importedIDs.map { ids in prompts.filter { ids.contains($0.id) } } ?? prompts, tags: tags, collections: collections,
+            locale: selectedLanguage.locale, applySearch: false, recentIDs: recentUsageIDs)
     }
 
     private var searchInput: PromptSearchInput {
@@ -213,6 +217,11 @@ struct MainView: View {
                     max: 280
                 )
         } content: {
+            if viewModel.selectedSection == .trash {
+                TrashLibraryView()
+                    .navigationTitle(Text("Trash"))
+                    .navigationSplitViewColumnWidth(min: 320, ideal: 450, max: 600)
+            } else {
             PromptListView(
                 section: viewModel.selectedSection,
                 prompts: visiblePrompts,
@@ -225,15 +234,21 @@ struct MainView: View {
                 onCopy: copy,
                 onEdit: { presentEditor(for: $0) },
                 onToggleFavorite: { toggleFavorite(for: $0) },
-                onDelete: { requestDeletion(of: $0) }
+                onDelete: { requestDeletion(of: $0) },
+                onImport: { showsTransfer = true },
+                onSamples: prompts.isEmpty ? addSamples : nil,
+                onDuplicate: duplicate
             )
             .navigationSplitViewColumnWidth(
                 min: 260,
                 ideal: 320,
                 max: 440
             )
+            }
         } detail: {
-            if selectedPrompts.count > 1 {
+            if viewModel.selectedSection == .trash {
+                ContentUnavailableView("Trash", systemImage: "trash", description: Text("Restore prompts to use them again."))
+            } else if selectedPrompts.count > 1 {
                 BulkPromptActionsView(
                     prompts: selectedPrompts,
                     categories: categories,
@@ -254,13 +269,22 @@ struct MainView: View {
                     usesChinese: selectedLanguage.usesChinese,
                     onCopy: copy,
                     onEdit: { presentEditor(for: $0) },
-                    onRewrite: { rewritePromptID = $0.id },
+                    onRewrite: { rewriteBaseline = $0.updatedDate; rewriteDraft = draft(for: $0); rewritePromptID = $0.id },
                     onToggleFavorite: { toggleFavorite(for: $0) },
                     onDelete: { requestDeletion(of: $0) }
                 )
             }
         }
+        .onAppear { recentUsageIDs = RecentUsage.ids() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in recentUsageIDs = RecentUsage.ids() }
+        .onReceive(NotificationCenter.default.publisher(for: .init("PromptDock.showImported"))) { notification in
+            if let ids = notification.object as? Set<UUID> { showImported(ids) }
+        }
+        .onChange(of: viewModel.selectedSection) { importedIDs = nil }
         .toolbar {
+            if importedIDs != nil {
+                ToolbarItem { Button("Show All Prompts") { importedIDs = nil } }
+            }
             if viewModel.hasSearchQuery {
                 ToolbarItemGroup(placement: .secondaryAction) {
                     Text(
@@ -345,7 +369,7 @@ struct MainView: View {
         }
         .animation(.snappy, value: shortcutSuccessMessage)
         .sheet(isPresented: $showsTransfer) {
-            TransferView(selectedIDs: viewModel.selectedPromptIDs, filteredIDs: Set(visiblePromptIDs))
+            TransferView(onShowImported: showImported, selectedIDs: viewModel.selectedPromptIDs, filteredIDs: Set(visiblePromptIDs))
         }
         .sheet(item: $editorRequest) { request in
             let editorPrompt = request.promptID.flatMap { promptID in
@@ -404,18 +428,25 @@ struct MainView: View {
                 }
             )
         }
-        .sheet(isPresented: Binding(get: { rewritePrompt != nil }, set: { if !$0 { rewritePromptID = nil } })) {
-            if let rewritePrompt {
+        .sheet(isPresented: Binding(get: { rewritePromptID != nil }, set: { if !$0 { rewritePromptID = nil } })) {
+            if let rewriteDraft {
                 AIRewriteView(
-                    title: rewritePrompt.title,
-                    originalContent: rewritePrompt.content,
-                    usesChinese: selectedLanguage.usesChinese
-                ) { rewritten in
-                    var draft = draft(for: rewritePrompt)
-                    draft.content = rewritten
-                    performAction {
-                        try viewModel.updatePrompt(rewritePrompt, from: draft, tags: tags, in: modelContext)
+                    title: rewriteDraft.title,
+                    originalContent: rewriteDraft.content,
+                    usesChinese: selectedLanguage.usesChinese,
+                    definitions: rewriteDraft.variableDefinitions,
+                    onSaveCopy: { text in
+                        var copy = rewriteDraft; copy.content = text
+                        _ = try viewModel.createPrompt(from: copy, tags: tags, in: modelContext)
+                        rewritePromptID = nil
                     }
+                ) { rewritten in
+                    guard let rewritePrompt = allPrompts.first(where: { $0.id == rewritePromptID }) else { throw PromptValidationError.staleDraft }
+                    try LocalEditorDraft(promptID: rewritePrompt.id, baselineDate: rewriteBaseline, draft: rewriteDraft)
+                        .requireUnchanged(currentDate: rewritePrompt.updatedDate, isDeleted: rewritePrompt.isDeleted || trashEntries.contains { $0.promptID == rewritePrompt.id })
+                    var draft = rewriteDraft
+                    draft.content = rewritten
+                    try viewModel.updatePrompt(rewritePrompt, from: draft, tags: tags, in: modelContext)
                     rewritePromptID = nil
                 }
             }
@@ -704,6 +735,32 @@ struct MainView: View {
         }
     }
 
+    private func showImported(_ ids: Set<UUID>) {
+        viewModel.searchText = ""
+        viewModel.selectedSection = .all
+        Task { @MainActor in
+            await Task.yield()
+            importedIDs = ids
+            viewModel.updateSelection(ids, orderedBy: prompts.filter { ids.contains($0.id) }.map(\.id))
+        }
+    }
+
+    private func addSamples() {
+        performAction { showImported(try SampleLibrary.install(in: modelContext, defaults: .standard)) }
+    }
+
+    private func duplicate(_ prompt: Prompt) {
+        performAction {
+            let draft = PromptDraft(title: prompt.title, category: prompt.category, content: prompt.content,
+                isFavorite: prompt.isFavorite, tagIDs: Set(tags.filter { $0.promptIDs.contains(prompt.id) }.map(\.id)),
+                variableDefinitions: variableDefinitions.filter { $0.promptID == prompt.id }.map(TemplateVariableDraft.init))
+            let created = try viewModel.createPrompt(from: draft, tags: tags, in: modelContext)
+            importedIDs = nil
+            viewModel.selectedSection = .all
+            viewModel.updateSelection([created.id], orderedBy: [created.id])
+        }
+    }
+
     private func copy(_ prompt: Prompt) {
         let template = PromptTemplate(prompt.content)
         guard !template.hasVariables else {
@@ -727,6 +784,8 @@ struct MainView: View {
             return false
         }
 
+        RecentUsage.record(promptID)
+        recentUsageIDs = RecentUsage.ids()
         let feedbackToken = UUID()
         copyFeedbackToken = feedbackToken
         copiedPromptID = promptID

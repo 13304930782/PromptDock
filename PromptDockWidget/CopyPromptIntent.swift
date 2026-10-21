@@ -11,11 +11,15 @@ struct CopyPromptIntent: AppIntent {
     @Parameter(title: "Prompt Content")
     var promptContent: String
 
+    @Parameter(title: "Prompt ID")
+    var promptID: String?
+
     init() {
         promptContent = ""
     }
 
-    init(promptContent: String) {
+    init(promptContent: String, promptID: UUID) {
+        self.promptID = promptID.uuidString
         self.promptContent = promptContent
     }
 
@@ -23,7 +27,10 @@ struct CopyPromptIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.setString(promptContent, forType: .string)
+        guard pasteboard.setString(promptContent, forType: .string) else {
+            return .result(dialog: "Unable to copy")
+        }
+        if let promptID, let id = UUID(uuidString: promptID) { RecentUsage.record(id) }
 
         if PromptTemplate(promptContent).hasVariables {
             return .result(

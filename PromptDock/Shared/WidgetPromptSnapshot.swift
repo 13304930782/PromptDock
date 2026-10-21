@@ -166,3 +166,51 @@ enum AppEnvironment {
         #endif
     }
 }
+
+
+/// Shared app/Widget usage metadata; never part of a library backup.
+struct RecentUsageStore {
+    struct Entry: Codable, Equatable { let id: UUID; let usedAt: Date }
+    let fileURL: URL
+    func load() throws -> [Entry] {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return [] }
+        return try JSONDecoder().decode([Entry].self, from: Data(contentsOf: fileURL))
+    }
+    static func recording(_ id: UUID, at date: Date, in entries: [Entry]) -> [Entry] {
+        Array(([Entry(id: id, usedAt: date)] + entries.filter { $0.id != id }).prefix(100))
+    }
+    func record(_ id: UUID, at date: Date = .now) throws {
+        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        var coordinationError: NSError?
+        var writeError: Error?
+        NSFileCoordinator().coordinate(writingItemAt: fileURL, options: .forMerging, error: &coordinationError) { url in
+            do {
+                let store = RecentUsageStore(fileURL: url)
+                let entries = Self.recording(id, at: date, in: try store.load())
+                try JSONEncoder().encode(entries).write(to: url, options: .atomic)
+            } catch { writeError = error }
+        }
+        if let error = coordinationError ?? writeError as NSError? { throw error }
+    }
+}
+
+@MainActor
+enum RecentUsage {
+    // Stop accessing the container after failure for this process lifetime.
+    private(set) static var lastError: Error?
+    private static func store() throws -> RecentUsageStore {
+        let snapshot = try WidgetSnapshotStore(appGroupIdentifier: WidgetSharedStore.appGroupIdentifier)
+        return RecentUsageStore(fileURL: snapshot.fileURL.deletingLastPathComponent().appendingPathComponent("recent-usage.json"))
+    }
+    static func retry() { lastError = nil; _ = ids() }
+    static func ids() -> [UUID] {
+        guard !AppEnvironment.isTesting, lastError == nil else { return [] }
+        do { return try store().load().map(\.id) }
+        catch { lastError = error; return [] }
+    }
+    static func record(_ id: UUID) {
+        guard !AppEnvironment.isTesting, lastError == nil else { return }
+        do { try store().record(id) }
+        catch { lastError = error }
+    }
+}

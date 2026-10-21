@@ -28,9 +28,6 @@ struct SettingsView: View {
                     Label("Collections", systemImage: "square.stack.3d.up")
                 }
 
-            TrashSettingsView()
-                .tabItem { Label("Trash", systemImage: "trash") }
-
             PrivacySettingsView()
                 .tabItem {
                     Label("Privacy", systemImage: "hand.raised")
@@ -277,6 +274,10 @@ private struct PrivacySettingsView: View {
                 .foregroundStyle(.secondary)
             }
 
+            Section("Recently Used") {
+                Button("Retry Recent Usage") { RecentUsage.retry() }
+                if let error = RecentUsage.lastError { Text(error.localizedDescription).foregroundStyle(.red) }
+            }
             Section("Widget") {
                 Button("Retry Widget Sync") {
                     do {
@@ -484,6 +485,7 @@ private struct AISettingsView: View {
     private var customModel = ""
 
     @State private var apiKey = ""
+    @FocusState private var apiKeyFocused: Bool
     @State private var hasStoredAPIKey = false
     @State private var status: AISettingsStatus?
     @State private var isTesting = false
@@ -580,41 +582,27 @@ private struct AISettingsView: View {
                             : "API Key or access token (optional)"),
                     text: $apiKey
                 )
-                .textContentType(.password)
+                .textContentType(nil)
+                .focused($apiKeyFocused)
+                .onSubmit { saveAPIKey() }
+
+                Text(usesChinese ? "输入后按回车保存，也可使用下方左侧的保存按钮。" : "Press Return to save, or use the save button below on the left.")
+                    .font(.caption).foregroundStyle(.secondary)
 
                 HStack {
-                    Label(
-                        hasStoredAPIKey
-                            ? (usesChinese
-                                ? "凭证已存入 macOS 钥匙串"
-                                : "Credential is stored in macOS Keychain")
-                            : (usesChinese
-                                ? "尚未保存凭证"
-                                : "No stored credential"),
-                        systemImage: hasStoredAPIKey
-                            ? "checkmark.shield"
-                            : "key"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                    Spacer()
-
+                    Button(usesChinese ? "存入钥匙串" : "Save to Keychain") { saveAPIKey() }
+                        .buttonStyle(.borderedProminent)
                     if hasStoredAPIKey {
-                        Button(
-                            usesChinese ? "删除凭证" : "Delete Credential",
-                            role: .destructive
-                        ) {
-                            deleteAPIKey()
-                        }
+                        Button(usesChinese ? "删除凭证" : "Delete Credential", role: .destructive) { deleteAPIKey() }
                     }
-
-                    Button(
-                        usesChinese ? "存入钥匙串" : "Save to Keychain"
-                    ) {
-                        saveAPIKey()
-                    }
+                    Spacer()
                 }
+                Label(
+                    hasStoredAPIKey
+                        ? (usesChinese ? "凭证已存入 macOS 钥匙串" : "Credential is stored in macOS Keychain")
+                        : (usesChinese ? "尚未保存凭证" : "No stored credential"),
+                    systemImage: hasStoredAPIKey ? "checkmark.shield" : "key"
+                ).font(.caption).foregroundStyle(.secondary)
             }
 
             Section {
@@ -676,6 +664,7 @@ private struct AISettingsView: View {
     }
 
     private func saveAPIKey() {
+        apiKeyFocused = false
         do {
             if provider == .deepSeek,
                apiKey.trimmingCharacters(
@@ -711,6 +700,7 @@ private struct AISettingsView: View {
     }
 
     private func testConnection() {
+        apiKeyFocused = false
         testTask?.cancel()
         isTesting = true
         status = nil
@@ -859,7 +849,7 @@ private final class ShortcutRecorderButton: NSButton {
 }
 
 
-private struct TrashSettingsView: View {
+struct TrashLibraryView: View {
     @Environment(\.modelContext) private var context
     @Query private var entries: [TrashEntry]
     @Query private var prompts: [Prompt]
@@ -873,8 +863,18 @@ private struct TrashSettingsView: View {
     var body: some View {
         VStack(alignment: .leading) {
             Text("Deleted prompts are retained for 30 days. Restoration preserves tags, variables and history.")
-            List(deletedPrompts, selection: $selection) { prompt in
-                Text(prompt.title).tag(prompt.id)
+            if deletedPrompts.isEmpty {
+                ContentUnavailableView("Trash Is Empty", systemImage: "trash")
+            } else {
+                List(deletedPrompts, selection: $selection) { prompt in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(prompt.title).font(.headline)
+                        Text(prompt.content).lineLimit(2).foregroundStyle(.secondary)
+                        if let entry = entries.first(where: { $0.promptID == prompt.id }) {
+                            Text(entry.deletedAt, style: .date).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }.tag(prompt.id)
+                }
             }
             HStack {
                 Text("Selected: \(selection.count)")
@@ -884,6 +884,7 @@ private struct TrashSettingsView: View {
             }
         }
         .padding()
+        .onChange(of: Set(deletedPrompts.map(\.id))) { _, ids in selection.formIntersection(ids) }
         .confirmationDialog("Permanently delete \(selection.count) prompts?", isPresented: $confirmsDelete) {
             Button("Delete Permanently", role: .destructive) { perform { try TrashService.permanentlyDelete(selection, in: context) } }
         } message: { Text("This cannot be undone.") }
