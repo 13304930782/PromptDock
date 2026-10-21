@@ -1941,7 +1941,9 @@ extension PromptDockTests {
 extension PromptDockTests {
     @MainActor
     func testTrashRestorePreservesIdentityAndAssociatedRecords() throws {
-        let context = try DataService.makeModelContainer(isStoredInMemoryOnly: true).mainContext
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        defer { withExtendedLifetime(container) {} }
+        let context = container.mainContext
         let prompt = Prompt(title: "Keep", category: "AI", content: "Hello {{name}}")
         let tag = PromptTag(name: "Tag", promptIDs: [prompt.id])
         context.insert(prompt)
@@ -1961,7 +1963,9 @@ extension PromptDockTests {
 
     @MainActor
     func testTrashExpiresOnlyAfterThirtyDays() throws {
-        let context = try DataService.makeModelContainer(isStoredInMemoryOnly: true).mainContext
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        defer { withExtendedLifetime(container) {} }
+        let context = container.mainContext
         let prompt = Prompt(title: "Expire", category: "AI", content: "Content")
         context.insert(prompt)
         try context.save()
@@ -1976,7 +1980,9 @@ extension PromptDockTests {
 
     @MainActor
     func testV1BackupWithoutNewFieldsStillDecodes() throws {
-        let context = try DataService.makeModelContainer(isStoredInMemoryOnly: true).mainContext
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        defer { withExtendedLifetime(container) {} }
+        let context = container.mainContext
         var object = try XCTUnwrap(JSONSerialization.jsonObject(with: BackupService.encode(BackupService.makeBackup(in: context))) as? [String: Any])
         object["formatVersion"] = 1
         for key in ["versions", "tags", "smartCollections", "variableDefinitions", "trash"] { object.removeValue(forKey: key) }
@@ -1987,13 +1993,17 @@ extension PromptDockTests {
 
     @MainActor
     func testV3BackupRoundTripIncludesTrashAndWhitespace() throws {
-        let context = try DataService.makeModelContainer(isStoredInMemoryOnly: true).mainContext
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        defer { withExtendedLifetime(container) {} }
+        let context = container.mainContext
         let prompt = Prompt(title: "Whitespace", category: "AI", content: "\n  keep indentation  \n")
         context.insert(prompt)
         try context.save()
         try TrashService.move([prompt], in: context)
         let backup = try BackupService.makeBackup(in: context)
-        let restored = try DataService.makeModelContainer(isStoredInMemoryOnly: true).mainContext
+        let restoredContainer = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        defer { withExtendedLifetime(restoredContainer) {} }
+        let restored = restoredContainer.mainContext
         _ = try BackupService.importBackup(BackupService.decode(BackupService.encode(backup)), mode: .replace, in: restored, createsSafetyBackup: false)
         XCTAssertEqual(try restored.fetch(FetchDescriptor<Prompt>()).first?.content, prompt.content)
         XCTAssertEqual(try restored.fetch(FetchDescriptor<TrashEntry>()).first?.promptID, prompt.id)
