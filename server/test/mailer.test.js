@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const nodemailer = require('nodemailer');
 const config = require('../src/config');
 const {
   buildFeedbackNotification,
@@ -14,6 +15,38 @@ const settings = {
   download_url: 'https://cuegrove.example/download',
   feedback_url: 'https://cuegrove.example/feedback',
 };
+
+test('serializes localized decision emails with the installed Nodemailer transport', async () => {
+  const transport = nodemailer.createTransport({ streamTransport: true, buffer: true });
+  for (const locale of ['zh', 'en']) {
+    const message = buildDecisionMessage({
+      id: 1,
+      full_name: '小林',
+      email: 'lin@example.com',
+      locale,
+      status: 'approved',
+      applicant_message: '',
+    }, settings);
+    const result = await transport.sendMail({
+      from: 'CueGrove <notifications@example.com>',
+      to: 'lin@example.com',
+      replyTo: 'support@example.com',
+      subject: message.subject,
+      text: message.text,
+      html: message.html,
+    });
+    assert.deepEqual(result.envelope, {
+      from: 'notifications@example.com',
+      to: ['lin@example.com'],
+    });
+    const mime = result.message.toString();
+    assert.match(mime, /Reply-To: support@example.com/);
+    assert.match(mime, /Content-Type: multipart\/alternative/);
+    assert.match(mime, /Content-Type: text\/plain; charset=utf-8/);
+    assert.match(mime, /Content-Type: text\/html; charset=utf-8/);
+    assert.match(mime, /https:\/\/cuegrove\.example\/download/);
+  }
+});
 
 test('builds the fixed Chinese approval subject and download action', () => {
   const message = buildDecisionMessage({
