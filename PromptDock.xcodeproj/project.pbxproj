@@ -54,6 +54,8 @@
 		G10000000000000000000004 /* TemplateGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = G20000000000000000000003 /* TemplateGuideView.swift */; };
 		H10000000000000000000001 /* AITemplateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = H20000000000000000000001 /* AITemplateService.swift */; };
 		I10000000000000000000001 /* Phase1Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = I20000000000000000000001 /* Phase1Models.swift */; };
+		D20000000000000000000001 /* TransferService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000001 /* TransferService.swift */; };
+		D20000000000000000000002 /* TransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000002 /* TransferView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -139,6 +141,8 @@
 		G20000000000000000000003 /* TemplateGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateGuideView.swift; sourceTree = "<group>"; };
 		H20000000000000000000001 /* AITemplateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AITemplateService.swift; sourceTree = "<group>"; };
 		I20000000000000000000001 /* Phase1Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phase1Models.swift; sourceTree = "<group>"; };
+		D10000000000000000000001 /* TransferService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferService.swift; sourceTree = "<group>"; };
+		D10000000000000000000002 /* TransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -207,6 +211,7 @@
 		A70000000000000000000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				D10000000000000000000002 /* TransferView.swift */,
 				G20000000000000000000003 /* TemplateGuideView.swift */,
 				G20000000000000000000002 /* PromptTemplateFillView.swift */,
 				F20000000000000000000002 /* StartupFailureView.swift */,
@@ -236,6 +241,7 @@
 		A70000000000000000000006 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				D10000000000000000000001 /* TransferService.swift */,
 				H20000000000000000000001 /* AITemplateService.swift */,
 				F20000000000000000000001 /* AppBootstrapController.swift */,
 				E20000000000000000000001 /* BackupService.swift */,
@@ -452,6 +458,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D20000000000000000000002 /* TransferView.swift in Sources */,
+				D20000000000000000000001 /* TransferService.swift in Sources */,
 				D10000000000000000000001 /* AppPreferences.swift in Sources */,
 				D10000000000000000000002 /* PromptSearchService.swift in Sources */,
 				D10000000000000000000003 /* GlobalHotKeyService.swift in Sources */,

@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 struct PromptDockBackup: Codable, Equatable {
     static let currentFormatVersion = 3
 
+    enum Kind: String, Codable { case full, content }
+    var kind: Kind = .full
     var formatVersion: Int
     var createdAt: Date
     var appVersion: String
@@ -384,9 +386,10 @@ enum BackupService {
         _ backup: PromptDockBackup,
         mode: BackupImportMode,
         in context: ModelContext,
-        createsSafetyBackup: Bool = true
+        createsSafetyBackup: Bool = !AppEnvironment.isTesting
     ) throws -> BackupImportResult {
         try validate(backup)
+        guard mode != .replace || backup.kind == .full else { throw TransferError.invalid("Only complete backups may replace the library.") }
 
         let safetyBackupURL: URL?
         if mode == .replace, createsSafetyBackup || !AppEnvironment.isTesting {
@@ -499,14 +502,10 @@ enum BackupService {
             context.delete(category)
         }
 
-        var categories = backup.categories.map(makeCategory)
+        let categories = backup.categories.map(makeCategory)
         let prompts = backup.prompts.map(makePrompt)
         categories.forEach(context.insert)
         prompts.forEach(context.insert)
-        canonicalizePromptCategories(prompts, using: categories)
-        insertMissingCategories(for: prompts, categories: &categories, in: context)
-        insertDefaultCategoriesIfEmpty(&categories, in: context)
-        normalizeSortOrder(categories)
     }
 
     private static func mergePhase1Records(
@@ -706,8 +705,8 @@ enum BackupService {
     ) -> Prompt {
         Prompt(
             id: record.id,
-            title: CategoryNameIdentity.trimmed(record.title),
-            category: CategoryNameIdentity.trimmed(record.category),
+            title: record.title,
+            category: record.category,
             content: record.content,
             createdDate: record.createdDate,
             updatedDate: record.updatedDate,
@@ -732,7 +731,7 @@ enum BackupService {
     ) -> PromptCategory {
         PromptCategory(
             id: record.id,
-            name: CategoryNameIdentity.trimmed(record.name),
+            name: record.name,
             systemImage: record.systemImage,
             sortOrder: record.sortOrder,
             createdDate: record.createdDate,
@@ -773,12 +772,13 @@ enum BackupService {
 
 extension PromptDockBackup {
     enum CodingKeys: String, CodingKey {
-        case formatVersion, createdAt, appVersion, prompts, categories
+        case kind, formatVersion, createdAt, appVersion, prompts, categories
         case versions, tags, smartCollections, variableDefinitions, trash
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try c.decodeIfPresent(Kind.self, forKey: .kind) ?? .full
         formatVersion = try c.decode(Int.self, forKey: .formatVersion)
         createdAt = try c.decode(Date.self, forKey: .createdAt)
         appVersion = try c.decode(String.self, forKey: .appVersion)
