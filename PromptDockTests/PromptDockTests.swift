@@ -2209,3 +2209,24 @@ extension PromptDockTests {
         XCTAssertEqual(process.terminationStatus, 0, String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self))
     }
 }
+
+extension PromptDockTests {
+    @MainActor
+    func testJSONImportCanExplicitlyKeepValidRecordsAndPreservesTrash() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let local = try BackupService.makeBackup(in: container.mainContext)
+        var incoming = local
+        let good = TransferService.record(title: "Good", content: "Body", category: "AI")
+        let bad = TransferService.record(title: "", content: "Invalid", category: "AI")
+        incoming.prompts = [good, bad]
+        incoming.trash = [.init(promptID: good.id, deletedAt: .now)]
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .secondsSince1970
+        let batch = TransferService.parse([(name: "mixed.json", data: try encoder.encode(incoming))])
+        XCTAssertEqual(batch.items.count, 1)
+        XCTAssertEqual(batch.errors.count, 1)
+        XCTAssertNil(batch.completeBackup)
+        let preview = try TransferService.preview(batch, local: local, conflict: .keepLocal, validOnly: true, replace: false)
+        XCTAssertEqual(preview.result.trash.first?.promptID, good.id)
+        XCTAssertEqual(preview.result.prompts.count, 1)
+    }
+}

@@ -42,14 +42,15 @@ struct PromptDockWidgetProvider: TimelineProvider {
         in context: Context,
         completion: @escaping (Timeline<PromptDockWidgetEntry>) -> Void
     ) {
-        let entry = entry()
-        let refreshDate = Calendar.current.date(
-            byAdding: .minute,
-            value: 15,
-            to: .now
-        ) ?? .now.addingTimeInterval(900)
-
-        completion(Timeline(entries: [entry], policy: .after(refreshDate)))
+        do {
+            let prompts = Array(try WidgetSharedStore.load().prefix(2))
+            let entry = PromptDockWidgetEntry(date: .now, prompts: prompts)
+            completion(Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(900))))
+        } catch {
+            // Resume only when the user retries sync in the app and it reloads
+            // this timeline. Do not schedule another container access on failure.
+            completion(Timeline(entries: [PromptDockWidgetEntry(date: .now, prompts: [])], policy: .never))
+        }
     }
 
     private func entry() -> PromptDockWidgetEntry {
