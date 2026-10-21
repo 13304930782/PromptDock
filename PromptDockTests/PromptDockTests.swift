@@ -2173,3 +2173,39 @@ extension PromptDockTests {
         XCTAssertTrue(try upgraded.mainContext.fetch(FetchDescriptor<TrashEntry>()).isEmpty)
     }
 }
+
+extension PromptDockTests {
+    @MainActor
+    func testFailedImportRollsBackAllRecords() throws {
+        struct SimulatedDiskFailure: Error {}
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let original = Prompt(title: "Original", category: "AI", content: "Preserve")
+        context.insert(original)
+        context.insert(PromptTag(name: "Original tag", promptIDs: [original.id]))
+        try context.save()
+        let before = try BackupService.makeBackup(in: context)
+        var replacement = before
+        replacement.prompts = [TransferService.record(title: "Replacement", content: "New", category: "Writing")]
+        replacement.tags = []
+        XCTAssertThrowsError(try BackupService.importBackup(replacement, mode: .replace, in: context, createsSafetyBackup: false, persist: { _ in throw SimulatedDiskFailure() }))
+        let after = try BackupService.makeBackup(in: context)
+        XCTAssertEqual(after.prompts, before.prompts)
+        XCTAssertEqual(after.tags, before.tags)
+    }
+
+    func testStoredZIPCanBeReadBySystemUnzip() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let archive = directory.appendingPathComponent("export.zip")
+        try StoredZIP.encode([("one.md", Data("中文\nContent".utf8)), ("two.md", Data("More".utf8))]).write(to: archive)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+        process.arguments = ["-t", archive.path]
+        let output = Pipe(); process.standardOutput = output; process.standardError = output
+        try process.run()
+        process.waitUntilExit()
+        XCTAssertEqual(process.terminationStatus, 0, String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self))
+    }
+}

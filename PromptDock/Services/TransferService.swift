@@ -262,13 +262,17 @@ enum StoredZIP {
             for byte in data { crc ^= UInt32(byte); for _ in 0..<8 { crc = (crc >> 1) ^ ((crc & 1) == 1 ? 0xedb88320 : 0) } }
             crc ^= 0xffffffff
             let offset = UInt32(output.count), size = UInt32(data.count)
-            let common = u16(20) + u16(0x800) + u16(0) + u16(0) + u16(0x21) + u32(crc) + u32(size) + u32(size) + u16(UInt16(nameData.count)) + u16(0)
-            output += u32(0x04034b50) + common + nameData + data
-            central += u32(0x02014b50) + u16(20) + common + u16(0) + u16(0) + u16(0) + u32(0) + u32(offset) + nameData
+            var common = Data()
+            let fields: [Data] = [u16(20), u16(0x800), u16(0), u16(0), u16(0x21), u32(crc), u32(size), u32(size), u16(UInt16(nameData.count)), u16(0)]
+            for field in fields { common.append(field) }
+            for field in [u32(0x04034b50), common, nameData, data] { output.append(field) }
+            let centralFields: [Data] = [u32(0x02014b50), u16(20), common, u16(0), u16(0), u16(0), u32(0), u32(offset), nameData]
+            for field in centralFields { central.append(field) }
         }
         let offset = UInt32(output.count), size = UInt32(central.count)
-        output += central
-        output += u32(0x06054b50) + u16(0) + u16(0) + u16(UInt16(files.count)) + u16(UInt16(files.count)) + u32(size) + u32(offset) + u16(0)
+        output.append(central)
+        let endFields: [Data] = [u32(0x06054b50), u16(0), u16(0), u16(UInt16(files.count)), u16(UInt16(files.count)), u32(size), u32(offset), u16(0)]
+        for field in endFields { output.append(field) }
         return output
     }
 }
