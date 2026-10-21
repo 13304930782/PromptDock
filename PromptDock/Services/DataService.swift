@@ -52,7 +52,7 @@ enum DataService {
                 schema: schema,
                 url: storeURL
             )
-        } else if isStoredInMemoryOnly {
+        } else if isStoredInMemoryOnly || AppEnvironment.isTesting {
             configuration = ModelConfiguration(
                 schema: schema,
                 isStoredInMemoryOnly: true
@@ -74,6 +74,7 @@ enum DataService {
     }
 
     static func dataDirectoryURLIfAvailable() -> URL? {
+        guard !AppEnvironment.isTesting else { return nil }
         guard let containerURL = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier:
                 WidgetSharedStore.appGroupIdentifier

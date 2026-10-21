@@ -1,13 +1,22 @@
 import OSLog
 import WidgetKit
 
+@MainActor
 enum WidgetSnapshotService {
+    private(set) static var lastError: String?
+
+    /// Called only from an explicit user retry action.
+    static func retry(from prompts: [Prompt]) {
+        lastError = nil
+        refresh(from: prompts)
+    }
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "PromptDock",
         category: "WidgetSnapshot"
     )
 
     static func refresh(from prompts: [Prompt]) {
+        guard !AppEnvironment.isTesting, lastError == nil else { return }
         let snapshots = prompts
             .sorted { first, second in
                 if first.isFavorite != second.isFavorite {
@@ -33,6 +42,7 @@ enum WidgetSnapshotService {
                 ofKind: WidgetSharedStore.widgetKind
             )
         } catch {
+            lastError = error.localizedDescription
             logger.error(
                 "Unable to save widget snapshots: \(error.localizedDescription, privacy: .public)"
             )

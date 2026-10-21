@@ -234,7 +234,7 @@ final class AppRuntime: ObservableObject {
     }
 
     func start() {
-        guard !hasStarted else { return }
+        guard !AppEnvironment.isTesting, !hasStarted else { return }
         hasStarted = true
         menuBarController.setVisible(
             AppPreferences.isMenuBarVisible
@@ -245,16 +245,19 @@ final class AppRuntime: ObservableObject {
     }
 
     func setGlobalQuickSearchEnabled(_ enabled: Bool) {
+        guard !AppEnvironment.isTesting else { return }
         AppPreferences.isGlobalQuickSearchEnabled = enabled
         hotKeyService.setEnabled(enabled)
     }
 
     func setMenuBarVisible(_ isVisible: Bool) {
+        guard !AppEnvironment.isTesting else { return }
         AppPreferences.isMenuBarVisible = isVisible
         menuBarController.setVisible(isVisible)
     }
 
     func showQuickSearch() {
+        guard !AppEnvironment.isTesting else { return }
         quickSearchPanelController.show()
     }
 }

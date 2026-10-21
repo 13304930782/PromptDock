@@ -48,6 +48,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             test
 
+      - name: Inspect isolated Debug app
+        run: |
+          APP_PATH="$RUNNER_TEMP/PromptDock-Debug/Build/Products/Debug/PromptDock Dev.app"
+          WIDGET_PATH="$APP_PATH/Contents/PlugIns/PromptDockWidget.appex"
+          test "$(plutil -extract CFBundleIdentifier raw "$APP_PATH/Contents/Info.plist")" = "com.promptdock.PromptDock.Dev"
+          test "$(plutil -extract CFBundleIdentifier raw "$WIDGET_PATH/Contents/Info.plist")" = "com.promptdock.PromptDock.Dev.Widget"
+          test "$(plutil -extract PromptDockAppGroupIdentifier raw "$APP_PATH/Contents/Info.plist")" = "L96B6KHL5Y.PromptDock.Dev"
+          test "$(plutil -extract PromptDockAppGroupIdentifier raw "$WIDGET_PATH/Contents/Info.plist")" = "L96B6KHL5Y.PromptDock.Dev"
+
       - name: Build Release without signing
         run: |
           xcodebuild \
