@@ -18,13 +18,18 @@ private final class PromptDockAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard !AppEnvironment.isTesting, Self.wasLaunchedAtLogin else { return }
 
-        // A main-app login item still creates the SwiftUI WindowGroup during launch.
+        // A main-app login item still creates the SwiftUI main window during launch.
         // Hide that initial window after services have started so login remains quiet.
         DispatchQueue.main.async {
             NSApp.windows
                 .filter { !($0 is NSPanel) }
                 .forEach { $0.orderOut(nil) }
         }
+    }
+
+    // Closing the library must not stop menu-bar and global hotkey services.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
     }
 
     private static var wasLaunchedAtLogin: Bool {
@@ -71,7 +76,7 @@ struct PromptDockApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("PromptDock", id: "main") {
+        Window("PromptDock", id: "main") {
             BootstrapMainView(bootstrap: bootstrap)
                 .environment(\.locale, selectedLanguage.locale)
         }
