@@ -2033,3 +2033,76 @@ extension PromptDockTests {
         XCTAssertNil(failing.lastError)
     }
 }
+
+extension PromptDockTests {
+    @MainActor
+    func testCSVMultilineQuotesAndUnicodeRoundTrip() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let prompt = Prompt(title: "中文, \"quotes\"", category: "Writing", content: "line 1\r\nline 2, \"quoted\"")
+        context.insert(prompt)
+        context.insert(PromptTag(name: "标签,一", promptIDs: [prompt.id]))
+        try context.save()
+        let backup = try BackupService.makeBackup(in: context)
+        let batch = TransferService.parse([(name: "test.csv", data: try TransferService.csv(backup))])
+        XCTAssertTrue(batch.errors.isEmpty, batch.errors.joined(separator: "\n"))
+        XCTAssertEqual(batch.items.first?.record.content, prompt.content)
+        XCTAssertEqual(batch.items.first?.record.title, prompt.title)
+        XCTAssertEqual(batch.items.first?.tagNames, ["标签,一"])
+        XCTAssertThrowsError(try TransferService.parseCSV("title,\"unclosed"))
+    }
+
+    @MainActor
+    func testMarkdownMetadataRoundTripAndPlainFilenameTitle() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let prompt = Prompt(title: "Original title", category: "Coding", content: "\n# Body\n{{value}}\n", isFavorite: true)
+        context.insert(prompt)
+        context.insert(TemplateVariableDefinition(promptID: prompt.id, name: "value", defaultValue: "Default"))
+        try context.save()
+        let files = try TransferService.markdownFiles(BackupService.makeBackup(in: context))
+        let batch = TransferService.parse(files.map { (name: $0.0, data: $0.1) })
+        XCTAssertTrue(batch.errors.isEmpty)
+        XCTAssertEqual(batch.items.first?.record.content, prompt.content)
+        XCTAssertEqual(batch.items.first?.record.title, prompt.title)
+        XCTAssertEqual(batch.items.first?.definitions.first?.defaultValue, "Default")
+        let plain = TransferService.parse([(name: "File title.md", data: Data("# Heading\nText".utf8))])
+        XCTAssertEqual(plain.items.first?.record.title, "File title")
+        XCTAssertFalse(plain.items[0].hasIdentity)
+    }
+
+    @MainActor
+    func testImportPreviewConflictsAndStaleLibraryProtection() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let prompt = Prompt(title: "Local", category: "AI", content: "Local body")
+        context.insert(prompt); try context.save()
+        let local = try BackupService.makeBackup(in: context)
+        var incoming = local.prompts[0]; incoming.content = "Incoming"
+        let batch = TransferBatch(items: [TransferItem(record: incoming, hasIdentity: true)])
+        let keep = try TransferService.preview(batch, local: local, conflict: .keepLocal, validOnly: false, replace: false)
+        XCTAssertEqual(keep.skipped, 1)
+        XCTAssertEqual(keep.result.prompts.first?.content, "Local body")
+        let copy = try TransferService.preview(batch, local: local, conflict: .copy, validOnly: false, replace: false)
+        XCTAssertEqual(copy.added, 1); XCTAssertEqual(copy.result.prompts.count, 2)
+        let update = try TransferService.preview(batch, local: local, conflict: .update, validOnly: false, replace: false)
+        XCTAssertEqual(update.updated, 1)
+        prompt.content = "Changed after preview"; try context.save()
+        XCTAssertThrowsError(try TransferService.apply(update, in: context))
+        XCTAssertEqual(prompt.content, "Changed after preview")
+        XCTAssertThrowsError(try TransferService.preview(batch, local: local, conflict: .keepLocal, validOnly: false, replace: true))
+    }
+
+    @MainActor
+    func testImportInvalidRowsRequireExplicitConsentAndNoIDDuplicatesSkip() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let local = try BackupService.makeBackup(in: container.mainContext)
+        let csv = "title,content,category,tags,favorite\nValid,Body,AI,[],true\n,Invalid,AI,[],false\n"
+        let batch = TransferService.parse([(name: "input.csv", data: Data(csv.utf8))])
+        XCTAssertEqual(batch.items.count, 1); XCTAssertEqual(batch.errors.count, 1)
+        XCTAssertThrowsError(try TransferService.preview(batch, local: local, conflict: .keepLocal, validOnly: false, replace: false))
+        let preview = try TransferService.preview(batch, local: local, conflict: .keepLocal, validOnly: true, replace: false)
+        let repeated = try TransferService.preview(batch, local: preview.result, conflict: .update, validOnly: true, replace: false)
+        XCTAssertEqual(repeated.skipped, 1)
+    }
+}

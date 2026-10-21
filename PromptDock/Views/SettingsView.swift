@@ -243,6 +243,7 @@ private struct ShortcutSettingsView: View {
 private struct PrivacySettingsView: View {
     @Environment(\.modelContext) private var modelContext
 
+    @State private var showsTransfer = false
     @State private var exportDocument: PromptDockBackupDocument?
     @State private var importCandidate: PromptDockBackup?
     @State private var isExporting = false
@@ -309,7 +310,7 @@ private struct PrivacySettingsView: View {
                     }
 
                     Button {
-                        isImporting = true
+                        showsTransfer = true
                     } label: {
                         Label("Import Backup…", systemImage: "square.and.arrow.down")
                     }
@@ -324,6 +325,7 @@ private struct PrivacySettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+        .sheet(isPresented: $showsTransfer) { TransferView() }
         .fileExporter(
             isPresented: $isExporting,
             document: exportDocument,

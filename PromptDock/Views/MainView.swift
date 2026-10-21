@@ -26,6 +26,7 @@ struct MainView: View {
     private var languageRawValue = AppLanguage.system.rawValue
 
     @StateObject private var viewModel = PromptViewModel()
+    @State private var showsTransfer = false
     @State private var editorRequest: PromptEditorRequest?
     @State private var promptPendingDeletionID: UUID?
     @State private var actionErrorMessage: String?
@@ -303,6 +304,10 @@ struct MainView: View {
             }
 
             ToolbarItem(placement: .automatic) {
+                Button("Import / Export", systemImage: "square.and.arrow.up.on.square") { showsTransfer = true }
+            }
+
+            ToolbarItem(placement: .automatic) {
                 LanguageMenu(selection: $languageRawValue)
             }
 
@@ -330,6 +335,9 @@ struct MainView: View {
             }
         }
         .animation(.snappy, value: shortcutSuccessMessage)
+        .sheet(isPresented: $showsTransfer) {
+            TransferView(selectedIDs: viewModel.selectedPromptIDs, filteredIDs: Set(visiblePromptIDs))
+        }
         .sheet(item: $editorRequest) { request in
             let editorPrompt = request.promptID.flatMap { promptID in
                 prompts.first { $0.id == promptID }
