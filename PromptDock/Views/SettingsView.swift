@@ -485,6 +485,7 @@ private struct AISettingsView: View {
     private var customModel = ""
 
     @State private var apiKey = ""
+    @FocusState private var apiKeyFocused: Bool
     @State private var hasStoredAPIKey = false
     @State private var status: AISettingsStatus?
     @State private var isTesting = false
@@ -581,41 +582,27 @@ private struct AISettingsView: View {
                             : "API Key or access token (optional)"),
                     text: $apiKey
                 )
-                .textContentType(.password)
+                .textContentType(nil)
+                .focused($apiKeyFocused)
+                .onSubmit { saveAPIKey() }
+
+                Text(usesChinese ? "输入后按回车保存，也可使用下方左侧的保存按钮。" : "Press Return to save, or use the save button below on the left.")
+                    .font(.caption).foregroundStyle(.secondary)
 
                 HStack {
-                    Label(
-                        hasStoredAPIKey
-                            ? (usesChinese
-                                ? "凭证已存入 macOS 钥匙串"
-                                : "Credential is stored in macOS Keychain")
-                            : (usesChinese
-                                ? "尚未保存凭证"
-                                : "No stored credential"),
-                        systemImage: hasStoredAPIKey
-                            ? "checkmark.shield"
-                            : "key"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                    Spacer()
-
+                    Button(usesChinese ? "存入钥匙串" : "Save to Keychain") { saveAPIKey() }
+                        .buttonStyle(.borderedProminent)
                     if hasStoredAPIKey {
-                        Button(
-                            usesChinese ? "删除凭证" : "Delete Credential",
-                            role: .destructive
-                        ) {
-                            deleteAPIKey()
-                        }
+                        Button(usesChinese ? "删除凭证" : "Delete Credential", role: .destructive) { deleteAPIKey() }
                     }
-
-                    Button(
-                        usesChinese ? "存入钥匙串" : "Save to Keychain"
-                    ) {
-                        saveAPIKey()
-                    }
+                    Spacer()
                 }
+                Label(
+                    hasStoredAPIKey
+                        ? (usesChinese ? "凭证已存入 macOS 钥匙串" : "Credential is stored in macOS Keychain")
+                        : (usesChinese ? "尚未保存凭证" : "No stored credential"),
+                    systemImage: hasStoredAPIKey ? "checkmark.shield" : "key"
+                ).font(.caption).foregroundStyle(.secondary)
             }
 
             Section {
@@ -677,6 +664,7 @@ private struct AISettingsView: View {
     }
 
     private func saveAPIKey() {
+        apiKeyFocused = false
         do {
             if provider == .deepSeek,
                apiKey.trimmingCharacters(
@@ -712,6 +700,7 @@ private struct AISettingsView: View {
     }
 
     private func testConnection() {
+        apiKeyFocused = false
         testTask?.cancel()
         isTesting = true
         status = nil

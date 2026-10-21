@@ -431,7 +431,20 @@ struct AIRewriteRequest {
         let metadata = definitions.filter { names.contains($0.name) }.sorted { $0.order < $1.order }.map {
             "\($0.name) | label=\($0.label) | default=\($0.defaultValue) | list=\($0.isRepeatable)"
         }.joined(separator: "\n")
+        let goalRule: String
+        switch goal {
+        case .concise: goalRule = "Remove repetition and filler while retaining every task, constraint and acceptance criterion. Do not shorten at the expense of clarity."
+        case .context: goalRule = "Clarify prerequisites and ambiguous references using only supplied facts. Identify missing context as an instruction to ask for it; never invent project details or add placeholders."
+        case .structure: goalRule = "Organize the task, supplied context, constraints and output requirements into a logical order. Use headings only when useful; avoid boilerplate roles and unnecessary sections."
+        case .tone: goalRule = "Use precise, natural and actionable language. Resolve vague wording without changing intent, audience, technical terms or scope."
+        case .custom: goalRule = "Apply the user's specific editing requirements while preserving intent and all mandatory constraints."
+        }
         return """
+        You are editing a reusable prompt, not executing the task inside it.
+        Preserve the original language unless the additional requirements explicitly request translation.
+        Preserve factual details, technical frameworks, audience, scope and output constraints. Do not answer the original task or add unsupported claims.
+        Editing policy: \(goalRule)
+        Check that the result is actionable and contains all original requirements. If the original is already effective, make minimal changes. Longer is not inherently better.
         Rewrite the prompt for: \(goal.title(usesChinese: usesChinese)).
         Return only the complete rewritten text. Preserve the exact set of {{name}} and {{name[]}} variables and their types. Do not invent factual context.
         Requirements:
@@ -486,5 +499,84 @@ struct RewriteDiffLine: Identifiable {
             else { append(new[j], .added); j += 1 }
         }
         return result
+    }
+}
+
+
+/// Only provider-returned text is displayed; it is never stored in the library or logs.
+struct AIRewriteProgress: Sendable {
+    var reasoning = ""
+    var content = ""
+}
+
+struct RewriteStreamAccumulator {
+    private(set) var progress = AIRewriteProgress()
+    private(set) var finished = false
+    mutating func consume(_ line: String) throws {
+        guard line.hasPrefix("data:") else { return }
+        let payload = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+        if payload == "[DONE]" { finished = true; return }
+        guard !payload.isEmpty else { return }
+        guard let data = payload.data(using: .utf8),
+              let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              object["error"] == nil,
+              let choices = object["choices"] as? [[String: Any]] else { throw AIServiceError.invalidResponse }
+        guard let choice = choices.first else { return }
+        if let reason = choice["finish_reason"] as? String, reason != "stop" {
+            throw AIServiceError.invalidResponse // Never offer truncated or filtered output for adoption.
+        }
+        let delta = choice["delta"] as? [String: Any] ?? [:]
+        progress.reasoning += delta["reasoning_content"] as? String ?? ""
+        progress.content += delta["content"] as? String ?? ""
+    }
+    func result() throws -> AIRewriteResult {
+        guard finished else { throw AIServiceError.invalidResponse }
+        let content = AITemplateService.cleanGeneratedTemplate(progress.content)
+        guard !content.isEmpty else { throw AIServiceError.emptyResponse }
+        return AIRewriteResult(content: content)
+    }
+}
+
+extension AITemplateService {
+    func rewriteStreaming(_ input: AIRewriteRequest, configuration: AIProviderConfiguration,
+                          apiKey: String?, thinking: Bool,
+                          onProgress: @MainActor (AIRewriteProgress) -> Void) async throws -> AIRewriteResult {
+        // Custom providers retain compatibility with the existing non-streaming API.
+        guard configuration.provider == .deepSeek else {
+            return try await rewrite(input, configuration: configuration, apiKey: apiKey)
+        }
+        var request = try makeRequest(request: input.payload, configuration: configuration, apiKey: apiKey)
+        var body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
+        body["stream"] = true
+        body["thinking"] = ["type": thinking ? "enabled" : "disabled"]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        let (bytes, response) = try await session.bytes(for: request)
+        defer { bytes.task.cancel() }
+        guard let http = response as? HTTPURLResponse else { throw AIServiceError.invalidResponse }
+        guard (200..<300).contains(http.statusCode) else {
+            throw AIServiceError.http(statusCode: http.statusCode, message: nil)
+        }
+        var parser = RewriteStreamAccumulator(), line = Data(), count = 0
+        var lastUpdate = Date.distantPast
+        for try await byte in bytes {
+            try Task.checkCancellation()
+            count += 1
+            guard count <= Self.maximumResponseByteCount else { throw AIServiceError.responseTooLarge }
+            if byte == 10 {
+                guard let text = String(data: line, encoding: .utf8) else { throw AIServiceError.invalidResponse }
+                try parser.consume(text.trimmingCharacters(in: .newlines))
+                line.removeAll(keepingCapacity: true)
+                if Date().timeIntervalSince(lastUpdate) >= 0.1 || parser.finished {
+                    await onProgress(parser.progress)
+                    lastUpdate = Date()
+                }
+                if parser.finished { break }
+            } else { line.append(byte) }
+        }
+        if !line.isEmpty, let text = String(data: line, encoding: .utf8) { try parser.consume(text) }
+        try Task.checkCancellation()
+        await onProgress(parser.progress)
+        return try parser.result()
     }
 }

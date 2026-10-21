@@ -315,6 +315,10 @@ struct AIRewriteView: View {
     @State private var task: Task<Void, Never>?
     @State private var isGenerating = false
     @State private var generation = 0
+    @State private var streamProgress = AIRewriteProgress()
+    @State private var startedAt = Date()
+    @State private var thinking = true
+    @State private var runStatus = ""
 
     @State private var configuration = AppPreferences.aiConfiguration
     private var rewriteRequest: AIRewriteRequest {
@@ -340,9 +344,9 @@ struct AIRewriteView: View {
 
             Picker(usesChinese ? "改写目标" : "Rewrite Goal", selection: $goal) {
                 ForEach(AIRewriteGoal.allCases) { Text($0.title(usesChinese: usesChinese)).tag($0) }
-            }.pickerStyle(.segmented)
+            }.pickerStyle(.segmented).disabled(isGenerating)
 
-            TextField(usesChinese ? "补充要求（可选）" : "Additional Instructions (Optional)", text: $additionalInstructions, axis: .vertical)
+            TextField(usesChinese ? "补充要求（可选）" : "Additional Instructions (Optional)", text: $additionalInstructions, axis: .vertical).disabled(isGenerating)
 
             GroupBox {
                 VStack(alignment: .leading, spacing: 6) {
@@ -352,6 +356,33 @@ struct AIRewriteView: View {
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            if configuration.provider == .deepSeek {
+                Toggle(usesChinese ? "启用 DeepSeek 思考（可能增加耗时和费用）" : "Enable DeepSeek thinking (may increase time and cost)", isOn: $thinking)
+                    .disabled(isGenerating)
+            }
+            if isGenerating {
+                VStack(alignment: .leading, spacing: 6) {
+                    ProgressView().progressViewStyle(.linear)
+                    TimelineView(.periodic(from: startedAt, by: 1)) { context in
+                        Text("\(runStatus) · \(Int(context.date.timeIntervalSince(startedAt)))s")
+                            .font(.caption).monospacedDigit()
+                    }
+                    Text(usesChinese ? "服务商不提供完成百分比；可随时取消。" : "The provider does not report a completion percentage. You can cancel anytime.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }.accessibilityLabel(runStatus)
+            } else if !runStatus.isEmpty {
+                Text(runStatus).font(.caption).foregroundStyle(.secondary)
+            }
+            if !streamProgress.reasoning.isEmpty {
+                DisclosureGroup(usesChinese ? "DeepSeek 返回的思考内容" : "Thinking returned by DeepSeek") {
+                    ScrollView { Text(streamProgress.reasoning).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(height: 90)
+                }
+            }
+            if isGenerating && !streamProgress.content.isEmpty {
+                GroupBox(usesChinese ? "正在生成的正文（尚未完成）" : "Live draft (incomplete)") {
+                    ScrollView { Text(streamProgress.content).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(height: 80)
+                }
+            }
             DisclosureGroup(usesChinese ? "查看发送内容" : "Review Request") {
                 ScrollView { Text(rewriteRequest.payload).textSelection(.enabled) }.frame(maxHeight: 100)
             }
@@ -380,7 +411,7 @@ struct AIRewriteView: View {
             if let errorMessage { Label(errorMessage, systemImage: "exclamationmark.triangle").foregroundStyle(.red).font(.caption) }
 
             HStack {
-                if isGenerating { ProgressView().controlSize(.small); Button(usesChinese ? "取消" : "Cancel") { generation += 1; task?.cancel(); isGenerating = false } }
+                if isGenerating { ProgressView().controlSize(.small); Button(usesChinese ? "取消" : "Cancel") { generation += 1; task?.cancel(); isGenerating = false; runStatus = usesChinese ? "已取消，未修改原文" : "Cancelled; original unchanged" } }
                 Spacer()
                 if let candidate {
                     Button(usesChinese ? "复制改写版" : "Copy Rewrite") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(candidate, forType: .string) }
@@ -402,8 +433,8 @@ struct AIRewriteView: View {
             }
         }
         .padding(24)
-        .frame(width: 820, height: 650)
-        .onDisappear { task?.cancel() }
+        .frame(width: 820, height: 780)
+        .onDisappear { generation += 1; task?.cancel() }
     }
 
     private func rewriteColumn(_ heading: String, text: String, highlightsChanges: Bool) -> some View {
@@ -424,6 +455,8 @@ struct AIRewriteView: View {
 
     private func generate() {
         task?.cancel(); candidate = nil; errorMessage = nil; isGenerating = true
+        streamProgress = AIRewriteProgress(); startedAt = Date()
+        runStatus = usesChinese ? "正在连接，等待服务商响应" : "Connecting; waiting for provider"
         generation += 1
         let currentGeneration = generation
         let request = rewriteRequest
@@ -431,13 +464,23 @@ struct AIRewriteView: View {
         task = Task {
             do {
                 let key = try AIKeychainStore.load(for: configuration.provider)
-                let result = try await AITemplateService().rewrite(request, configuration: selectedConfiguration, apiKey: key)
+                let result = try await AITemplateService().rewriteStreaming(request, configuration: selectedConfiguration, apiKey: key, thinking: thinking) { progress in
+                    guard generation == currentGeneration, isGenerating else { return }
+                    streamProgress = progress
+                    if !progress.content.isEmpty {
+                        runStatus = usesChinese ? "正在生成改写正文" : "Generating rewritten text"
+                    } else if !progress.reasoning.isEmpty {
+                        runStatus = usesChinese ? "DeepSeek 正在思考" : "DeepSeek is thinking"
+                    }
+                }
                 guard !Task.isCancelled, generation == currentGeneration else { return }
                 candidate = result.content
+                runStatus = usesChinese ? "生成完成，请检查后采用" : "Complete; review before accepting"
             } catch is CancellationError {
             } catch {
                 guard generation == currentGeneration else { return }
                 errorMessage = error.localizedDescription
+                runStatus = usesChinese ? "生成失败，原文未修改" : "Generation failed; original unchanged"
             }
             guard generation == currentGeneration else { return }
             isGenerating = false

@@ -2384,3 +2384,67 @@ extension PromptDockTests {
         XCTAssertFalse(input.payload.contains("SECRET OTHER PROMPT"))
     }
 }
+
+extension PromptDockTests {
+    func testRewriteStreamSeparatesReasoningFromAdoptableText() throws {
+        var parser = RewriteStreamAccumulator()
+        try parser.consume(": keep-alive")
+        try parser.consume(#"data: {"choices":[{"delta":{"reasoning_content":"检查约束"}}]}"#)
+        try parser.consume(#"data: {"choices":[{"delta":{"content":"你好 {{name}}"}}]}"#)
+        XCTAssertEqual(parser.progress.reasoning, "检查约束")
+        XCTAssertThrowsError(try parser.result()) // Interrupted output cannot be adopted.
+        try parser.consume(#"data: {"choices":[{"delta":{},"finish_reason":"stop"}]}"#)
+        try parser.consume("data: [DONE]")
+        XCTAssertEqual(try parser.result().content, "你好 {{name}}")
+    }
+
+    func testRewriteStreamRejectsTruncationErrorsAndReasoningOnly() throws {
+        var parser = RewriteStreamAccumulator()
+        XCTAssertThrowsError(try parser.consume(#"data: {"choices":[{"delta":{},"finish_reason":"length"}]}"#))
+        XCTAssertThrowsError(try parser.consume(#"data: {"error":{"message":"failed"}}"#))
+        XCTAssertThrowsError(try parser.consume("data: broken json"))
+        try parser.consume(#"data: {"choices":[{"delta":{"reasoning_content":"thinking"}}]}"#)
+        try parser.consume("data: [DONE]")
+        XCTAssertThrowsError(try parser.result())
+    }
+
+    func testRewriteGoalsHaveDistinctEditingPolicies() {
+        let policies = AIRewriteGoal.allCases.map {
+            AIRewriteRequest(content: "Test {{feature}}", definitions: [], goal: $0, instructions: "", usesChinese: false).payload
+        }
+        XCTAssertEqual(Set(policies).count, AIRewriteGoal.allCases.count)
+        XCTAssertTrue(policies.allSatisfy { $0.contains("not executing") && $0.contains("original language") })
+    }
+}
+
+extension PromptDockTests {
+    @MainActor
+    func testDeepSeekStreamingRequestAndFinalResult() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [AIStubURLProtocol.self]
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel(); AIStubURLProtocol.requestHandler = nil }
+        AIStubURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "text/event-stream")
+            let events = """
+            data: {"choices":[{"delta":{"reasoning_content":"Check variables"}}]}
+
+            data: {"choices":[{"delta":{"content":"Hello {{name}}"}}]}
+
+            data: {"choices":[{"delta":{},"finish_reason":"stop"}]}
+
+            data: [DONE]
+
+            """
+            return .init(statusCode: 200, data: Data(events.utf8))
+        }
+        var updates: [AIRewriteProgress] = []
+        let input = AIRewriteRequest(content: "Hi {{name}}", definitions: [], goal: .tone, instructions: "", usesChinese: false)
+        let result = try await AITemplateService(session: session).rewriteStreaming(input,
+            configuration: .init(provider: .deepSeek, baseURL: "https://example.test", model: "test"),
+            apiKey: "test-key", thinking: true) { updates.append($0) }
+        XCTAssertEqual(result.content, "Hello {{name}}")
+        XCTAssertEqual(updates.last?.reasoning, "Check variables")
+        XCTAssertEqual(updates.last?.content, "Hello {{name}}")
+    }
+}
