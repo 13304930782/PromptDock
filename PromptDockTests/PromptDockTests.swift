@@ -2230,3 +2230,21 @@ extension PromptDockTests {
         XCTAssertEqual(preview.result.prompts.count, 1)
     }
 }
+
+extension PromptDockTests {
+    func testPersistedDraftRecoversAndRejectsChangedOrDeletedRecord() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let id = UUID(), revision = Date(timeIntervalSince1970: 1000)
+        let saved = LocalEditorDraft(promptID: id, baselineDate: revision, draft: PromptDraft(title: "Unsaved", content: "Recover me"))
+        try LocalDraftStore.save(saved, directory: directory)
+        let recovered = try XCTUnwrap(LocalDraftStore.load(promptID: id, directory: directory))
+        XCTAssertEqual(recovered.draft, saved.draft)
+        XCTAssertNoThrow(try recovered.requireUnchanged(currentDate: revision, isDeleted: false))
+        XCTAssertThrowsError(try recovered.requireUnchanged(currentDate: revision.addingTimeInterval(1), isDeleted: false))
+        XCTAssertThrowsError(try recovered.requireUnchanged(currentDate: revision, isDeleted: true))
+        XCTAssertNotNil(try LocalDraftStore.load(promptID: id, directory: directory), "Conflicted drafts remain recoverable")
+        try LocalDraftStore.remove(promptID: id, directory: directory)
+        XCTAssertNil(try LocalDraftStore.load(promptID: id, directory: directory))
+    }
+}
