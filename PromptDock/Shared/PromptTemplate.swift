@@ -42,6 +42,10 @@ struct PromptTemplate: Equatable {
         }
     }
 
+    var variableSignatures: Set<PromptTemplateVariable> {
+        Set(Self.matches(in: source).map(\.variable))
+    }
+
     var variables: [String] {
         fields.map(\.name)
     }

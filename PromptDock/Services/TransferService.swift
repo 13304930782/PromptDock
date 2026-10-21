@@ -4,6 +4,7 @@ import SwiftData
 struct TransferItem {
     var record: PromptDockBackup.PromptRecord
     var hasIdentity: Bool
+    var sourceName: String = ""
     var deletedAt: Date? = nil
     var tagNames: [String] = []
     var definitions: [PromptDockBackup.VariableDefinitionRecord] = []
@@ -32,6 +33,7 @@ struct TransferPreview {
     var added: Int
     var updated: Int
     var skipped: Int
+    var changedIDs: Set<UUID> = []
 }
 
 enum TransferService {
@@ -42,6 +44,10 @@ enum TransferService {
         var batch = TransferBatch()
         var total = 0
         for file in files {
+            let firstItem = batch.items.count
+            defer {
+                for index in firstItem..<batch.items.count { batch.items[index].sourceName = file.name }
+            }
             total += file.data.count
             guard total <= BackupService.maximumBackupByteCount else {
                 batch.errors.append("Total import exceeds 100 MB."); break
@@ -99,7 +105,7 @@ enum TransferService {
         var valid: [TransferItem] = []
         for item in batch.items {
             do { try validate(item); valid.append(item) }
-            catch { batch.errors.append("\(item.record.title): \(error.localizedDescription)") }
+            catch { batch.errors.append("\(item.sourceName): \(item.record.title): \(error.localizedDescription)") }
         }
         batch.items = valid
         if !batch.errors.isEmpty { batch.completeBackup = nil }
@@ -122,10 +128,11 @@ enum TransferService {
         guard batch.errors.isEmpty || validOnly else { throw TransferError.invalid("Resolve invalid records or explicitly choose valid items only.") }
         if replace {
             guard let full = batch.completeBackup else { throw TransferError.invalid("Only one complete JSON backup can replace the library.") }
-            return TransferPreview(baseline: local, result: full, added: full.prompts.count, updated: 0, skipped: 0)
+            return TransferPreview(baseline: local, result: full, added: full.prompts.count, updated: 0, skipped: 0, changedIDs: Set(full.prompts.map(\.id)))
         }
         var result = local
         var added = 0, updated = 0, skipped = 0
+        var changedIDs: Set<UUID> = []
         var records = Dictionary(uniqueKeysWithValues: local.prompts.map { ($0.id, $0) })
         var contentCounts: [[String]: Int] = [:]
         for record in local.prompts { contentCounts[[record.title, record.content], default: 0] += 1 }
@@ -156,6 +163,7 @@ enum TransferService {
                 categoryNames[categoryKey] = record.category
                 result.categories.append(.init(id: UUID(), name: record.category, systemImage: "folder", sortOrder: result.categories.count, createdDate: .now, isBuiltIn: false, iconKind: .sfSymbol, iconEmoji: nil, iconImageData: nil))
             }
+            changedIDs.insert(record.id)
             records[record.id] = record
             contentCounts[[record.title, record.content], default: 0] += 1
             if let deletedAt = item.deletedAt {
@@ -182,7 +190,7 @@ enum TransferService {
         }
         result.prompts = records.values.sorted { $0.id.uuidString < $1.id.uuidString }
         try BackupService.validate(result)
-        return TransferPreview(baseline: local, result: result, added: added, updated: updated, skipped: skipped)
+        return TransferPreview(baseline: local, result: result, added: added, updated: updated, skipped: skipped, changedIDs: changedIDs)
     }
 
     @MainActor
@@ -295,4 +303,378 @@ enum StoredZIP {
         for field in endFields { output.append(field) }
         return output
     }
+}
+
+
+/// Explicitly installed content, never loaded during application bootstrap.
+enum SampleLibrary {
+    static let receiptKey = "sampleLibrary.installedIDs.v1"
+    static func batch(excluding installedIDs: Set<UUID> = []) -> TransferBatch {
+        var result = TransferService.parse([(name: "Samples.json", data: Data(json.utf8))])
+        result.items.removeAll { installedIDs.contains($0.record.id) }
+        return result
+    }
+    @MainActor
+    static func install(in context: ModelContext, defaults: UserDefaults) throws -> Set<UUID> {
+        let installed = Set((defaults.stringArray(forKey: receiptKey) ?? []).compactMap(UUID.init(uuidString:)))
+        let input = batch(excluding: installed)
+        let preview = try TransferService.preview(input, local: BackupService.makeBackup(in: context), conflict: .keepLocal, validOnly: false, replace: false)
+        try TransferService.apply(preview, in: context)
+        defaults.set(Array(installed.union(input.items.map { $0.record.id })).map(\.uuidString), forKey: receiptKey)
+        return preview.changedIDs
+    }
+    private static let json = #"""
+{
+  "kind": "content",
+  "formatVersion": 3,
+  "createdAt": 1792604960.929135,
+  "appVersion": "1.2.0",
+  "prompts": [
+    {
+      "id": "11E38BAA-5CFE-4E38-800F-82BEA7D57F10",
+      "title": "SwiftUI 页面设计",
+      "category": "iOS 开发",
+      "content": "请设计一个{{页面名称}}的 SwiftUI 页面，面向{{用户群体}}。说明状态管理、布局和无障碍支持。",
+      "createdDate": 1792604960.929135,
+      "updatedDate": 1792604960.929135,
+      "isFavorite": true
+    },
+    {
+      "id": "ACEA6DC4-8DED-4CC1-84FF-786C48FCEFAC",
+      "title": "Swift 代码审查",
+      "category": "iOS 开发",
+      "content": "请审查以下 Swift 代码，重点检查并发安全、内存管理与错误处理：\n{{代码}}",
+      "createdDate": 1792604960.929135,
+      "updatedDate": 1792604960.929135,
+      "isFavorite": false
+    },
+    {
+      "id": "33110B94-B81E-4D0E-9D47-47BF60DA5033",
+      "title": "iOS 功能拆解",
+      "category": "iOS 开发",
+      "content": "把{{功能描述}}拆成可独立验收的开发任务，列出界面、数据模型、测试和风险。",
+      "createdDate": 1792604960.929135,
+      "updatedDate": 1792604960.929135,
+      "isFavorite": false
+    },
+    {
+      "id": "2CA70E58-0814-4338-99C6-66FB47BED7C1",
+      "title": "单元测试设计",
+      "category": "iOS 开发",
+      "content": "针对{{功能}}设计正常、边界和失败场景的单元测试，使用 Swift Testing 给出示例。",
+      "createdDate": 1792604960.929135,
+      "updatedDate": 1792604960.929135,
+      "isFavorite": false
+    },
+    {
+      "id": "5DE25D56-43E3-418D-A40B-B7444EE1E8F1",
+      "title": "文章大纲",
+      "category": "内容创作",
+      "content": "请围绕{{主题}}为{{读者}}写一份文章大纲，包含开头、三个核心论点与结尾。",
+      "createdDate": 1792604960.929135,
+      "updatedDate": 1792604960.929135,
+      "isFavorite": false
+    },
+    {
+      "id": "C487B9C0-BC72-47B2-9BC7-55766A3BEB62",
+      "title": "文案润色",
+      "category": "内容创作",
+      "content": "润色以下文字，语气自然简洁，保留事实，不添加未经确认的信息：\n{{原文}}",
+      "createdDate": 1792604960.929135,
+      "updatedDate": 1792604960.929135,
+      "isFavorite": false
+    },
+    {
+      "id": "D9986FF6-201E-4B89-80C2-7BE58ABD5FE8",
+      "title": "中英翻译",
+      "category": "内容创作",
+      "content": "将下面文字翻译为{{目标语言}}，保留格式与专业术语：\n{{原文}}",
+      "createdDate": 1792604960.929135,
+      "updatedDate": 1792604960.929135,
+      "isFavorite": false
+    },
+    {
+      "id": "40CB3992-732A-46BE-A212-36B2B20B8494",
+      "title": "会议纪要",
+      "category": "工作效率",
+      "content": "整理以下会议记录，输出结论、待办、负责人和截止时间。缺失信息标记为待确认：\n{{会议记录}}",
+      "createdDate": 1792604960.929135,
+      "updatedDate": 1792604960.929135,
+      "isFavorite": true
+    },
+    {
+      "id": "49E25989-72F2-494D-BC7C-C70ECCE4B157",
+      "title": "每周复盘",
+      "category": "工作效率",
+      "content": "根据本周记录{{本周记录}}，归纳成果、阻碍、经验和下周三项优先事项。",
+      "createdDate": 1792604960.929135,
+      "updatedDate": 1792604960.929135,
+      "isFavorite": false
+    },
+    {
+      "id": "400DA8B3-4E6D-4DCD-95FD-C0A007452886",
+      "title": "学习计划",
+      "category": "学习成长",
+      "content": "为{{学习主题}}制定{{天数}}天入门计划，每天可投入{{每日时间}}，包含练习和验收标准。",
+      "createdDate": 1792604960.929135,
+      "updatedDate": 1792604960.929135,
+      "isFavorite": true
+    },
+    {
+      "id": "BCC15FF4-CBFB-484B-B535-C6F9B1BBFEA8",
+      "title": "概念讲解",
+      "category": "学习成长",
+      "content": "用一个日常例子解释{{概念}}，再提供准确的技术定义和一道自测题。",
+      "createdDate": 1792604960.929135,
+      "updatedDate": 1792604960.929135,
+      "isFavorite": false
+    },
+    {
+      "id": "7949E5DF-69E3-425D-BD34-D2EC26B08294",
+      "title": "产品需求梳理",
+      "category": "产品设计",
+      "content": "将{{需求描述}}整理成用户问题、使用流程、边界情况和验收标准，明确哪些假设还需验证。",
+      "createdDate": 1792604960.929135,
+      "updatedDate": 1792604960.929135,
+      "isFavorite": false
+    }
+  ],
+  "categories": [
+    {
+      "id": "9B208924-1EE3-4787-AEFE-60E8208DBE7D",
+      "name": "iOS 开发",
+      "systemImage": "folder",
+      "sortOrder": 0,
+      "createdDate": 1792604960.929135,
+      "isBuiltIn": false,
+      "iconKind": "sfSymbol"
+    },
+    {
+      "id": "0C45F138-C053-473B-A397-D89C28331D0C",
+      "name": "内容创作",
+      "systemImage": "folder",
+      "sortOrder": 1,
+      "createdDate": 1792604960.929135,
+      "isBuiltIn": false,
+      "iconKind": "sfSymbol"
+    },
+    {
+      "id": "0443DAB4-0C59-4FA9-9839-FD64658B62FC",
+      "name": "工作效率",
+      "systemImage": "folder",
+      "sortOrder": 2,
+      "createdDate": 1792604960.929135,
+      "isBuiltIn": false,
+      "iconKind": "sfSymbol"
+    },
+    {
+      "id": "6084C99B-D20C-4184-B835-722C41426F2F",
+      "name": "学习成长",
+      "systemImage": "folder",
+      "sortOrder": 3,
+      "createdDate": 1792604960.929135,
+      "isBuiltIn": false,
+      "iconKind": "sfSymbol"
+    },
+    {
+      "id": "CAB0B53B-ABBF-49A4-8DD5-8D9F0018EFB7",
+      "name": "产品设计",
+      "systemImage": "folder",
+      "sortOrder": 4,
+      "createdDate": 1792604960.929135,
+      "isBuiltIn": false,
+      "iconKind": "sfSymbol"
+    }
+  ],
+  "tags": [
+    {
+      "id": "64E1CC10-9CB9-48D7-A331-2234D1301EEC",
+      "name": "样例",
+      "color": "blue",
+      "promptIDs": [
+        "11E38BAA-5CFE-4E38-800F-82BEA7D57F10",
+        "ACEA6DC4-8DED-4CC1-84FF-786C48FCEFAC",
+        "33110B94-B81E-4D0E-9D47-47BF60DA5033",
+        "2CA70E58-0814-4338-99C6-66FB47BED7C1",
+        "5DE25D56-43E3-418D-A40B-B7444EE1E8F1",
+        "C487B9C0-BC72-47B2-9BC7-55766A3BEB62",
+        "D9986FF6-201E-4B89-80C2-7BE58ABD5FE8",
+        "40CB3992-732A-46BE-A212-36B2B20B8494",
+        "49E25989-72F2-494D-BC7C-C70ECCE4B157",
+        "400DA8B3-4E6D-4DCD-95FD-C0A007452886",
+        "BCC15FF4-CBFB-484B-B535-C6F9B1BBFEA8",
+        "7949E5DF-69E3-425D-BD34-D2EC26B08294"
+      ],
+      "createdAt": 1792604960.929135
+    },
+    {
+      "id": "3D2C98F9-9862-471A-829B-019864384D48",
+      "name": "SwiftUI",
+      "color": "orange",
+      "promptIDs": [
+        "11E38BAA-5CFE-4E38-800F-82BEA7D57F10"
+      ],
+      "createdAt": 1792604960.929135
+    }
+  ],
+  "variableDefinitions": [
+    {
+      "id": "B02197DC-5D7E-42C3-943C-00468055D897",
+      "promptID": "11E38BAA-5CFE-4E38-800F-82BEA7D57F10",
+      "name": "页面名称",
+      "label": "页面名称",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "2011EB5B-F329-475F-90DC-B927E16EF1EC",
+      "promptID": "11E38BAA-5CFE-4E38-800F-82BEA7D57F10",
+      "name": "用户群体",
+      "label": "用户群体",
+      "defaultValue": "",
+      "order": 1,
+      "isRepeatable": false
+    },
+    {
+      "id": "FC54CD57-5CE7-4D37-96A1-E8321D1E7F26",
+      "promptID": "ACEA6DC4-8DED-4CC1-84FF-786C48FCEFAC",
+      "name": "代码",
+      "label": "代码",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "A2BFCFEA-A1BC-4E65-B0DE-9F0A9E0D87F3",
+      "promptID": "33110B94-B81E-4D0E-9D47-47BF60DA5033",
+      "name": "功能描述",
+      "label": "功能描述",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "E7AD3D09-6848-4F1A-8A63-340B62ED7F76",
+      "promptID": "2CA70E58-0814-4338-99C6-66FB47BED7C1",
+      "name": "功能",
+      "label": "功能",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "3E6C38B6-E0B3-47FB-AEA8-D2A853F2A16D",
+      "promptID": "5DE25D56-43E3-418D-A40B-B7444EE1E8F1",
+      "name": "主题",
+      "label": "主题",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "A691012D-BCD7-4E04-9F5F-B13791858F63",
+      "promptID": "5DE25D56-43E3-418D-A40B-B7444EE1E8F1",
+      "name": "读者",
+      "label": "读者",
+      "defaultValue": "",
+      "order": 1,
+      "isRepeatable": false
+    },
+    {
+      "id": "7EBB0256-6E3E-4F3D-8E6B-B0EF0B9E66FD",
+      "promptID": "C487B9C0-BC72-47B2-9BC7-55766A3BEB62",
+      "name": "原文",
+      "label": "原文",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "A4E91B6B-F3CA-4D47-BB22-10305A0D1009",
+      "promptID": "D9986FF6-201E-4B89-80C2-7BE58ABD5FE8",
+      "name": "目标语言",
+      "label": "目标语言",
+      "defaultValue": "英语",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "0D6F0BCA-597B-4E00-9BCF-501A123DF31E",
+      "promptID": "D9986FF6-201E-4B89-80C2-7BE58ABD5FE8",
+      "name": "原文",
+      "label": "原文",
+      "defaultValue": "",
+      "order": 1,
+      "isRepeatable": false
+    },
+    {
+      "id": "8F1F925C-26E6-433B-B254-B78A5E0F7714",
+      "promptID": "40CB3992-732A-46BE-A212-36B2B20B8494",
+      "name": "会议记录",
+      "label": "会议记录",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "3F7D97F5-6B24-4EFC-9259-2FA3097CE9D5",
+      "promptID": "49E25989-72F2-494D-BC7C-C70ECCE4B157",
+      "name": "本周记录",
+      "label": "本周记录",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "5595AA94-C8AE-4B38-B623-C4C1C8CADFFB",
+      "promptID": "400DA8B3-4E6D-4DCD-95FD-C0A007452886",
+      "name": "学习主题",
+      "label": "学习主题",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "856C1182-CEE8-4ECB-AE8A-6732B3287951",
+      "promptID": "400DA8B3-4E6D-4DCD-95FD-C0A007452886",
+      "name": "天数",
+      "label": "天数",
+      "defaultValue": "14",
+      "order": 1,
+      "isRepeatable": false
+    },
+    {
+      "id": "B01655C7-0059-419E-9EA6-9C3099FAA71E",
+      "promptID": "400DA8B3-4E6D-4DCD-95FD-C0A007452886",
+      "name": "每日时间",
+      "label": "每日时间",
+      "defaultValue": "30 分钟",
+      "order": 2,
+      "isRepeatable": false
+    },
+    {
+      "id": "9D6A2A73-392E-4969-852A-3EF939C6F9FB",
+      "promptID": "BCC15FF4-CBFB-484B-B535-C6F9B1BBFEA8",
+      "name": "概念",
+      "label": "概念",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    },
+    {
+      "id": "C55698D4-1417-47D9-B16F-C292D2FA2789",
+      "promptID": "7949E5DF-69E3-425D-BD34-D2EC26B08294",
+      "name": "需求描述",
+      "label": "需求描述",
+      "defaultValue": "",
+      "order": 0,
+      "isRepeatable": false
+    }
+  ],
+  "versions": [],
+  "smartCollections": [],
+  "trash": []
+}
+"""#
 }

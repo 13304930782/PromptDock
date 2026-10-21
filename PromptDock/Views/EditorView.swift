@@ -151,7 +151,18 @@ struct EditorView: View {
         }
         .onChange(of: content) { synchronizeVariables() }
         .sheet(isPresented: $isRewritePresented) {
-            AIRewriteView(title: title, originalContent: content, usesChinese: usesChinese) { content = $0; isRewritePresented = false }
+            AIRewriteView(title: title, originalContent: content, usesChinese: usesChinese,
+                definitions: variableDrafts, onSaveCopy: { text in
+                    var copy = draft; copy.content = text
+                    _ = try PromptViewModel().createPrompt(from: copy, tags: tags, in: modelContext)
+                    isRewritePresented = false
+                }) { text in
+                    if let prompt {
+                        let deleted = try modelContext.fetch(FetchDescriptor<TrashEntry>()).contains { $0.promptID == prompt.id }
+                        try LocalEditorDraft(promptID: prompt.id, baselineDate: baselineDate, draft: draft).requireUnchanged(currentDate: prompt.updatedDate, isDeleted: prompt.isDeleted || deleted)
+                    }
+                    content = text; isRewritePresented = false
+                }
         }
         .alert(usesChinese ? "无法保存提示词" : "Unable to Save Prompt", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) { Button("OK", role: .cancel) {} } message: { Text(errorMessage ?? "") }
     }

@@ -96,6 +96,8 @@ enum PromptSection: Hashable, Identifiable {
     case all
     case favorites
     case recent
+    case recentlyUsed
+    case trash
     case smartCollection(UUID, String)
     case category(String)
     case tag(UUID, String)
@@ -105,6 +107,8 @@ enum PromptSection: Hashable, Identifiable {
         case .all: "library.all"
         case .favorites: "library.favorites"
         case .recent: "library.recent"
+        case .recentlyUsed: "library.used"
+        case .trash: "library.trash"
         case .smartCollection(let id, _): "collection.\(id.uuidString)"
         case .category(let name): "category.\(name)"
         case .tag(let id, _): "tag.\(id.uuidString)"
@@ -116,6 +120,8 @@ enum PromptSection: Hashable, Identifiable {
         case .all: "All Prompts"
         case .favorites: "Favorites"
         case .recent: "Recently Updated"
+        case .recentlyUsed: "Recently Used"
+        case .trash: "Trash"
         case .smartCollection(_, let name), .tag(_, let name): name
         case .category(let name): name
         }
@@ -126,6 +132,8 @@ enum PromptSection: Hashable, Identifiable {
         case .all: "square.stack"
         case .favorites: "star"
         case .recent: "clock"
+        case .recentlyUsed: "clock.arrow.circlepath"
+        case .trash: "trash"
         case .smartCollection: "square.stack.3d.up"
         case .category: "folder"
         case .tag: "tag"
@@ -136,7 +144,7 @@ enum PromptSection: Hashable, Identifiable {
         LocalizedStringKey(title)
     }
 
-    static let librarySections: [PromptSection] = [.all, .favorites, .recent]
+    static let librarySections: [PromptSection] = [.all, .favorites, .recent, .recentlyUsed, .trash]
 }
 
 @MainActor
@@ -158,7 +166,7 @@ final class PromptViewModel: ObservableObject {
         switch selectedSection {
         case .category(let name):
             name
-        case .all, .favorites, .recent, .smartCollection, .tag:
+        case .all, .favorites, .recent, .recentlyUsed, .trash, .smartCollection, .tag:
             categories.first?.name
                 ?? CategoryService.defaultCategories[0].name
         }
@@ -169,7 +177,8 @@ final class PromptViewModel: ObservableObject {
         tags: [PromptTag] = [],
         collections: [SmartCollection] = [],
         locale: Locale = .autoupdatingCurrent,
-        applySearch: Bool = true
+        applySearch: Bool = true,
+        recentIDs: [UUID] = []
     ) -> [Prompt] {
         let sectionPrompts: [Prompt]
         switch selectedSection {
@@ -177,6 +186,11 @@ final class PromptViewModel: ObservableObject {
             sectionPrompts = prompts
         case .favorites:
             sectionPrompts = prompts.filter(\.isFavorite)
+        case .trash:
+            sectionPrompts = [] // Rendered by TrashLibraryView, never mixed into ordinary search.
+        case .recentlyUsed:
+            let byID = Dictionary(uniqueKeysWithValues: prompts.map { ($0.id, $0) })
+            sectionPrompts = recentIDs.compactMap { byID[$0] }
         case .recent:
             sectionPrompts = Array(
                 prompts.sorted { $0.updatedDate > $1.updatedDate }.prefix(20)

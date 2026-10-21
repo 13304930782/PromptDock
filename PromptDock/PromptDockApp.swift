@@ -39,6 +39,19 @@ private final class PromptDockAppDelegate: NSObject, NSApplicationDelegate {
 }
 
 @main
+enum PromptDockEntryPoint {
+    static func main() {
+        if AppEnvironment.isTesting {
+            // Keep the hosted XCTest run loop, without constructing any SwiftUI scenes.
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            application.run()
+        } else {
+            PromptDockApp.main()
+        }
+    }
+}
+
 struct PromptDockApp: App {
     @NSApplicationDelegateAdaptor(PromptDockAppDelegate.self)
     private var appDelegate

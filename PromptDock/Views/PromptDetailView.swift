@@ -287,14 +287,15 @@ struct BulkPromptActionsView: View {
 }
 
 enum AIRewriteGoal: String, CaseIterable, Identifiable {
-    case concise, context, structure, tone
+    case concise, context, structure, tone, custom
     var id: String { rawValue }
     func title(usesChinese: Bool) -> String {
         switch self {
         case .concise: usesChinese ? "精简表达" : "Make Concise"
         case .context: usesChinese ? "补全上下文" : "Add Context"
         case .structure: usesChinese ? "优化结构" : "Improve Structure"
-        case .tone: usesChinese ? "调整语气" : "Adjust Tone"
+        case .tone: usesChinese ? "改善表达" : "Improve Expression"
+        case .custom: usesChinese ? "自定义" : "Custom"
         }
     }
 }
@@ -304,7 +305,9 @@ struct AIRewriteView: View {
     let title: String
     let originalContent: String
     let usesChinese: Bool
-    let onAccept: (String) -> Void
+    var definitions: [TemplateVariableDraft] = []
+    var onSaveCopy: ((String) throws -> Void)? = nil
+    let onAccept: (String) throws -> Void
     @State private var goal: AIRewriteGoal = .concise
     @State private var additionalInstructions = ""
     @State private var candidate: String?
@@ -313,7 +316,16 @@ struct AIRewriteView: View {
     @State private var isGenerating = false
     @State private var generation = 0
 
-    private var configuration: AIProviderConfiguration { AppPreferences.aiConfiguration }
+    @State private var configuration = AppPreferences.aiConfiguration
+    private var rewriteRequest: AIRewriteRequest {
+        AIRewriteRequest(content: originalContent, definitions: definitions, goal: goal,
+            instructions: additionalInstructions, usesChinese: usesChinese)
+    }
+    private var candidateIsValid: Bool {
+        guard let candidate else { return false }
+        return (try? rewriteRequest.validate(candidate)) != nil
+    }
+
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -335,27 +347,58 @@ struct AIRewriteView: View {
             GroupBox {
                 VStack(alignment: .leading, spacing: 6) {
                     Label("\(configuration.provider.displayName(usesChinese: usesChinese)) · \(configuration.model)", systemImage: "network")
-                    Text(usesChinese ? "点击生成后，只会发送下方当前提示词正文和改写要求。不会发送资料库、分类、标签或历史版本。" : "Generate sends only the current prompt below and your rewrite instructions. Your library, categories, tags, and history are not sent.")
+                    Text(usesChinese ? "点击生成才会发送当前正文、变量定义与改写要求，不发送其他提示词或历史。" : "Generate sends only this text, its variable definitions and your instructions; no other prompts or history.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            DisclosureGroup(usesChinese ? "查看发送内容" : "Review Request") {
+                ScrollView { Text(rewriteRequest.payload).textSelection(.enabled) }.frame(maxHeight: 100)
+            }
             HStack(alignment: .top, spacing: 12) {
                 rewriteColumn(usesChinese ? "原文" : "Original", text: originalContent, highlightsChanges: false)
-                rewriteColumn(usesChinese ? "改写版" : "Rewrite", text: candidate ?? (usesChinese ? "生成后将在此显示结果。" : "The result will appear here."), highlightsChanges: candidate != nil)
+                if candidate != nil {
+                    GroupBox(usesChinese ? "编辑建议" : "Edit Suggestion") {
+                        TextEditor(text: Binding(get: { candidate ?? "" }, set: { candidate = $0 }))
+                    }
+                }
+
             }.frame(maxHeight: .infinity)
 
+            if let candidate {
+                ScrollView {
+                    LazyVStack(alignment: .leading) {
+                        ForEach(RewriteDiffLine.compare(original: originalContent, candidate: candidate)) { line in
+                            Text((line.kind == .added ? "+ " : line.kind == .removed ? "− " : "  ") + line.text)
+                                .foregroundStyle(line.kind == .removed ? Color.red : line.kind == .added ? Color.green : Color.primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }.textSelection(.enabled)
+                }.frame(maxHeight: 110).accessibilityLabel(usesChinese ? "逐行修改对比" : "Line Changes")
+                if !candidateIsValid { Text(usesChinese ? "请保留原变量名称和列表类型，且正文不能为空。" : "Keep original variable names and list types; text must not be empty.").foregroundStyle(.red) }
+            }
             if let errorMessage { Label(errorMessage, systemImage: "exclamationmark.triangle").foregroundStyle(.red).font(.caption) }
 
             HStack {
-                if isGenerating { ProgressView().controlSize(.small); Button(usesChinese ? "取消" : "Cancel") { task?.cancel() } }
+                if isGenerating { ProgressView().controlSize(.small); Button(usesChinese ? "取消" : "Cancel") { generation += 1; task?.cancel(); isGenerating = false } }
                 Spacer()
                 if let candidate {
                     Button(usesChinese ? "复制改写版" : "Copy Rewrite") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(candidate, forType: .string) }
-                    Button(usesChinese ? "接受改写" : "Accept Rewrite") { onAccept(candidate) }.buttonStyle(.borderedProminent)
+                    Button(usesChinese ? "采用" : "Accept") {
+                        do { try rewriteRequest.validate(candidate); try onAccept(candidate) }
+                        catch { errorMessage = error.localizedDescription }
+                    }.buttonStyle(.borderedProminent).disabled(!candidateIsValid || isGenerating)
+                    if let onSaveCopy {
+                        Button(usesChinese ? "另存新提示词" : "Save as New Prompt") {
+                            do { try rewriteRequest.validate(candidate); try onSaveCopy(candidate); dismiss() }
+                            catch { errorMessage = error.localizedDescription }
+                        }.disabled(!candidateIsValid || isGenerating)
+                    }
+                    Button(usesChinese ? "放弃" : "Discard") { self.candidate = nil }
+
                 }
                 Button(candidate == nil ? (usesChinese ? "生成改写" : "Generate Rewrite") : (usesChinese ? "重新生成" : "Regenerate"), action: generate)
-                    .disabled(isGenerating)
+                    .disabled(isGenerating || (goal == .custom && additionalInstructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
             }
         }
         .padding(24)
@@ -383,12 +426,14 @@ struct AIRewriteView: View {
         task?.cancel(); candidate = nil; errorMessage = nil; isGenerating = true
         generation += 1
         let currentGeneration = generation
+        let request = rewriteRequest
+        let selectedConfiguration = configuration
         task = Task {
             do {
                 let key = try AIKeychainStore.load(for: configuration.provider)
-                let result = try await AITemplateService().rewritePrompt(content: originalContent, goal: goal, additionalInstructions: additionalInstructions, usesChinese: usesChinese, configuration: configuration, apiKey: key)
+                let result = try await AITemplateService().rewrite(request, configuration: selectedConfiguration, apiKey: key)
                 guard !Task.isCancelled, generation == currentGeneration else { return }
-                candidate = result
+                candidate = result.content
             } catch is CancellationError {
             } catch {
                 guard generation == currentGeneration else { return }

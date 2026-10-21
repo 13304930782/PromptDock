@@ -417,3 +417,74 @@ enum AIServiceError: LocalizedError, Equatable {
         }
     }
 }
+
+
+struct AIRewriteRequest {
+    let content: String
+    let definitions: [TemplateVariableDraft]
+    let goal: AIRewriteGoal
+    let instructions: String
+    let usesChinese: Bool
+
+    var payload: String {
+        let names = Set(PromptTemplate(content).variables)
+        let metadata = definitions.filter { names.contains($0.name) }.sorted { $0.order < $1.order }.map {
+            "\($0.name) | label=\($0.label) | default=\($0.defaultValue) | list=\($0.isRepeatable)"
+        }.joined(separator: "\n")
+        return """
+        Rewrite the prompt for: \(goal.title(usesChinese: usesChinese)).
+        Return only the complete rewritten text. Preserve the exact set of {{name}} and {{name[]}} variables and their types. Do not invent factual context.
+        Requirements:
+        \(instructions)
+        Variable definitions (preserve):
+        \(metadata)
+        Original prompt:
+        \(content)
+        """
+    }
+    func validate(_ candidate: String) throws {
+        guard !candidate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw AIServiceError.emptyResponse }
+        let signature: (String) -> Set<String> = { text in
+            Set(PromptTemplate(text).variableSignatures.map { "\($0.name)|\($0.isRepeatable)" })
+        }
+        guard signature(content) == signature(candidate) else {
+            throw TransferError.invalid(usesChinese ? "变量名称或列表类型发生了变化，请修正后再采用。" : "Variable names or list types changed. Correct them before accepting.")
+        }
+    }
+}
+struct AIRewriteResult { let content: String }
+extension AITemplateService {
+    func rewrite(_ request: AIRewriteRequest, configuration: AIProviderConfiguration, apiKey: String?) async throws -> AIRewriteResult {
+        let content = try await generateTemplate(request: request.payload, configuration: configuration, apiKey: apiKey)
+        try Task.checkCancellation()
+        return AIRewriteResult(content: content)
+    }
+}
+
+struct RewriteDiffLine: Identifiable {
+    let id: Int
+    let text: String
+    let kind: Kind
+    enum Kind { case unchanged, removed, added }
+    static func compare(original: String, candidate: String) -> [RewriteDiffLine] {
+        let old = original.components(separatedBy: "\n"), new = candidate.components(separatedBy: "\n")
+        let changes = new.difference(from: old)
+        var removed = Set<Int>(), added = Set<Int>()
+        for change in changes {
+            switch change {
+            case .remove(let offset, _, _): removed.insert(offset)
+            case .insert(let offset, _, _): added.insert(offset)
+            }
+        }
+        var result: [RewriteDiffLine] = [], i = 0, j = 0
+        func append(_ text: String, _ kind: Kind) { result.append(.init(id: result.count, text: text, kind: kind)) }
+        while i < old.count || j < new.count {
+            if i < old.count && removed.contains(i) { append(old[i], .removed); i += 1 }
+            else if j < new.count && added.contains(j) { append(new[j], .added); j += 1 }
+            else if i < old.count && j < new.count { append(new[j], .unchanged); i += 1; j += 1 }
+            else if i < old.count { append(old[i], .removed); i += 1 }
+            else { append(new[j], .added); j += 1 }
+        }
+        return result
+    }
+}

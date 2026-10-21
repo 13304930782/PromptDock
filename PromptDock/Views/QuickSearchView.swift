@@ -19,6 +19,7 @@ struct QuickSearchView: View {
     @Query private var definitions: [TemplateVariableDefinition]
     @StateObject private var searchController = PromptSearchController()
     @State private var query = ""
+    @State private var recentIDs: [UUID] = []
     @State private var selectedPromptID: UUID?
     @State private var copiedPromptID: UUID?
     @State private var errorMessage: String?
@@ -26,6 +27,10 @@ struct QuickSearchView: View {
         PromptSearchInput(snapshots: PromptSearchService.snapshots(prompts, tags: tags, locale: locale), query: query, localeIdentifier: locale.identifier, limit: 12)
     }
     private var results: [Prompt] {
+        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let byID = Dictionary(uniqueKeysWithValues: prompts.map { ($0.id, $0) })
+            return recentIDs.compactMap { byID[$0] }.prefix(12).map { $0 }
+        }
         guard searchController.completedInput == searchInput else { return [] }
         let byID = Dictionary(uniqueKeysWithValues: prompts.map { ($0.id, $0) })
         return searchController.ids.compactMap { byID[$0] }
@@ -61,7 +66,7 @@ struct QuickSearchView: View {
         let trimmedQuery = query.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
-        guard !trimmedQuery.isEmpty else { return 88 }
+        guard !trimmedQuery.isEmpty || !results.isEmpty else { return 88 }
         guard !results.isEmpty else { return 221 }
 
         let resultAreaHeight = min(
@@ -111,7 +116,7 @@ struct QuickSearchView: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 13)
 
-                    if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && results.isEmpty {
                         Divider()
                         Text("Type to search · ↑↓ to move · Return to copy")
                             .font(.caption)
@@ -157,8 +162,9 @@ struct QuickSearchView: View {
                 .strokeBorder(.separator.opacity(0.7), lineWidth: 0.5)
         }
         .onAppear {
+            recentIDs = RecentUsage.ids()
             query = ""
-            selectedPromptID = nil
+            selectedPromptID = results.first?.id
             templateCopyRequest = nil
             onPreferredHeightChange(preferredHeight)
             Task { @MainActor in
@@ -327,6 +333,8 @@ struct QuickSearchView: View {
             return false
         }
 
+        RecentUsage.record(promptID)
+        recentIDs = RecentUsage.ids()
         templateCopyRequest = nil
         copiedPromptID = promptID
         Task { @MainActor in

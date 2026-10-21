@@ -28,9 +28,6 @@ struct SettingsView: View {
                     Label("Collections", systemImage: "square.stack.3d.up")
                 }
 
-            TrashSettingsView()
-                .tabItem { Label("Trash", systemImage: "trash") }
-
             PrivacySettingsView()
                 .tabItem {
                     Label("Privacy", systemImage: "hand.raised")
@@ -277,6 +274,10 @@ private struct PrivacySettingsView: View {
                 .foregroundStyle(.secondary)
             }
 
+            Section("Recently Used") {
+                Button("Retry Recent Usage") { RecentUsage.retry() }
+                if let error = RecentUsage.lastError { Text(error.localizedDescription).foregroundStyle(.red) }
+            }
             Section("Widget") {
                 Button("Retry Widget Sync") {
                     do {
@@ -859,7 +860,7 @@ private final class ShortcutRecorderButton: NSButton {
 }
 
 
-private struct TrashSettingsView: View {
+struct TrashLibraryView: View {
     @Environment(\.modelContext) private var context
     @Query private var entries: [TrashEntry]
     @Query private var prompts: [Prompt]
@@ -873,8 +874,18 @@ private struct TrashSettingsView: View {
     var body: some View {
         VStack(alignment: .leading) {
             Text("Deleted prompts are retained for 30 days. Restoration preserves tags, variables and history.")
-            List(deletedPrompts, selection: $selection) { prompt in
-                Text(prompt.title).tag(prompt.id)
+            if deletedPrompts.isEmpty {
+                ContentUnavailableView("Trash Is Empty", systemImage: "trash")
+            } else {
+                List(deletedPrompts, selection: $selection) { prompt in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(prompt.title).font(.headline)
+                        Text(prompt.content).lineLimit(2).foregroundStyle(.secondary)
+                        if let entry = entries.first(where: { $0.promptID == prompt.id }) {
+                            Text(entry.deletedAt, style: .date).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }.tag(prompt.id)
+                }
             }
             HStack {
                 Text("Selected: \(selection.count)")
@@ -884,6 +895,7 @@ private struct TrashSettingsView: View {
             }
         }
         .padding()
+        .onChange(of: Set(deletedPrompts.map(\.id))) { _, ids in selection.formIntersection(ids) }
         .confirmationDialog("Permanently delete \(selection.count) prompts?", isPresented: $confirmsDelete) {
             Button("Delete Permanently", role: .destructive) { perform { try TrashService.permanentlyDelete(selection, in: context) } }
         } message: { Text("This cannot be undone.") }

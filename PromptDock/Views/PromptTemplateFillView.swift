@@ -143,6 +143,7 @@ struct PromptTemplateFillView: View {
                 .foregroundStyle(.secondary)
             }
 
+            resetControls
             variableFields
 
             preview(minHeight: 90, maxHeight: 180)
@@ -208,6 +209,7 @@ struct PromptTemplateFillView: View {
 
             Divider()
 
+            resetControls
             variableFields
 
             preview(minHeight: 78, maxHeight: 112)
@@ -239,6 +241,23 @@ struct PromptTemplateFillView: View {
         }
         .padding(14)
         .frame(width: 410, height: 480, alignment: .top)
+    }
+
+    private var resetControls: some View {
+        HStack {
+            Button(usesChinese ? "恢复默认值" : "Restore Defaults") { reset(useDefaults: true) }
+            Button(usesChinese ? "清空填写" : "Clear Fields") { reset(useDefaults: false) }
+        }.controlSize(.small)
+    }
+
+    private func reset(useDefaults: Bool) {
+        for field in request.fields {
+            let value = useDefaults ? field.defaultValue : ""
+            if field.variable.isRepeatable { repeatableValues[field.variable.name] = [value] }
+            else { values[field.variable.name] = value }
+        }
+        hasAttemptedCopy = false
+        focusedField = focusTarget(for: request.fields.first?.variable)
     }
 
     private var variableFields: some View {
