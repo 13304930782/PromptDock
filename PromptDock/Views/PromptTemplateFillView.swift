@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct PromptTemplateCopyRequest: Identifiable {
     let id = UUID()
@@ -12,7 +13,7 @@ struct PromptTemplateCopyRequest: Identifiable {
         promptTitle = prompt.title
         let parsedTemplate = PromptTemplate(prompt.content)
         template = parsedTemplate
-        let byName = Dictionary(uniqueKeysWithValues: definitions.map { ($0.name, $0) })
+        let byName = Dictionary(definitions.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
         var configuredFields: [(index: Int, field: PromptTemplateField)] = []
         for (index, field) in parsedTemplate.fields.enumerated() {
             let definition = byName[field.name]
@@ -55,6 +56,7 @@ struct PromptTemplateFillView: View {
     @State private var values: [String: String]
     @State private var repeatableValues: [String: [String]]
     @State private var hasAttemptedCopy = false
+    @State private var pasteError: String?
     @FocusState private var focusedField: TemplateFieldFocus?
 
     init(
@@ -86,10 +88,8 @@ struct PromptTemplateFillView: View {
     }
 
     private var missingFields: [PromptTemplateVariable] {
-        request.template.unresolvedFields(
-            values: values,
-            repeatableValues: repeatableValues
-        )
+        let missing = Set(request.template.unresolvedFields(values: values, repeatableValues: repeatableValues).map(\.id))
+        return request.fields.map(\.variable).filter { missing.contains($0.id) }
     }
 
     private var renderedPrompt: String {
@@ -113,6 +113,9 @@ struct PromptTemplateFillView: View {
                 compactContent
             }
         }
+        .alert(usesChinese ? "无法粘贴" : "Unable to Paste", isPresented: Binding(get: { pasteError != nil }, set: { if !$0 { pasteError = nil } })) {
+            Button("OK") {}
+        } message: { Text(pasteError ?? "") }
         .onExitCommand(perform: onCancel)
         .task {
             await Task.yield()
@@ -308,6 +311,13 @@ struct PromptTemplateFillView: View {
                 )
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.tertiary)
+
+                Button(usesChinese ? "粘贴多行" : "Paste Lines") {
+                    guard let text = NSPasteboard.general.string(forType: .string) else { return }
+                    do { repeatableValues[field.name] = try PromptTemplate.pastedList(text) }
+                    catch { pasteError = error.localizedDescription }
+                }
+                .help(usesChinese ? "每行一项，最多 100 项；替换当前列表" : "One item per line, up to 100; replaces this list")
 
                 Button {
                     addRepeatableValue(for: field)

@@ -57,3 +57,38 @@ multiformat import/export, and search/template performance are separate follow-u
 milestones. These features are not claimed complete by the isolation PR. Each
 requires its own tests and PR; merging to main requires explicit approval. A
 release candidate also needs one week of real-use regression testing.
+
+## Follow-up implementation branches
+
+- `codex/promptdock-data-protection`: V3 tombstones, 30-day retention, selected
+  restore/permanent delete, local editor drafts with revision checking, and seven
+  automatic pre-save backups. V1/V2 backup decoding accepts absent newer arrays.
+- `codex/promptdock-batch-transfer`: multi-file preview, keep/update/copy policy,
+  explicit valid-only consent, stale-preview checks, JSON content packages,
+  Markdown metadata/ZIP and RFC-style quoted CSV with UTF-8 templates.
+- `codex/promptdock-search-workflow`: common snapshot ranking with tags, cancellable
+  delayed search, quick-search variable metadata, multiline list paste and tests.
+
+These stacked PRs are implementation candidates, not a release acceptance claim.
+The earlier Remaining milestones list describes the original sequencing.
+
+## Release acceptance checklist
+
+CI runs memory/temp-store tests, V1/V2 migrations, restore and backup tests,
+CSV/Markdown round trips, conflict/stale-preview checks, and snapshot-search
+stress tests (10k and 100k records). CI timing is logged, not used as a substitute
+for the fixed-machine P95 target. On the release test Mac record hardware, OS,
+configuration and dataset, run at least 20 warmed queries, and verify P95 <=300ms
+for 10k normal prompts. Include snapshot generation and UI presentation in the
+manual measurement, not just worker execution.
+
+Before promoting the candidate, manually validate:
+- signed Dev/Release app and Widget identities and entitlements;
+- refusal of container access, explicit retry, and existing production data;
+- crash/relaunch draft recovery, simultaneous edits and deleted-record conflicts;
+- backup failure/retry and a failed replacement save with rollback;
+- large batch progress, malformed/oversized inputs and ZIP extraction;
+- VoiceOver, keyboard-only operation, and English/Simplified Chinese layouts;
+- at least seven days of actual use, recording defects and retesting fixes.
+
+Do not install a candidate over the production app or merge any PR automatically.

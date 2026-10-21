@@ -23,6 +23,7 @@ struct TransferView: View {
     @State private var importing = false
     @State private var exporting = false
     @State private var busy = false
+    @State private var progressMessage = "Processing files…"
     @State private var scope = "Library"
     @State private var format = "JSON"
     @State private var document: TransferDocument?
@@ -41,7 +42,7 @@ struct TransferView: View {
                             ScrollView { Text(batch.errors.joined(separator: "\n")).textSelection(.enabled) }.frame(maxHeight: 90)
                             Toggle("Import valid items only", isOn: $validOnly)
                         }
-                        Picker("Same ID", selection: $conflict) { ForEach(TransferConflict.allCases) { Text($0.rawValue).tag($0) } }
+                        Picker("Same ID", selection: $conflict) { ForEach(TransferConflict.allCases) { Text(LocalizedStringKey($0.rawValue)).tag($0) } }
                         Toggle("Replace the entire library (safety backup required)", isOn: $replace).disabled(batch.completeBackup == nil)
                         Button("Preview Changes") { makePreview() }
                             .disabled(!batch.errors.isEmpty && !validOnly)
@@ -50,8 +51,14 @@ struct TransferView: View {
                         Text("Add: \(preview.added) · Update: \(preview.updated) · Skip: \(preview.skipped)")
                         if replace { Text("All current library contents will be replaced.").foregroundStyle(.red) }
                         Button("Confirm Import") {
-                            do { try TransferService.apply(preview, in: context); self.preview = nil; batch = nil; notice = "Import completed." }
-                            catch { notice = error.localizedDescription; self.preview = nil }
+                            busy = true
+                            progressMessage = "Importing \(preview.added + preview.updated) prompts…"
+                            Task { @MainActor in
+                                await Task.yield()
+                                defer { busy = false }
+                                do { try TransferService.apply(preview, in: context); self.preview = nil; batch = nil; notice = "Import completed." }
+                                catch { notice = error.localizedDescription; self.preview = nil }
+                            }
                         }
                     }
                 }
@@ -71,7 +78,7 @@ struct TransferView: View {
                 }
             }
             .formStyle(.grouped)
-            if busy { ProgressView("Processing files…") }
+            if busy { ProgressView(progressMessage).accessibilityLabel(progressMessage) }
             HStack { Spacer(); Button("Done") { dismiss() }.keyboardShortcut(.cancelAction) }.padding()
         }
         .frame(minWidth: 650, minHeight: 620)
@@ -91,7 +98,7 @@ struct TransferView: View {
 
     @MainActor
     private func read(_ result: Result<[URL], Error>) async {
-        busy = true; preview = nil; defer { busy = false }
+        busy = true; progressMessage = "Processing files…"; preview = nil; defer { busy = false }
         do {
             var files: [(name: String, data: Data)] = []
             var total = 0

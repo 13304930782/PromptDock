@@ -168,7 +168,8 @@ final class PromptViewModel: ObservableObject {
         from prompts: [Prompt],
         tags: [PromptTag] = [],
         collections: [SmartCollection] = [],
-        locale: Locale = .autoupdatingCurrent
+        locale: Locale = .autoupdatingCurrent,
+        applySearch: Bool = true
     ) -> [Prompt] {
         let sectionPrompts: [Prompt]
         switch selectedSection {
@@ -198,11 +199,12 @@ final class PromptViewModel: ObservableObject {
             sectionPrompts = prompts.filter { promptIDs.contains($0.id) }
         }
 
-        guard hasSearchQuery else { return sectionPrompts }
+        guard hasSearchQuery && applySearch else { return sectionPrompts }
         return PromptSearchService.results(
             in: sectionPrompts,
             query: searchText,
-            locale: locale
+            locale: locale,
+            tags: tags
         )
     }
 

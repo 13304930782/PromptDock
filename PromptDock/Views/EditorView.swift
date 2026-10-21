@@ -202,7 +202,7 @@ struct EditorView: View {
         do {
             if let prompt {
                 let deleted = try modelContext.fetch(FetchDescriptor<TrashEntry>()).contains { $0.promptID == prompt.id }
-                guard !deleted, !prompt.isDeleted, prompt.updatedDate == baselineDate else { throw PromptValidationError.staleDraft }
+                try LocalEditorDraft(promptID: prompt.id, baselineDate: baselineDate, draft: draft).requireUnchanged(currentDate: prompt.updatedDate, isDeleted: deleted || prompt.isDeleted)
             }
             try onSave(draft)
             discardDraft()
@@ -259,26 +259,32 @@ struct LocalEditorDraft: Codable {
     var promptID: UUID?
     var baselineDate: Date?
     var draft: PromptDraft
+
+    func requireUnchanged(currentDate: Date?, isDeleted: Bool) throws {
+        guard promptID == nil || (!isDeleted && currentDate != nil && currentDate == baselineDate) else {
+            throw PromptValidationError.staleDraft
+        }
+    }
 }
 
 enum LocalDraftStore {
     private static var directory: URL {
         URL.applicationSupportDirectory.appendingPathComponent("PromptDock/Drafts")
     }
-    private static func url(_ id: UUID?) -> URL {
-        directory.appendingPathComponent((id?.uuidString ?? "new-prompt") + ".json")
+    private static func url(_ id: UUID?, directory: URL? = nil) -> URL {
+        (directory ?? Self.directory).appendingPathComponent((id?.uuidString ?? "new-prompt") + ".json")
     }
-    static func load(promptID: UUID?) throws -> LocalEditorDraft? {
-        guard !AppEnvironment.isTesting, FileManager.default.fileExists(atPath: url(promptID).path) else { return nil }
-        return try JSONDecoder().decode(LocalEditorDraft.self, from: Data(contentsOf: url(promptID)))
+    static func load(promptID: UUID?, directory: URL? = nil) throws -> LocalEditorDraft? {
+        guard (!AppEnvironment.isTesting || directory != nil), FileManager.default.fileExists(atPath: url(promptID, directory: directory).path) else { return nil }
+        return try JSONDecoder().decode(LocalEditorDraft.self, from: Data(contentsOf: url(promptID, directory: directory)))
     }
-    static func save(_ draft: LocalEditorDraft) throws {
-        guard !AppEnvironment.isTesting else { return }
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try JSONEncoder().encode(draft).write(to: url(draft.promptID), options: .atomic)
+    static func save(_ draft: LocalEditorDraft, directory: URL? = nil) throws {
+        guard !AppEnvironment.isTesting || directory != nil else { return }
+        try FileManager.default.createDirectory(at: directory ?? Self.directory, withIntermediateDirectories: true)
+        try JSONEncoder().encode(draft).write(to: url(draft.promptID, directory: directory), options: .atomic)
     }
-    static func remove(promptID: UUID?) throws {
-        guard !AppEnvironment.isTesting, FileManager.default.fileExists(atPath: url(promptID).path) else { return }
-        try FileManager.default.removeItem(at: url(promptID))
+    static func remove(promptID: UUID?, directory: URL? = nil) throws {
+        guard (!AppEnvironment.isTesting || directory != nil), FileManager.default.fileExists(atPath: url(promptID, directory: directory).path) else { return }
+        try FileManager.default.removeItem(at: url(promptID, directory: directory))
     }
 }

@@ -1,12 +1,52 @@
 import Foundation
+import SwiftUI
+
+struct PromptSearchSnapshot: Hashable, Sendable {
+    let id: UUID
+    let title: String
+    let category: String
+    let displayedCategory: String
+    let content: String
+    let isFavorite: Bool
+    let updatedDate: Date
+    let tags: [String]
+}
+
+struct PromptSearchInput: Hashable, Sendable {
+    let snapshots: [PromptSearchSnapshot]
+    let query: String
+    let localeIdentifier: String
+    var limit: Int? = nil
+}
 
 enum PromptSearchService {
-    static func results(
-        in prompts: [Prompt],
+    static func snapshots(_ prompts: [Prompt], tags: [PromptTag] = [], locale: Locale) -> [PromptSearchSnapshot] {
+        var names: [UUID: [String]] = [:]
+        for tag in tags { for id in tag.promptIDs { names[id, default: []].append(tag.name) } }
+        return prompts.map {
+            PromptSearchSnapshot(id: $0.id, title: $0.title, category: $0.category,
+                displayedCategory: BuiltInCategoryPresentation.displayName(for: $0.category, locale: locale),
+                content: $0.content, isFavorite: $0.isFavorite, updatedDate: $0.updatedDate,
+                tags: (names[$0.id] ?? []).sorted())
+        }
+    }
+
+    static func results(in prompts: [Prompt], query: String, locale: Locale = .autoupdatingCurrent, limit: Int? = nil, tags: [PromptTag] = []) -> [Prompt] {
+        let ids = search(PromptSearchInput(snapshots: snapshots(prompts, tags: tags, locale: locale), query: query, localeIdentifier: locale.identifier, limit: limit))
+        let byID = Dictionary(prompts.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return ids.compactMap { byID[$0] }
+    }
+
+    static func search(_ input: PromptSearchInput) -> [UUID] {
+        rankedResults(in: input.snapshots, query: input.query, locale: Locale(identifier: input.localeIdentifier), limit: input.limit).map(\.id)
+    }
+
+    private static func rankedResults(
+        in prompts: [PromptSearchSnapshot],
         query proposedQuery: String,
         locale: Locale = .autoupdatingCurrent,
         limit: Int? = nil
-    ) -> [Prompt] {
+    ) -> [PromptSearchSnapshot] {
         let query = proposedQuery.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
@@ -20,6 +60,7 @@ enum PromptSearchService {
         }
 
         for prompt in prompts {
+            if Task.isCancelled { return [] }
             guard let rank = rank(prompt, query: query, locale: locale) else {
                 continue
             }
@@ -51,16 +92,17 @@ enum PromptSearchService {
         query: String,
         locale: Locale = .autoupdatingCurrent
     ) -> Bool {
-        rank(prompt, query: query, locale: locale) != nil
+        guard let snapshot = snapshots([prompt], locale: locale).first else { return false }
+        return rank(snapshot, query: query, locale: locale) != nil
     }
 
     private struct RankedPrompt {
-        let prompt: Prompt
+        let prompt: PromptSearchSnapshot
         let rank: Int
     }
 
     private static func rank(
-        _ prompt: Prompt,
+        _ prompt: PromptSearchSnapshot,
         query: String,
         locale: Locale
     ) -> Int? {
@@ -81,10 +123,7 @@ enum PromptSearchService {
         if contains(prompt.title, query: query, locale: locale) {
             return 2
         }
-        let displayedCategory = BuiltInCategoryPresentation.displayName(
-            for: prompt.category,
-            locale: locale
-        )
+        let displayedCategory = prompt.displayedCategory
         if equals(prompt.category, query: query, locale: locale)
             || equals(displayedCategory, query: query, locale: locale) {
             return 3
@@ -93,8 +132,9 @@ enum PromptSearchService {
             || contains(displayedCategory, query: query, locale: locale) {
             return 4
         }
+        if prompt.tags.contains(where: { contains($0, query: query, locale: locale) }) { return 5 }
         if contains(prompt.content, query: query, locale: locale) {
-            return 5
+            return 6
         }
         return nil
     }
@@ -140,5 +180,28 @@ enum PromptSearchService {
             options: [.caseInsensitive, .diacriticInsensitive],
             locale: locale
         ) != nil
+    }
+}
+
+
+@MainActor
+final class PromptSearchController: ObservableObject {
+    @Published private(set) var ids: [UUID] = []
+    @Published private(set) var completedInput: PromptSearchInput?
+    private var generation = 0
+
+    func search(_ input: PromptSearchInput) async {
+        generation += 1
+        let token = generation
+        ids = []
+        completedInput = nil
+        guard !input.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        do { try await Task.sleep(for: .milliseconds(120)) } catch { return }
+        guard !Task.isCancelled else { return }
+        let work = Task.detached(priority: .userInitiated) { PromptSearchService.search(input) }
+        let result = await withTaskCancellationHandler(operation: { await work.value }, onCancel: { work.cancel() })
+        guard !Task.isCancelled, token == generation else { return }
+        ids = result
+        completedInput = input
     }
 }

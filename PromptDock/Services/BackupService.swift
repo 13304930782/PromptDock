@@ -386,7 +386,8 @@ enum BackupService {
         _ backup: PromptDockBackup,
         mode: BackupImportMode,
         in context: ModelContext,
-        createsSafetyBackup: Bool = !AppEnvironment.isTesting
+        createsSafetyBackup: Bool = !AppEnvironment.isTesting,
+        persist: @MainActor (ModelContext) throws -> Void = { try LibraryPersistence.save($0) }
     ) throws -> BackupImportResult {
         try validate(backup)
         guard mode != .replace || backup.kind == .full else { throw TransferError.invalid("Only complete backups may replace the library.") }
@@ -410,7 +411,7 @@ enum BackupService {
             for entry in backup.trash where !existingTrash.contains(entry.promptID) {
                 context.insert(TrashEntry(promptID: entry.promptID, deletedAt: entry.deletedAt))
             }
-            try LibraryPersistence.save(context)
+            try persist(context)
         } catch {
             context.rollback()
             throw error

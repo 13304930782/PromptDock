@@ -4,6 +4,7 @@ import SwiftData
 struct TransferItem {
     var record: PromptDockBackup.PromptRecord
     var hasIdentity: Bool
+    var deletedAt: Date? = nil
     var tagNames: [String] = []
     var definitions: [PromptDockBackup.VariableDefinitionRecord] = []
     var versions: [PromptDockBackup.VersionRecord] = []
@@ -48,10 +49,19 @@ enum TransferService {
             do {
                 switch URL(fileURLWithPath: file.name).pathExtension.lowercased() {
                 case "json":
-                    let backup = try BackupService.decode(file.data)
-                    if files.count == 1 && backup.kind == .full { batch.completeBackup = backup }
+                    let decoder = JSONDecoder()
+                    decoder.dateDecodingStrategy = .secondsSince1970
+                    let backup = try decoder.decode(PromptDockBackup.self, from: file.data)
+                    var fullyValid = true
+                    do { try BackupService.validate(backup) }
+                    catch BackupError.invalidPrompt {
+                        guard backup.prompts.contains(where: { (try? validate(TransferItem(record: $0, hasIdentity: true))) == nil }) else { throw BackupError.invalidPrompt }
+                        fullyValid = false
+                    }
+
+                    if files.count == 1 && backup.kind == .full && fullyValid { batch.completeBackup = backup }
                     batch.items += backup.prompts.map { record in
-                        TransferItem(record: record, hasIdentity: true,
+                        TransferItem(record: record, hasIdentity: true, deletedAt: backup.trash.first(where: { $0.promptID == record.id })?.deletedAt,
                                      tagNames: backup.tags.filter { $0.promptIDs.contains(record.id) }.map(\.name),
                                      definitions: backup.variableDefinitions.filter { $0.promptID == record.id },
                                      versions: backup.versions.filter { $0.promptID == record.id })
@@ -116,17 +126,21 @@ enum TransferService {
         }
         var result = local
         var added = 0, updated = 0, skipped = 0
+        var records = Dictionary(uniqueKeysWithValues: local.prompts.map { ($0.id, $0) })
+        var contentCounts: [[String]: Int] = [:]
+        for record in local.prompts { contentCounts[[record.title, record.content], default: 0] += 1 }
+        var categoryNames = Dictionary(local.categories.map { (CategoryNameIdentity.normalized($0.name), $0.name) }, uniquingKeysWith: { first, _ in first })
         for item in batch.items {
             var record = item.record
-            if !item.hasIdentity && result.prompts.contains(where: { $0.title == record.title && $0.content == record.content }) {
+            if !item.hasIdentity && contentCounts[[record.title, record.content], default: 0] > 0 {
                 skipped += 1; continue
             }
-            if let index = result.prompts.firstIndex(where: { $0.id == record.id }) {
+            if let existing = records[record.id] {
                 switch conflict {
                 case .keepLocal: skipped += 1; continue
                 case .copy: record.id = UUID()
                 case .update:
-                    result.prompts.remove(at: index)
+                    contentCounts[[existing.title, existing.content], default: 0] -= 1
                     result.variableDefinitions.removeAll { $0.promptID == record.id }
                     result.versions.removeAll { $0.promptID == record.id }
                     result.trash.removeAll { $0.promptID == record.id }
@@ -136,12 +150,17 @@ enum TransferService {
             } else { added += 1 }
             if record.id != item.record.id { added += 1 }
             let categoryKey = CategoryNameIdentity.normalized(record.category)
-            if let category = result.categories.first(where: { CategoryNameIdentity.normalized($0.name) == categoryKey }) {
-                record.category = category.name
+            if let category = categoryNames[categoryKey] {
+                record.category = category
             } else {
+                categoryNames[categoryKey] = record.category
                 result.categories.append(.init(id: UUID(), name: record.category, systemImage: "folder", sortOrder: result.categories.count, createdDate: .now, isBuiltIn: false, iconKind: .sfSymbol, iconEmoji: nil, iconImageData: nil))
             }
-            result.prompts.append(record)
+            records[record.id] = record
+            contentCounts[[record.title, record.content], default: 0] += 1
+            if let deletedAt = item.deletedAt {
+                result.trash.append(.init(promptID: record.id, deletedAt: deletedAt))
+            }
             for name in item.tagNames {
                 let key = CategoryNameIdentity.normalized(name)
                 if let index = result.tags.firstIndex(where: { CategoryNameIdentity.normalized($0.name) == key }) {
@@ -161,6 +180,7 @@ enum TransferService {
                 return copy
             }
         }
+        result.prompts = records.values.sorted { $0.id.uuidString < $1.id.uuidString }
         try BackupService.validate(result)
         return TransferPreview(baseline: local, result: result, added: added, updated: updated, skipped: skipped)
     }

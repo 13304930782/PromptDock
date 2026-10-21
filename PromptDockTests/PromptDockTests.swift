@@ -2106,3 +2106,145 @@ extension PromptDockTests {
         XCTAssertEqual(repeated.skipped, 1)
     }
 }
+
+extension PromptDockTests {
+    func testSearchIncludesTagsWhileKeepingTitlePriority() {
+        let tagged = Prompt(title: "Unrelated", category: "Writing", content: "Body")
+        let title = Prompt(title: "Research", category: "Writing", content: "Body")
+        let tag = PromptTag(name: "Research", promptIDs: [tagged.id])
+        let results = PromptSearchService.results(in: [tagged, title], query: "research", locale: Locale(identifier: "en"), tags: [tag])
+        XCTAssertEqual(results.map(\.id), [title.id, tagged.id])
+    }
+
+    @MainActor
+    func testNewSearchSupersedesOlderResults() async {
+        let controller = PromptSearchController()
+        let first = Prompt(title: "First", category: "AI", content: "A")
+        let second = Prompt(title: "Second", category: "AI", content: "B")
+        let snapshots = PromptSearchService.snapshots([first, second], locale: Locale(identifier: "en"))
+        let old = Task { await controller.search(.init(snapshots: snapshots, query: "First", localeIdentifier: "en")) }
+        await Task.yield()
+        await controller.search(.init(snapshots: snapshots, query: "Second", localeIdentifier: "en"))
+        await old.value
+        XCTAssertEqual(controller.ids, [second.id])
+    }
+
+    func testListPasteKeepsLinesAndRejectsOverLimit() throws {
+        XCTAssertEqual(try PromptTemplate.pastedList("First\r\nSecond\n\n第三"), ["First", "Second", "第三"])
+        XCTAssertEqual(try PromptTemplate.pastedList(Array(repeating: "Item", count: 100).joined(separator: "\n")).count, 100)
+        XCTAssertThrowsError(try PromptTemplate.pastedList(Array(repeating: "Item", count: 101).joined(separator: "\n")))
+    }
+
+    func testSearchTenThousandLatencyAndHundredThousandStress() {
+        func snapshots(_ count: Int) -> [PromptSearchSnapshot] {
+            (0..<count).map { index in
+                PromptSearchSnapshot(id: UUID(), title: "Prompt \(index)", category: "Coding", displayedCategory: "Coding", content: "Explain practical Swift examples and tests for item \(index).", isFavorite: false, updatedDate: Date(timeIntervalSince1970: Double(index)), tags: ["Development"])
+            }
+        }
+        let everyday = snapshots(10_000)
+        var durations: [Double] = []
+        for _ in 0..<20 {
+            let start = Date()
+            let ids = PromptSearchService.search(.init(snapshots: everyday, query: "Swift", localeIdentifier: "en", limit: 12))
+            durations.append(Date().timeIntervalSince(start) * 1000)
+            XCTAssertEqual(ids.count, 12)
+        }
+        durations.sort()
+        print("PromptDock search 10k P95 milliseconds: \(durations[18]); CI timing is observational, not fixed-machine acceptance.")
+        XCTAssertEqual(PromptSearchService.search(.init(snapshots: snapshots(100_000), query: "Development", localeIdentifier: "en", limit: 12)).count, 12)
+    }
+
+    @MainActor
+    func testV2StoreMigratesWithoutLosingPromptIdentity() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("library.store")
+        let id = UUID()
+        func writeV2() throws {
+            let schema = Schema(versionedSchema: PromptDockSchemaV2.self)
+            let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, url: url)])
+            container.mainContext.insert(Prompt(id: id, title: "Existing", category: "Coding", content: "Preserve"))
+            try container.mainContext.save()
+        }
+        try writeV2()
+        let upgraded = try DataService.makeModelContainer(storeURL: url)
+        XCTAssertEqual(try upgraded.mainContext.fetch(FetchDescriptor<Prompt>()).first?.id, id)
+        XCTAssertTrue(try upgraded.mainContext.fetch(FetchDescriptor<TrashEntry>()).isEmpty)
+    }
+}
+
+extension PromptDockTests {
+    @MainActor
+    func testFailedImportRollsBackAllRecords() throws {
+        struct SimulatedDiskFailure: Error {}
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let context = container.mainContext
+        let original = Prompt(title: "Original", category: "AI", content: "Preserve")
+        context.insert(original)
+        context.insert(PromptTag(name: "Original tag", promptIDs: [original.id]))
+        try context.save()
+        let before = try BackupService.makeBackup(in: context)
+        var replacement = before
+        replacement.prompts = [TransferService.record(title: "Replacement", content: "New", category: "Writing")]
+        replacement.tags = []
+        XCTAssertThrowsError(try BackupService.importBackup(replacement, mode: .replace, in: context, createsSafetyBackup: false, persist: { _ in throw SimulatedDiskFailure() }))
+        let after = try BackupService.makeBackup(in: context)
+        XCTAssertEqual(after.prompts, before.prompts)
+        XCTAssertEqual(after.tags, before.tags)
+    }
+
+    func testStoredZIPCanBeReadBySystemUnzip() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let archive = directory.appendingPathComponent("export.zip")
+        try StoredZIP.encode([("one.md", Data("中文\nContent".utf8)), ("two.md", Data("More".utf8))]).write(to: archive)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+        process.arguments = ["-t", archive.path]
+        let output = Pipe(); process.standardOutput = output; process.standardError = output
+        try process.run()
+        process.waitUntilExit()
+        XCTAssertEqual(process.terminationStatus, 0, String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self))
+    }
+}
+
+extension PromptDockTests {
+    @MainActor
+    func testJSONImportCanExplicitlyKeepValidRecordsAndPreservesTrash() throws {
+        let container = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let local = try BackupService.makeBackup(in: container.mainContext)
+        var incoming = local
+        let good = TransferService.record(title: "Good", content: "Body", category: "AI")
+        let bad = TransferService.record(title: "", content: "Invalid", category: "AI")
+        incoming.prompts = [good, bad]
+        incoming.trash = [.init(promptID: good.id, deletedAt: .now)]
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .secondsSince1970
+        let batch = TransferService.parse([(name: "mixed.json", data: try encoder.encode(incoming))])
+        XCTAssertEqual(batch.items.count, 1)
+        XCTAssertEqual(batch.errors.count, 1)
+        XCTAssertNil(batch.completeBackup)
+        let preview = try TransferService.preview(batch, local: local, conflict: .keepLocal, validOnly: true, replace: false)
+        XCTAssertEqual(preview.result.trash.first?.promptID, good.id)
+        XCTAssertEqual(preview.result.prompts.count, 1)
+    }
+}
+
+extension PromptDockTests {
+    func testPersistedDraftRecoversAndRejectsChangedOrDeletedRecord() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let id = UUID(), revision = Date(timeIntervalSince1970: 1000)
+        let saved = LocalEditorDraft(promptID: id, baselineDate: revision, draft: PromptDraft(title: "Unsaved", content: "Recover me"))
+        try LocalDraftStore.save(saved, directory: directory)
+        let recovered = try XCTUnwrap(LocalDraftStore.load(promptID: id, directory: directory))
+        XCTAssertEqual(recovered.draft, saved.draft)
+        XCTAssertNoThrow(try recovered.requireUnchanged(currentDate: revision, isDeleted: false))
+        XCTAssertThrowsError(try recovered.requireUnchanged(currentDate: revision.addingTimeInterval(1), isDeleted: false))
+        XCTAssertThrowsError(try recovered.requireUnchanged(currentDate: revision, isDeleted: true))
+        XCTAssertNotNil(try LocalDraftStore.load(promptID: id, directory: directory), "Conflicted drafts remain recoverable")
+        try LocalDraftStore.remove(promptID: id, directory: directory)
+        XCTAssertNil(try LocalDraftStore.load(promptID: id, directory: directory))
+    }
+}

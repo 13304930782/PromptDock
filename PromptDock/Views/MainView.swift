@@ -26,6 +26,7 @@ struct MainView: View {
     private var languageRawValue = AppLanguage.system.rawValue
 
     @StateObject private var viewModel = PromptViewModel()
+    @StateObject private var searchController = PromptSearchController()
     @State private var showsTransfer = false
     @State private var editorRequest: PromptEditorRequest?
     @State private var promptPendingDeletionID: UUID?
@@ -55,13 +56,21 @@ struct MainView: View {
         AppLanguage(rawValue: languageRawValue) ?? .system
     }
 
+    private var sectionPrompts: [Prompt] {
+        viewModel.filteredPrompts(from: prompts, tags: tags, collections: collections,
+            locale: selectedLanguage.locale, applySearch: false)
+    }
+
+    private var searchInput: PromptSearchInput {
+        PromptSearchInput(snapshots: PromptSearchService.snapshots(sectionPrompts, tags: tags, locale: selectedLanguage.locale),
+            query: viewModel.searchText, localeIdentifier: selectedLanguage.locale.identifier)
+    }
+
     private var visiblePrompts: [Prompt] {
-        viewModel.filteredPrompts(
-            from: prompts,
-            tags: tags,
-            collections: collections,
-            locale: selectedLanguage.locale
-        )
+        guard viewModel.hasSearchQuery else { return sectionPrompts }
+        guard searchController.completedInput == searchInput else { return [] }
+        let byID = Dictionary(uniqueKeysWithValues: sectionPrompts.map { ($0.id, $0) })
+        return searchController.ids.compactMap { byID[$0] }
     }
 
     private var visiblePromptIDs: [UUID] {
@@ -460,13 +469,13 @@ struct MainView: View {
                 locale: selectedLanguage.locale
             )
         }
+        .task(id: searchInput) { await searchController.search(searchInput) }
         .onChange(of: visiblePromptIDs) {
-            viewModel.reconcileSelection(
-                in: prompts,
-                tags: tags,
-                collections: collections,
-                locale: selectedLanguage.locale
-            )
+            viewModel.selectedPromptIDs.formIntersection(Set(visiblePromptIDs))
+            if !visiblePromptIDs.contains(viewModel.selectedPromptID ?? UUID()) {
+                viewModel.selectedPromptID = visiblePromptIDs.first
+                viewModel.selectedPromptIDs = visiblePromptIDs.first.map { [$0] } ?? []
+            }
         }
         .onChange(of: widgetSnapshotRevision) {
             WidgetSnapshotService.refresh(from: prompts)
