@@ -16,13 +16,13 @@ if [[ "$MODE" == public ]]; then
   SCHEME=PromptDock
   CONFIG=Release
   PRODUCT=PromptDock
-  LABEL=PromptDock-1.3.0-rc.1
+  LABEL=PromptDock-1.3.0-rc.2
   SIGNING=("CODE_SIGN_IDENTITY=$PROMPTDOCK_DEVELOPER_ID" CODE_SIGN_STYLE=Manual)
 else
   SCHEME='PromptDock Dev'
   CONFIG=Debug
   PRODUCT='PromptDock Dev'
-  LABEL=PromptDock-1.3.0-rc.1-INTERNAL-DEV
+  LABEL=PromptDock-1.3.0-rc.2-INTERNAL-DEV
   SIGNING=('CODE_SIGN_IDENTITY=Apple Development')
 fi
 xcodebuild -project PromptDock.xcodeproj -scheme "$SCHEME" -configuration "$CONFIG" \
@@ -30,14 +30,31 @@ xcodebuild -project PromptDock.xcodeproj -scheme "$SCHEME" -configuration "$CONF
   ARCHS='x86_64 arm64' ONLY_ACTIVE_ARCH=NO "${SIGNING[@]}" build > "$OUTPUT/$LABEL-build.log" 2>&1
 APP="$WORK/build/Build/Products/$CONFIG/$PRODUCT.app"
 codesign --verify --deep --strict --verbose=2 "$APP"
-if [[ "$MODE" == public ]]; then
-  for BUNDLE in "$APP" "$APP/Contents/PlugIns/PromptDockWidget.appex"; do
-    codesign -d --entitlements :- "$BUNDLE" > "$WORK/entitlements.plist" 2>/dev/null
-    [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' "$WORK/entitlements.plist")" == true ]]
+# Validate the actual signed app and extension, not only source entitlements.
+APP_GROUP="$(/usr/libexec/PlistBuddy -c 'Print :PromptDockAppGroupIdentifier' "$APP/Contents/Info.plist")"
+if [[ "$MODE" == internal ]]; then
+  EXPECTED_ID=com.promptdock.PromptDock.Dev
+  [[ "$APP_GROUP" == *.PromptDock.Dev ]] || { echo 'Internal app must use the Dev group.' >&2; exit 1; }
+else
+  EXPECTED_ID=com.promptdock.PromptDock
+  [[ "$APP_GROUP" != *.Dev ]] || { echo 'Public app must not use the Dev group.' >&2; exit 1; }
+fi
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")" == "$EXPECTED_ID" ]]
+WIDGET="$APP/Contents/PlugIns/PromptDockWidget.appex"
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$WIDGET/Contents/Info.plist")" == "$EXPECTED_ID.Widget" ]]
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :PromptDockAppGroupIdentifier' "$WIDGET/Contents/Info.plist")" == "$APP_GROUP" ]]
+for BUNDLE in "$APP" "$WIDGET"; do
+  codesign -d --entitlements :- "$BUNDLE" > "$WORK/entitlements.plist" 2>/dev/null
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' "$WORK/entitlements.plist")" == true ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.application-groups:0' "$WORK/entitlements.plist")" == "$APP_GROUP" ]]
+  EXTRA_GROUP="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.application-groups:1' "$WORK/entitlements.plist" 2>/dev/null || true)"
+  [[ -z "$EXTRA_GROUP" ]] || { echo 'Unexpected additional App Group.' >&2; exit 1; }
+  if [[ "$MODE" == public ]]; then
     DEBUGGABLE="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.get-task-allow' "$WORK/entitlements.plist" 2>/dev/null || true)"
     [[ "$DEBUGGABLE" != true ]] || { echo 'Refusing a debuggable public build.' >&2; exit 1; }
-  done
-fi
+    codesign -dv --verbose=4 "$BUNDLE" 2>&1 | grep -q 'flags=.*runtime' || { echo 'Hardened Runtime is required.' >&2; exit 1; }
+  fi
+done
 lipo "$APP/Contents/MacOS/$PRODUCT" -verify_arch x86_64 arm64
 lipo "$APP/Contents/PlugIns/PromptDockWidget.appex/Contents/MacOS/PromptDockWidget" -verify_arch x86_64 arm64
 mkdir "$WORK/image"
