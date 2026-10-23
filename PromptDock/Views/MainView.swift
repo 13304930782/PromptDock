@@ -66,7 +66,10 @@ struct MainView: View {
     }
 
     private var searchInput: PromptSearchInput {
-        PromptSearchInput(snapshots: PromptSearchService.snapshots(sectionPrompts, tags: tags, locale: selectedLanguage.locale),
+        guard !viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return PromptSearchInput(snapshots: [], query: viewModel.searchText, localeIdentifier: selectedLanguage.locale.identifier)
+        }
+        return PromptSearchInput(snapshots: PromptSearchService.snapshots(sectionPrompts, tags: tags, locale: selectedLanguage.locale),
             query: viewModel.searchText, localeIdentifier: selectedLanguage.locale.identifier)
     }
 
