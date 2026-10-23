@@ -303,6 +303,7 @@ enum AIRewriteGoal: String, CaseIterable, Identifiable {
 struct AIRewriteView: View {
     @Environment(\.dismiss) private var dismiss
     let title: String
+    var presentationSize = CGSize(width: 712, height: 472)
     let originalContent: String
     let usesChinese: Bool
     var definitions: [TemplateVariableDraft] = []
@@ -390,7 +391,7 @@ struct AIRewriteView: View {
                 ScrollView { Text(rewriteRequest.payload).textSelection(.enabled) }.frame(maxHeight: 100)
             }
             HStack(alignment: .top, spacing: 12) {
-                rewriteColumn(usesChinese ? "原文" : "Original", text: originalContent, highlightsChanges: false)
+                rewriteColumn(usesChinese ? "原文" : "Original", text: originalContent)
                 if candidate != nil {
                     GroupBox(usesChinese ? "编辑建议" : "Edit Suggestion") {
                         TextEditor(text: Binding(get: { candidate ?? "" }, set: { candidate = $0 }))
@@ -418,6 +419,7 @@ struct AIRewriteView: View {
             }.frame(maxWidth: .infinity, alignment: .leading)
             }
             Divider()
+            ScrollView(.horizontal) {
             HStack {
                 if isGenerating { ProgressView().controlSize(.small); Button(usesChinese ? "取消" : "Cancel") { generation += 1; task?.cancel(); isGenerating = false; runStatus = usesChinese ? "已取消，未修改原文" : "Cancelled; original unchanged" } }
                 Spacer()
@@ -439,24 +441,20 @@ struct AIRewriteView: View {
                 Button(candidate == nil ? (usesChinese ? "生成改写" : "Generate Rewrite") : (usesChinese ? "重新生成" : "Regenerate"), action: generate)
                     .disabled(isGenerating || (goal == .custom && additionalInstructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
             }
+            }
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(24)
-        .frame(width: 820, height: 720)
+        .frame(width: presentationSize.width, height: presentationSize.height)
         .onDisappear { generation += 1; task?.cancel() }
     }
 
-    private func rewriteColumn(_ heading: String, text: String, highlightsChanges: Bool) -> some View {
+    private func rewriteColumn(_ heading: String, text: String) -> some View {
         GroupBox(heading) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(text.components(separatedBy: .newlines).enumerated()), id: \.offset) { index, line in
-                        let originalLines = originalContent.components(separatedBy: .newlines)
-                        Text(line.isEmpty ? " " : line)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 2)
-                            .background(highlightsChanges && (index >= originalLines.count || originalLines[index] != line) ? Color.accentColor.opacity(0.10) : Color.clear)
-                    }
-                }.textSelection(.enabled)
+                Text(text)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }

@@ -40,6 +40,8 @@ struct MainView: View {
     @State private var rewritePromptID: UUID?
     @State private var rewriteBaseline: Date?
     @State private var rewriteDraft: PromptDraft?
+    @State private var contentSize = CGSize(width: 760, height: 520)
+    @State private var rewriteSize = CGSize(width: 712, height: 472)
     @State private var isCopyShortcutGuidePresented = false
     @State private var isSearchShortcutGuidePresented = false
     @State private var copyShortcutGuideToken: UUID?
@@ -197,7 +199,7 @@ struct MainView: View {
         return position.replacingOccurrences(of: " of ", with: "/")
     }
 
-    var body: some View {
+    private var libraryContent: some View {
         NavigationSplitView {
             SidebarView(
                 selection: $viewModel.selectedSection,
@@ -272,7 +274,7 @@ struct MainView: View {
                     usesChinese: selectedLanguage.usesChinese,
                     onCopy: copy,
                     onEdit: { presentEditor(for: $0) },
-                    onRewrite: { rewriteBaseline = $0.updatedDate; rewriteDraft = draft(for: $0); rewritePromptID = $0.id },
+                    onRewrite: presentRewrite,
                     onToggleFavorite: { toggleFavorite(for: $0) },
                     onDelete: { requestDeletion(of: $0) }
                 )
@@ -371,6 +373,10 @@ struct MainView: View {
             }
         }
         .animation(.snappy, value: shortcutSuccessMessage)
+    }
+
+    private var mainContent: some View {
+        libraryContent
         .sheet(isPresented: $showsTransfer) {
             TransferView(onShowImported: showImported, selectedIDs: viewModel.selectedPromptIDs, filteredIDs: Set(visiblePromptIDs))
         }
@@ -432,27 +438,7 @@ struct MainView: View {
             )
         }
         .sheet(isPresented: Binding(get: { rewritePromptID != nil }, set: { if !$0 { rewritePromptID = nil } })) {
-            if let rewriteDraft {
-                AIRewriteView(
-                    title: rewriteDraft.title,
-                    originalContent: rewriteDraft.content,
-                    usesChinese: selectedLanguage.usesChinese,
-                    definitions: rewriteDraft.variableDefinitions,
-                    onSaveCopy: { text in
-                        var copy = rewriteDraft; copy.content = text
-                        _ = try viewModel.createPrompt(from: copy, tags: tags, in: modelContext)
-                        rewritePromptID = nil
-                    }
-                ) { rewritten in
-                    guard let rewritePrompt = allPrompts.first(where: { $0.id == rewritePromptID }) else { throw PromptValidationError.staleDraft }
-                    try LocalEditorDraft(promptID: rewritePrompt.id, baselineDate: rewriteBaseline, draft: rewriteDraft)
-                        .requireUnchanged(currentDate: rewritePrompt.updatedDate, isDeleted: rewritePrompt.isDeleted || trashEntries.contains { $0.promptID == rewritePrompt.id })
-                    var draft = rewriteDraft
-                    draft.content = rewritten
-                    try viewModel.updatePrompt(rewritePrompt, from: draft, tags: tags, in: modelContext)
-                    rewritePromptID = nil
-                }
-            }
+            rewriteSheet
         }
         .confirmationDialog(
             "Delete Prompt?",
@@ -529,6 +515,54 @@ struct MainView: View {
             }
         }
         .frame(minWidth: 760, minHeight: 520)
+    }
+
+    var body: some View {
+        mainContent
+        .background {
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear { contentSize = geometry.size }
+                    .onChange(of: geometry.size) { _, size in contentSize = size }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var rewriteSheet: some View {
+        if let rewriteDraft {
+            AIRewriteView(
+                title: rewriteDraft.title,
+                presentationSize: rewriteSize,
+                originalContent: rewriteDraft.content,
+                usesChinese: selectedLanguage.usesChinese,
+                definitions: rewriteDraft.variableDefinitions,
+                onSaveCopy: { text in
+                    var copy = rewriteDraft; copy.content = text
+                    _ = try viewModel.createPrompt(from: copy, tags: tags, in: modelContext)
+                    rewritePromptID = nil
+                }
+            ) { rewritten in
+                guard let rewritePrompt = allPrompts.first(where: { $0.id == rewritePromptID }) else { throw PromptValidationError.staleDraft }
+                try LocalEditorDraft(promptID: rewritePrompt.id, baselineDate: rewriteBaseline, draft: rewriteDraft)
+                    .requireUnchanged(currentDate: rewritePrompt.updatedDate, isDeleted: rewritePrompt.isDeleted || trashEntries.contains { $0.promptID == rewritePrompt.id })
+                var draft = rewriteDraft
+                draft.content = rewritten
+                try viewModel.updatePrompt(rewritePrompt, from: draft, tags: tags, in: modelContext)
+                rewritePromptID = nil
+            }
+        }
+    }
+
+    private func presentRewrite(for prompt: Prompt) {
+        // Freeze before presentation to avoid parent/sheet size feedback.
+        rewriteSize = CGSize(
+            width: min(820, contentSize.width - 48),
+            height: min(720, contentSize.height - 48)
+        )
+        rewriteBaseline = prompt.updatedDate
+        rewriteDraft = draft(for: prompt)
+        rewritePromptID = prompt.id
     }
 
     private var deletionIsPresented: Binding<Bool> {

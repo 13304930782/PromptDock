@@ -29,6 +29,8 @@ struct EditorView: View {
     @State private var selectedVariableToken: String?
     @State private var errorMessage: String?
     @State private var isRewritePresented = false
+    @State private var editorSize = CGSize(width: 600, height: 620)
+    @State private var rewriteSize = CGSize(width: 552, height: 572)
 
     init(
         prompt: Prompt?,
@@ -80,7 +82,10 @@ struct EditorView: View {
                         Label(promptTemplate.hasVariables ? (usesChinese ? "已识别 \(promptTemplate.fields.count) 个变量" : "\(promptTemplate.fields.count) variables detected") : (usesChinese ? "使用 {{名称}} 或 {{名称[]}} 插入变量" : "Use {{name}} or {{name[]}} to insert variables"), systemImage: "curlybraces")
                         Spacer()
                         Button(usesChinese ? "操作手册" : "Guide") { openWindow(id: "template-guide") }.buttonStyle(.link)
-                        Button(usesChinese ? "AI 改写" : "AI Rewrite") { isRewritePresented = true }.buttonStyle(.link).disabled(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        Button(usesChinese ? "AI 改写" : "AI Rewrite") {
+                            rewriteSize = CGSize(width: min(820, editorSize.width - 48), height: min(720, editorSize.height - 48))
+                            isRewritePresented = true
+                        }.buttonStyle(.link).disabled(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }.font(.caption).foregroundStyle(.secondary)
                 }
 
@@ -127,6 +132,13 @@ struct EditorView: View {
             }
         }
         .frame(minWidth: 600, minHeight: 620)
+        .background {
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear { editorSize = geometry.size }
+                    .onChange(of: geometry.size) { _, size in editorSize = size }
+            }
+        }
         .onAppear {
             synchronizeVariables()
             guard !didCheckRecovery else { return }
@@ -151,7 +163,7 @@ struct EditorView: View {
         }
         .onChange(of: content) { synchronizeVariables() }
         .sheet(isPresented: $isRewritePresented) {
-            AIRewriteView(title: title, originalContent: content, usesChinese: usesChinese,
+            AIRewriteView(title: title, presentationSize: rewriteSize, originalContent: content, usesChinese: usesChinese,
                 definitions: variableDrafts, onSaveCopy: { text in
                     var copy = draft; copy.content = text
                     _ = try PromptViewModel().createPrompt(from: copy, tags: tags, in: modelContext)
