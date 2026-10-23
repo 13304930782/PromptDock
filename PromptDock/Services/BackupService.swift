@@ -387,6 +387,7 @@ enum BackupService {
         mode: BackupImportMode,
         in context: ModelContext,
         createsSafetyBackup: Bool = !AppEnvironment.isTesting,
+        safetyBackupDirectory: URL? = nil,
         persist: @MainActor (ModelContext) throws -> Void = { try LibraryPersistence.save($0) }
     ) throws -> BackupImportResult {
         try validate(backup)
@@ -394,7 +395,7 @@ enum BackupService {
 
         let safetyBackupURL: URL?
         if mode == .replace, createsSafetyBackup || !AppEnvironment.isTesting {
-            safetyBackupURL = try writeSafetyBackup(in: context)
+            safetyBackupURL = try writeSafetyBackup(in: context, directory: safetyBackupDirectory)
         } else {
             safetyBackupURL = nil
         }
@@ -597,19 +598,24 @@ enum BackupService {
         }
     }
 
-    private static func writeSafetyBackup(in context: ModelContext) throws -> URL {
+    private static func writeSafetyBackup(in context: ModelContext, directory requestedDirectory: URL?) throws -> URL {
         let backup = try makeBackup(in: context)
         let data = try encode(backup)
         let fileManager = FileManager.default
-        let baseURL = try fileManager.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-        let directory = baseURL
-            .appendingPathComponent("PromptDock", isDirectory: true)
-            .appendingPathComponent("Backups", isDirectory: true)
+        // Tests must explicitly supply a temporary destination, even when they
+        // opt into safety backups. Never resolve a user's container from a test.
+        let directory: URL
+        if let requestedDirectory {
+            directory = requestedDirectory
+        } else {
+            guard !AppEnvironment.isTesting else {
+                throw CocoaError(.fileWriteInvalidFileName)
+            }
+            directory = try fileManager.url(
+                for: .applicationSupportDirectory, in: .userDomainMask,
+                appropriateFor: nil, create: true
+            ).appendingPathComponent("PromptDock/Backups", isDirectory: true)
+        }
         try fileManager.createDirectory(
             at: directory,
             withIntermediateDirectories: true
