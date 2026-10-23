@@ -2164,13 +2164,21 @@ extension PromptDockTests {
         func writeV2() throws {
             let schema = Schema(versionedSchema: PromptDockSchemaV2.self)
             let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, url: url)])
-            container.mainContext.insert(Prompt(id: id, title: "Existing", category: "Coding", content: "Preserve"))
+            container.mainContext.insert(Prompt(id: id, title: "Existing", category: "Coding", content: "Preserve {{name}}"))
+            container.mainContext.insert(PromptTag(name: "Migrated", promptIDs: [id]))
+            container.mainContext.insert(PromptVersion(promptID: id, title: "Before", category: "Coding", content: "History"))
+            container.mainContext.insert(TemplateVariableDefinition(promptID: id, name: "name", defaultValue: "World"))
+            container.mainContext.insert(SmartCollection(name: "Collection", favoriteOnly: true))
             try container.mainContext.save()
         }
         try writeV2()
         let upgraded = try DataService.makeModelContainer(storeURL: url)
         XCTAssertEqual(try upgraded.mainContext.fetch(FetchDescriptor<Prompt>()).first?.id, id)
         XCTAssertTrue(try upgraded.mainContext.fetch(FetchDescriptor<TrashEntry>()).isEmpty)
+        XCTAssertEqual(try upgraded.mainContext.fetch(FetchDescriptor<PromptTag>()).first?.promptIDs, [id])
+        XCTAssertEqual(try upgraded.mainContext.fetch(FetchDescriptor<PromptVersion>()).first?.content, "History")
+        XCTAssertEqual(try upgraded.mainContext.fetch(FetchDescriptor<TemplateVariableDefinition>()).first?.defaultValue, "World")
+        XCTAssertEqual(try upgraded.mainContext.fetch(FetchDescriptor<SmartCollection>()).first?.name, "Collection")
     }
 }
 
@@ -2446,5 +2454,176 @@ extension PromptDockTests {
         XCTAssertEqual(result.content, "Hello {{name}}")
         XCTAssertEqual(updates.last?.reasoning, "Check variables")
         XCTAssertEqual(updates.last?.content, "Hello {{name}}")
+    }
+}
+
+extension PromptDockTests {
+    @MainActor
+    func testSafetyBackupFailureNeverMutatesLibrary() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let container = try DataService.makeModelContainer(storeURL: folder.appendingPathComponent("library.store"))
+        let context = container.mainContext
+        context.autosaveEnabled = false
+        context.insert(Prompt(title: "Original", category: "AI", content: "Keep"))
+        try context.save()
+        let original = try BackupService.makeBackup(in: context)
+        var replacement = original
+        replacement.prompts = [TransferService.record(title: "Replacement", content: "New", category: "AI")]
+        let blockedDirectory = folder.appendingPathComponent("not-a-directory")
+        try Data().write(to: blockedDirectory)
+        var didPersist = false
+        XCTAssertThrowsError(try BackupService.importBackup(replacement, mode: .replace, in: context,
+            createsSafetyBackup: true, safetyBackupDirectory: blockedDirectory, persist: { _ in didPersist = true }))
+        XCTAssertFalse(didPersist)
+        XCTAssertFalse(context.hasChanges)
+        let independentContext = ModelContext(container)
+        XCTAssertEqual(try BackupService.makeBackup(in: independentContext).prompts, original.prompts)
+        XCTAssertThrowsError(try BackupService.importBackup(replacement, mode: .replace, in: context,
+            createsSafetyBackup: true), "Tests must not implicitly write to Application Support")
+    }
+
+    @MainActor
+    func testDiskReplacementSafetyBackupCanRestoreAllMetadata() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = folder.appendingPathComponent("library.store")
+        func replaceLibrary() throws -> (PromptDockBackup, URL) {
+            let container = try DataService.makeModelContainer(storeURL: store)
+            let context = container.mainContext
+            context.autosaveEnabled = false
+            let prompt = Prompt(title: "Original", category: "AI", content: "\n{{name}} {{items[]}}\n", createdDate: Date(timeIntervalSince1970: 1_700_000_000), isFavorite: true)
+            context.insert(prompt)
+            context.insert(PromptTag(name: "Tag", color: .blue, promptIDs: [prompt.id], createdAt: Date(timeIntervalSince1970: 1_700_000_000)))
+            context.insert(PromptVersion(promptID: prompt.id, title: "Before", category: "AI", content: "History", createdAt: Date(timeIntervalSince1970: 1_700_000_000)))
+            context.insert(TemplateVariableDefinition(promptID: prompt.id, name: "name", label: "Name", defaultValue: "World"))
+            context.insert(TemplateVariableDefinition(promptID: prompt.id, name: "items", order: 1, isRepeatable: true))
+            context.insert(TrashEntry(promptID: prompt.id, deletedAt: Date(timeIntervalSince1970: 1_700_000_000)))
+            context.insert(SmartCollection(name: "Favorites", favoriteOnly: true, createdAt: Date(timeIntervalSince1970: 1_700_000_000)))
+            try context.save()
+            let before = try BackupService.makeBackup(in: context)
+            var replacement = before
+            replacement.prompts = []; replacement.tags = []; replacement.versions = []
+            replacement.variableDefinitions = []; replacement.trash = []; replacement.smartCollections = []
+            let result = try BackupService.importBackup(replacement, mode: .replace, in: context,
+                createsSafetyBackup: true, safetyBackupDirectory: folder.appendingPathComponent("backups"))
+            XCTAssertTrue(try context.fetch(FetchDescriptor<Prompt>()).isEmpty)
+            return (before, try XCTUnwrap(result.safetyBackupURL))
+        }
+        let (before, backupURL) = try replaceLibrary()
+        let reopened = try DataService.makeModelContainer(storeURL: store)
+        let decoded = try BackupService.decode(Data(contentsOf: backupURL))
+        _ = try BackupService.importBackup(decoded, mode: .replace, in: reopened.mainContext, createsSafetyBackup: false)
+        let recovered = try BackupService.makeBackup(in: ModelContext(reopened))
+        XCTAssertEqual(recovered.prompts, before.prompts)
+        XCTAssertEqual(recovered.tags, before.tags)
+        XCTAssertEqual(recovered.versions, before.versions)
+        XCTAssertEqual(recovered.variableDefinitions, before.variableDefinitions)
+        XCTAssertEqual(recovered.trash, before.trash)
+        XCTAssertEqual(recovered.smartCollections, before.smartCollections)
+    }
+
+    @MainActor
+    func testAutomaticBackupCapturesCommittedStateBeforePendingEdit() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let suite = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { try? FileManager.default.removeItem(at: folder); defaults.removePersistentDomain(forName: suite) }
+        let container = try DataService.makeModelContainer(storeURL: folder.appendingPathComponent("library.store"))
+        let context = container.mainContext
+        context.autosaveEnabled = false
+        let prompt = Prompt(title: "Original", category: "AI", content: "Saved content")
+        context.insert(prompt)
+        try context.save()
+        prompt.content = "Unsaved edit"
+        let directory = folder.appendingPathComponent("backups")
+        let service = AutomaticBackupService(directory: directory, defaults: defaults)
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        service.beforeSave(container: container, now: date)
+        XCTAssertNil(service.lastError)
+        try context.save()
+        service.beforeSave(container: container, now: date.addingTimeInterval(1))
+        let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        XCTAssertEqual(files.count, 1)
+        let backup = try BackupService.decode(Data(contentsOf: XCTUnwrap(files.first)))
+        XCTAssertEqual(backup.prompts.first?.content, "Saved content")
+        XCTAssertEqual(prompt.content, "Unsaved edit")
+    }
+}
+
+extension PromptDockTests {
+    @MainActor
+    func testSearchPipelineIncludesSnapshotDebounceAndResultApplication() async {
+        let prompts = (0..<10_000).map { index in
+            Prompt(title: "Prompt \(index)", category: "Coding", content: "Explain Swift testing for item \(index)", createdDate: Date(timeIntervalSince1970: Double(index)))
+        }
+        let tags = [PromptTag(name: "Development", promptIDs: prompts.map(\.id))]
+        let clock = ContinuousClock()
+        for limit: Int? in [nil, 12] {
+            let controller = PromptSearchController()
+            var durations: [Double] = []
+            for iteration in 0..<23 {
+                let start = clock.now
+                let input = PromptSearchInput(snapshots: PromptSearchService.snapshots(prompts, tags: tags, locale: Locale(identifier: "en")), query: iteration.isMultiple(of: 2) ? "Swift" : "Development", localeIdentifier: "en", limit: limit)
+                await controller.search(input)
+                let byID = Dictionary(uniqueKeysWithValues: prompts.map { ($0.id, $0) })
+                let result = controller.ids.compactMap { byID[$0] }
+                let elapsed = start.duration(to: clock.now).components
+                if iteration >= 3 { durations.append(Double(elapsed.seconds) * 1000 + Double(elapsed.attoseconds) / 1e15) }
+                XCTAssertEqual(result.count, limit ?? prompts.count)
+                XCTAssertEqual(controller.completedInput, input)
+            }
+            durations.sort()
+            print("PromptDock synthetic pipeline limit=\(limit.map(String.init) ?? "all") samples=20 P95=\(durations[18])ms; includes snapshot/debounce/mapping, excludes SwiftUI rendering.")
+        }
+    }
+
+    @MainActor
+    func testCancelledHundredThousandSearchCannotPublishResults() async {
+        let snapshots = (0..<100_000).map { index in
+            PromptSearchSnapshot(id: UUID(), title: "Prompt \(index)", category: "Coding", displayedCategory: "Coding", content: "Swift", isFavorite: false, updatedDate: .distantPast, tags: [])
+        }
+        let controller = PromptSearchController()
+        let input = PromptSearchInput(snapshots: snapshots, query: "Swift", localeIdentifier: "en", limit: 12)
+        let task = Task { await controller.search(input) }
+        task.cancel()
+        await task.value
+        XCTAssertNil(controller.completedInput)
+        XCTAssertTrue(controller.ids.isEmpty)
+        await controller.search(.init(snapshots: [], query: "Latest", localeIdentifier: "en"))
+        XCTAssertEqual(controller.completedInput?.query, "Latest")
+    }
+}
+
+extension PromptDockTests {
+    @MainActor
+    func testLegacyBackupFormatsRestoreIntoDiskLibrary() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let source = try DataService.makeModelContainer(isStoredInMemoryOnly: true)
+        let prompt = Prompt(title: "Legacy", category: "AI", content: "Keep {{name}}", createdDate: Date(timeIntervalSince1970: 1_700_000_000))
+        source.mainContext.insert(prompt)
+        source.mainContext.insert(TemplateVariableDefinition(promptID: prompt.id, name: "name", defaultValue: "World"))
+        try source.mainContext.save()
+        let backup = try BackupService.makeBackup(in: source.mainContext)
+        for version in [1, 2] {
+            var object = try XCTUnwrap(JSONSerialization.jsonObject(with: BackupService.encode(backup)) as? [String: Any])
+            object["formatVersion"] = version
+            object.removeValue(forKey: "trash")
+            if version == 1 {
+                for key in ["tags", "versions", "variableDefinitions", "smartCollections"] { object.removeValue(forKey: key) }
+            }
+            let decoded = try BackupService.decode(JSONSerialization.data(withJSONObject: object))
+            let destination = try DataService.makeModelContainer(storeURL: folder.appendingPathComponent("v\(version).store"))
+            _ = try BackupService.importBackup(decoded, mode: .replace, in: destination.mainContext, createsSafetyBackup: false)
+            let restored = try BackupService.makeBackup(in: ModelContext(destination))
+            XCTAssertEqual(restored.prompts, backup.prompts)
+            XCTAssertEqual(restored.variableDefinitions.count, version == 2 ? 1 : 0)
+            XCTAssertTrue(restored.trash.isEmpty)
+        }
     }
 }
