@@ -196,8 +196,8 @@ final class PromptSearchController: ObservableObject {
         ids = []
         completedInput = nil
         guard !input.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        do { try await Task.sleep(for: .milliseconds(120)) } catch { return }
-        guard !Task.isCancelled else { return }
+        do { try await Task.sleep(for: .milliseconds(40)) } catch { return }
+        guard !Task.isCancelled, token == generation else { return }
         let work = Task.detached(priority: .userInitiated) { PromptSearchService.search(input) }
         let result = await withTaskCancellationHandler(operation: { await work.value }, onCancel: { work.cancel() })
         guard !Task.isCancelled, token == generation else { return }

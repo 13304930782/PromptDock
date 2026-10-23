@@ -2577,7 +2577,12 @@ extension PromptDockTests {
                 XCTAssertEqual(controller.completedInput, input)
             }
             durations.sort()
-            print("PromptDock synthetic pipeline limit=\(limit.map(String.init) ?? "all") samples=20 P95=\(durations[18])ms; includes snapshot/debounce/mapping, excludes SwiftUI rendering.")
+            let report = "PromptDock synthetic pipeline limit=\(limit.map(String.init) ?? "all") samples=20 P95=\(durations[18])ms; includes snapshot/debounce/mapping, excludes SwiftUI rendering."
+            print(report)
+            let attachment = XCTAttachment(string: report)
+            attachment.name = "Synthetic search pipeline - \(limit.map(String.init) ?? "all")"
+            attachment.lifetime = .keepAlways
+            add(attachment)
         }
     }
 
