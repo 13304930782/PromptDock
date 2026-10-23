@@ -342,6 +342,7 @@ struct AIRewriteView: View {
                 }
                 Spacer()
                 Button(usesChinese ? "完成" : "Done") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
             }
 
             Picker(usesChinese ? "改写目标" : "Rewrite Goal", selection: $goal) {
@@ -393,6 +394,7 @@ struct AIRewriteView: View {
                 if candidate != nil {
                     GroupBox(usesChinese ? "编辑建议" : "Edit Suggestion") {
                         TextEditor(text: Binding(get: { candidate ?? "" }, set: { candidate = $0 }))
+                            .accessibilityLabel(usesChinese ? "编辑改写建议" : "Edit rewrite suggestion")
                     }
                 }
 
@@ -403,6 +405,7 @@ struct AIRewriteView: View {
                     LazyVStack(alignment: .leading) {
                         ForEach(RewriteDiffLine.compare(original: originalContent, candidate: candidate)) { line in
                             Text((line.kind == .added ? "+ " : line.kind == .removed ? "− " : "  ") + line.text)
+                                .accessibilityLabel((line.kind == .added ? (usesChinese ? "新增：" : "Added: ") : line.kind == .removed ? (usesChinese ? "删除：" : "Removed: ") : (usesChinese ? "未改变：" : "Unchanged: ")) + line.text)
                                 .foregroundStyle(line.kind == .removed ? Color.red : line.kind == .added ? Color.green : Color.primary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }

@@ -24,7 +24,10 @@ struct QuickSearchView: View {
     @State private var copiedPromptID: UUID?
     @State private var errorMessage: String?
     private var searchInput: PromptSearchInput {
-        PromptSearchInput(snapshots: PromptSearchService.snapshots(prompts, tags: tags, locale: locale), query: query, localeIdentifier: locale.identifier, limit: 12)
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return PromptSearchInput(snapshots: [], query: query, localeIdentifier: locale.identifier)
+        }
+        return PromptSearchInput(snapshots: PromptSearchService.snapshots(prompts, tags: tags, locale: locale), query: query, localeIdentifier: locale.identifier, limit: 12)
     }
     private var results: [Prompt] {
         if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
