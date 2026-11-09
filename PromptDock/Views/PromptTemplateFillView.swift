@@ -96,8 +96,8 @@ struct PromptTemplateFillView: View {
     }
 
     private var sheetContent: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
                 Label {
                     Text(usesChinese ? "填写变量" : "Fill Variables")
                 } icon: {
@@ -119,7 +119,9 @@ struct PromptTemplateFillView: View {
 
             validationMessage
 
-            HStack {
+            Divider()
+
+            HStack(spacing: 12) {
                 Spacer()
                 Button(usesChinese ? "取消" : "Cancel", action: onCancel)
                     .keyboardShortcut(.cancelAction)
@@ -133,12 +135,14 @@ struct PromptTemplateFillView: View {
                         Image(systemName: "doc.on.doc")
                     }
                 }
+                .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
             }
         }
         .padding(24)
         .frame(width: 600)
         .frame(minHeight: 440)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var compactContent: some View {
@@ -148,6 +152,7 @@ struct PromptTemplateFillView: View {
                     Image(systemName: "chevron.left")
                 }
                 .buttonStyle(.plain)
+                .frame(width: 32, height: 32)
                 .help(usesChinese ? "返回搜索结果" : "Back to Search Results")
                 .accessibilityLabel(
                     usesChinese ? "返回搜索结果" : "Back to Search Results"
@@ -184,6 +189,8 @@ struct PromptTemplateFillView: View {
 
             validationMessage
 
+            Divider()
+
             HStack {
                 Text(
                     usesChinese
@@ -204,6 +211,7 @@ struct PromptTemplateFillView: View {
                         Image(systemName: "doc.on.doc")
                     }
                 }
+                .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
             }
         }
@@ -213,7 +221,7 @@ struct PromptTemplateFillView: View {
 
     private var variableFields: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 12) {
+            LazyVStack(alignment: .leading, spacing: 16) {
                 ForEach(request.template.fields) { field in
                     if field.isRepeatable {
                         repeatableField(field)
@@ -233,7 +241,7 @@ struct PromptTemplateFillView: View {
     private func valueField(
         _ field: PromptTemplateVariable
     ) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(field.name)
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
@@ -262,7 +270,7 @@ struct PromptTemplateFillView: View {
     ) -> some View {
         let items = repeatableValues[field.name] ?? [""]
 
-        return VStack(alignment: .leading, spacing: 6) {
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text(field.name)
                     .font(.caption.weight(.medium))
@@ -366,9 +374,10 @@ struct PromptTemplateFillView: View {
                         maxWidth: .infinity,
                         alignment: .leading
                     )
-                    .padding(.vertical, 4)
+                    .padding(12)
             }
             .frame(minHeight: minHeight, maxHeight: maxHeight)
+            .background(Color(nsColor: .textBackgroundColor), in: .rect(cornerRadius: 10))
         } label: {
             Label {
                 Text(usesChinese ? "实时预览" : "Live Preview")

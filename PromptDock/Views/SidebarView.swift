@@ -70,6 +70,8 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        .font(.system(size: 13))
+        .environment(\.defaultMinListRowHeight, 34)
         .navigationTitle("PromptDock")
         .sheet(isPresented: $isCategoryEditorPresented) {
             CategoryEditorView(category: editingCategory) { name, icon in
@@ -105,6 +107,8 @@ struct SidebarView: View {
             Text(displayName(for: category))
         } icon: {
             CategoryIconView(category: category)
+                .frame(width: 20)
+                .foregroundStyle(.secondary)
         }
         .tag(PromptSection.category(category.name))
         .help(
@@ -137,6 +141,9 @@ struct SidebarView: View {
             Text(section.localizedTitle)
         } icon: {
             Image(systemName: section.systemImage)
+                .font(.system(size: 16))
+                .frame(width: 20)
+                .foregroundStyle(.secondary)
         }
             .tag(section)
     }

@@ -123,7 +123,9 @@ private struct ProfessionalSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .padding()
+        .scrollContentBackground(.hidden)
+        .padding(20)
+        .background(Color(nsColor: .windowBackgroundColor))
         .alert("Unable to Save", isPresented: Binding(
             get: { notice != nil },
             set: { if !$0 { notice = nil } }
@@ -210,7 +212,9 @@ private struct GeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .padding()
+        .scrollContentBackground(.hidden)
+        .padding(20)
+        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             isSynchronizingLoginState = true
             launchAtLogin = LoginItemService.isEnabled
@@ -305,7 +309,9 @@ private struct ShortcutSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .padding()
+        .scrollContentBackground(.hidden)
+        .padding(20)
+        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear { runtime.start() }
     }
 
@@ -392,7 +398,9 @@ private struct PrivacySettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .padding()
+        .scrollContentBackground(.hidden)
+        .padding(20)
+        .background(Color(nsColor: .windowBackgroundColor))
         .fileExporter(
             isPresented: $isExporting,
             document: exportDocument,
@@ -720,7 +728,9 @@ private struct AISettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .padding()
+        .scrollContentBackground(.hidden)
+        .padding(20)
+        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             loadAPIKey()
         }

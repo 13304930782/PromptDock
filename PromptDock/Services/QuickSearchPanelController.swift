@@ -21,7 +21,7 @@ final class MenuBarController: NSObject {
         self.modelContainer = modelContainer
         super.init()
         popover.behavior = .transient
-        popover.animates = true
+        popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
 
     func setVisible(_ isVisible: Bool) {
@@ -56,6 +56,7 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func togglePopover(_ sender: NSStatusBarButton) {
+        popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         if popover.isShown {
             popover.performClose(sender)
             return
@@ -68,6 +69,7 @@ final class MenuBarController: NSObject {
                 onClose: { [weak self] in
                     self?.popover.performClose(nil)
                 },
+                usesNativePopoverSurface: true,
                 onPreferredHeightChange: { [weak self] height in
                     self?.popover.contentSize = NSSize(
                         width: 410,
@@ -143,7 +145,11 @@ final class QuickSearchPanelController: NSObject, NSWindowDelegate {
             width: 410,
             height: height
         )
-        panel.setFrame(frame, display: true, animate: animated)
+        panel.setFrame(
+            frame,
+            display: true,
+            animate: animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        )
     }
 
     private func makePanelIfNeeded() -> NSPanel {

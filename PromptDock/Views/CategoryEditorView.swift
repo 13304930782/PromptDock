@@ -118,20 +118,27 @@ struct CategoryEditorView: View {
                 }
             }
             .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .background(Color(nsColor: .windowBackgroundColor))
             .navigationTitle(category == nil ? "New Category" : "Edit Category")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .keyboardShortcut(.cancelAction)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        onSave(name, iconDraft)
-                        dismiss()
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 0) {
+                    Divider()
+                    HStack(spacing: 12) {
+                        Spacer()
+                        Button("Cancel") { dismiss() }
+                            .keyboardShortcut(.cancelAction)
+                        Button("Save") {
+                            onSave(name, iconDraft)
+                            dismiss()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(!canSave)
                     }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(!canSave)
+                    .padding(20)
                 }
+                .background(Color(nsColor: .windowBackgroundColor))
             }
         }
         .frame(minWidth: 480, minHeight: 360)

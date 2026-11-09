@@ -3,6 +3,8 @@ import SwiftUI
 
 struct MainView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     @Query(sort: \Prompt.updatedDate, order: .reverse)
     private var prompts: [Prompt]
@@ -135,51 +137,17 @@ struct MainView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
-            SidebarView(
-                selection: $viewModel.selectedSection,
-                categories: categories,
-                onCreateCategory: createCategory,
-                onMoveCategories: moveCategories,
-                onRenameCategory: renameCategory,
-                onDeleteCategory: deleteCategory
-            )
-                .navigationSplitViewColumnWidth(
-                    min: 180,
-                    ideal: 220,
-                    max: 280
-                )
-        } content: {
-            PromptListView(
-                section: viewModel.selectedSection,
-                prompts: visiblePrompts,
-                selection: $viewModel.selectedPromptID,
-                searchText: $viewModel.searchText,
-                onCreate: { presentEditor(for: nil) },
-                onCopy: copy,
-                onEdit: { presentEditor(for: $0) },
-                onToggleFavorite: { toggleFavorite(for: $0) },
-                onDelete: { requestDeletion(of: $0) }
-            )
-            .navigationSplitViewColumnWidth(
-                min: 260,
-                ideal: 320,
-                max: 440
-            )
-        } detail: {
-            PromptDetailView(
-                prompt: selectedPrompt,
-                searchText: viewModel.searchText,
-                isCopied: copiedPromptID == viewModel.selectedPromptID,
-                isCopyShortcutGuidePresented: $isCopyShortcutGuidePresented,
-                hasLearnedCopyShortcut: hasLearnedCopyShortcut,
-                usesChinese: selectedLanguage.usesChinese,
-                onCopy: copy,
-                onEdit: { presentEditor(for: $0) },
-                onToggleFavorite: { toggleFavorite(for: $0) },
-                onDelete: { requestDeletion(of: $0) }
-            )
+        // Keep the search owner outside the conditional split-view hierarchy.
+        // A concrete container preserves its identity when the first query
+        // character replaces the unified empty canvas with search results.
+        VStack(spacing: 0) {
+            libraryNavigation
         }
+        .searchable(
+            text: $viewModel.searchText,
+            placement: .toolbar,
+            prompt: "Search Prompts"
+        )
         .toolbar {
             if viewModel.hasSearchQuery {
                 ToolbarItemGroup(placement: .secondaryAction) {
@@ -255,11 +223,11 @@ struct MainView: View {
                 ShortcutSuccessBanner(message: shortcutSuccessMessage)
                     .padding(.top, 12)
                     .transition(
-                        .move(edge: .top).combined(with: .opacity)
+                        reduceMotion ? .identity : .opacity
                     )
             }
         }
-        .animation(.snappy, value: shortcutSuccessMessage)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: shortcutSuccessMessage)
         .sheet(item: $editorRequest) { request in
             let editorPrompt = request.promptID.flatMap { promptID in
                 prompts.first { $0.id == promptID }
@@ -367,7 +335,116 @@ struct MainView: View {
                 presentSearchShortcutGuide()
             }
         }
-        .frame(minWidth: 760, minHeight: 520)
+        .frame(minWidth: 820, minHeight: 520)
+    }
+
+    @ViewBuilder
+    private var libraryNavigation: some View {
+        if prompts.isEmpty && !viewModel.hasSearchQuery {
+            NavigationSplitView {
+            SidebarView(
+                selection: $viewModel.selectedSection,
+                categories: categories,
+                onCreateCategory: createCategory,
+                onMoveCategories: moveCategories,
+                onRenameCategory: renameCategory,
+                onDeleteCategory: deleteCategory
+            )
+                .navigationSplitViewColumnWidth(
+                    min: 180,
+                    ideal: 208,
+                    max: 260
+                )
+            } detail: {
+                ContentUnavailableView {
+                    VStack(spacing: 12) {
+                        Image(systemName: "square.stack")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+                        Text("No Prompts")
+                            .font(.system(size: 20, weight: .semibold))
+                    }
+                } description: {
+                    VStack(spacing: 20) {
+                        Text("Create your first prompt to start building your AI workflow library.")
+                            .font(.system(size: 14))
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 400)
+                        emptyLibraryCreateButton
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(nsColor: .textBackgroundColor))
+            }
+        } else {
+        NavigationSplitView {
+            SidebarView(
+                selection: $viewModel.selectedSection,
+                categories: categories,
+                onCreateCategory: createCategory,
+                onMoveCategories: moveCategories,
+                onRenameCategory: renameCategory,
+                onDeleteCategory: deleteCategory
+            )
+                .navigationSplitViewColumnWidth(
+                    min: 180,
+                    ideal: 208,
+                    max: 260
+                )
+        } content: {
+            PromptListView(
+                section: viewModel.selectedSection,
+                prompts: visiblePrompts,
+                selection: $viewModel.selectedPromptID,
+                searchText: $viewModel.searchText,
+                onCreate: { presentEditor(for: nil) },
+                onCopy: copy,
+                onEdit: { presentEditor(for: $0) },
+                onToggleFavorite: { toggleFavorite(for: $0) },
+                onDelete: { requestDeletion(of: $0) }
+            )
+            .navigationSplitViewColumnWidth(
+                min: 260,
+                ideal: 290,
+                max: 400
+            )
+        } detail: {
+            PromptDetailView(
+                prompt: selectedPrompt,
+                searchText: viewModel.searchText,
+                isCopied: copiedPromptID == viewModel.selectedPromptID,
+                isCopyShortcutGuidePresented: $isCopyShortcutGuidePresented,
+                hasLearnedCopyShortcut: hasLearnedCopyShortcut,
+                usesChinese: selectedLanguage.usesChinese,
+                onCopy: copy,
+                onEdit: { presentEditor(for: $0) },
+                onToggleFavorite: { toggleFavorite(for: $0) },
+                onDelete: { requestDeletion(of: $0) }
+            )
+        }
+        }
+    }
+
+    @ViewBuilder
+    private var emptyLibraryCreateButton: some View {
+        if #available(macOS 26.0, *), !reduceTransparency {
+            emptyLibraryCreateControl
+                .buttonStyle(.glassProminent)
+                .tint(.blue)
+        } else {
+            emptyLibraryCreateControl
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
+        }
+    }
+
+    private var emptyLibraryCreateControl: some View {
+        Button { presentEditor(for: nil) } label: {
+            Text("New Prompt")
+                .padding(.horizontal, 16)
+                .frame(minHeight: 36)
+        }
     }
 
     private var deletionIsPresented: Binding<Bool> {

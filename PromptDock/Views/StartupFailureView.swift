@@ -13,14 +13,14 @@ struct StartupFailureView: View {
         ContentUnavailableView {
             Label(
                 "PromptDock Could Not Open Its Library",
-                systemImage: "externaldrive.badge.exclamationmark"
+                systemImage: "exclamationmark.triangle"
             )
         } description: {
             Text(
                 "Your existing data was not changed. Retry, or copy the details if you need help."
             )
         } actions: {
-            VStack(spacing: 10) {
+            VStack(spacing: 16) {
                 Button("Retry", action: onRetry)
                     .buttonStyle(.borderedProminent)
 
@@ -28,8 +28,10 @@ struct StartupFailureView: View {
                     Button("Copy Error Details", action: copyDetails)
                     Button("Show Data Folder in Finder", action: revealDataFolder)
                         .disabled(dataDirectoryURL == nil)
-                    Button("Quit PromptDock") { NSApp.terminate(nil) }
                 }
+
+                Button("Quit PromptDock") { NSApp.terminate(nil) }
+                    .buttonStyle(.link)
 
                 Text(failure.message)
                     .font(.caption)

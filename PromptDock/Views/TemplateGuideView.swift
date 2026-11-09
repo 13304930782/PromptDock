@@ -113,6 +113,7 @@ enum TemplateGuideContent {
 
 struct TemplateGuideView: View {
     @Environment(\.locale) private var locale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openSettings) private var openSettings
 
     @AppStorage(AppPreferences.aiTemplateAssistantEnabled)
@@ -147,8 +148,8 @@ struct TemplateGuideView: View {
                 workflowSection
                 aiSection
             }
-            .padding(28)
-            .frame(maxWidth: 760, alignment: .leading)
+            .padding(24)
+            .frame(maxWidth: 720, alignment: .leading)
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .navigationTitle(
@@ -510,10 +511,10 @@ struct TemplateGuideView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .padding(14)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(Color(nsColor: .controlBackgroundColor))
         )
     }
@@ -601,14 +602,14 @@ struct TemplateGuideView: View {
 
     private func showCopyFeedback(_ didCopy: Bool) {
         feedbackTask?.cancel()
-        withAnimation(.easeInOut(duration: 0.15)) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.15)) {
             copyFeedback = didCopy ? .success : .failure
         }
 
         feedbackTask = Task { @MainActor in
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.15)) {
                 copyFeedback = nil
             }
         }
@@ -628,7 +629,7 @@ private enum CopyFeedback {
 
     var color: Color {
         switch self {
-        case .success: .green
+        case .success: .primary
         case .failure: .red
         }
     }

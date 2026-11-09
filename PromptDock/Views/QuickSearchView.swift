@@ -3,6 +3,11 @@ import SwiftUI
 
 struct QuickSearchView: View {
     @Environment(\.locale) private var locale
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    private let usesNativePopoverSurface: Bool
 
     @Query(sort: \Prompt.updatedDate, order: .reverse)
     private var prompts: [Prompt]
@@ -22,9 +27,11 @@ struct QuickSearchView: View {
 
     init(
         onClose: @escaping () -> Void,
+        usesNativePopoverSurface: Bool = false,
         onPreferredHeightChange: @escaping (CGFloat) -> Void = { _ in }
     ) {
         self.onClose = onClose
+        self.usesNativePopoverSurface = usesNativePopoverSurface
         self.onPreferredHeightChange = onPreferredHeightChange
     }
 
@@ -93,8 +100,11 @@ struct QuickSearchView: View {
                             .accessibilityLabel("Clear Search")
                         }
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 13)
+                    .padding(.horizontal, 12)
+                    .frame(height: 36)
+                    .background(Color(nsColor: .controlBackgroundColor), in: .rect(cornerRadius: 8))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
 
                     if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Divider()
@@ -132,14 +142,14 @@ struct QuickSearchView: View {
             }
         }
         .frame(width: 410)
-        .background(
-            .regularMaterial,
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(.separator.opacity(0.7), lineWidth: 0.5)
+        .background {
+            if reduceTransparency {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(nsColor: .windowBackgroundColor))
+            } else if !usesNativePopoverSurface {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(.regularMaterial)
+            }
         }
         .onAppear {
             query = ""
@@ -216,13 +226,13 @@ struct QuickSearchView: View {
                 ? "checkmark.circle.fill"
                 : (prompt.isFavorite ? "star.fill" : "text.bubble"))
                 .foregroundStyle(
-                    copiedPromptID == prompt.id ? Color.green : Color.accentColor
+                    copiedPromptID == prompt.id ? Color.primary : Color.secondary
                 )
                 .frame(width: 20)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(prompt.title)
-                    .font(.body.weight(.semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                 Text(
                     BuiltInCategoryPresentation.displayName(
@@ -240,7 +250,7 @@ struct QuickSearchView: View {
                     )
                 )
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
             }
 
@@ -266,7 +276,7 @@ struct QuickSearchView: View {
             if selectedPromptID == prompt.id {
                 Text("↩")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
         }
         .contentShape(.rect)
@@ -274,10 +284,18 @@ struct QuickSearchView: View {
         .padding(.vertical, 8)
         .background(
             selectedPromptID == prompt.id
-                ? Color.accentColor.opacity(0.14)
+                ? (colorScheme == .dark
+                    ? Color(red: 41 / 255, green: 62 / 255, blue: 96 / 255)
+                    : Color(red: 226 / 255, green: 236 / 255, blue: 1))
                 : Color.clear,
-            in: .rect(cornerRadius: 7)
+            in: .rect(cornerRadius: 10)
         )
+        .overlay {
+            if selectedPromptID == prompt.id, contrast == .increased {
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(Color.blue, lineWidth: 1)
+            }
+        }
     }
 
     private func moveSelection(offset: Int) {

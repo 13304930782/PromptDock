@@ -85,11 +85,6 @@ struct PromptListView: View {
             }
         }
         .navigationTitle(Text(section.localizedTitle))
-        .searchable(
-            text: $searchText,
-            placement: .toolbar,
-            prompt: "Search Prompts"
-        )
     }
 
     private var emptyStateTitle: LocalizedStringKey {
@@ -131,14 +126,14 @@ private struct PromptRowView: View {
     let searchText: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 SearchHighlightedText(
                     text: prompt.title,
                     query: searchText
                 )
-                    .font(.headline)
-                    .lineLimit(1)
+                    .font(.system(size: 14, weight: .semibold))
+                    .lineLimit(2)
 
                 Spacer(minLength: 8)
 
@@ -148,6 +143,11 @@ private struct PromptRowView: View {
                         .accessibilityLabel("Favorite")
                 }
             }
+
+            Text(prompt.content.split(whereSeparator: \.isWhitespace).joined(separator: " "))
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
 
             HStack {
                 SearchHighlightedText(
@@ -166,10 +166,11 @@ private struct PromptRowView: View {
                         "Updated \(prompt.updatedDate.formatted(date: .abbreviated, time: .shortened))"
                     )
             }
-            .font(.caption)
+            .font(.system(size: 12))
             .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 12)
+        .accessibilityElement(children: .combine)
     }
 }
 

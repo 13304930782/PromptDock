@@ -72,7 +72,7 @@ struct EditorView: View {
 
                 Section("Content") {
                     TextEditor(text: $content)
-                        .font(.body)
+                        .font(.system(size: 14))
                         .frame(minHeight: 220)
                         .accessibilityLabel("Prompt Content")
 
@@ -122,25 +122,29 @@ struct EditorView: View {
                 }
             }
             .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .background(Color(nsColor: .windowBackgroundColor))
             .navigationTitle(prompt == nil ? "New Prompt" : "Edit Prompt")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 0) {
+                    Divider()
+                    HStack(spacing: 12) {
+                        Spacer()
+                        Button("Cancel") { dismiss() }
+                            .keyboardShortcut(.cancelAction)
+                        Button("Save") {
+                            save()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(!draft.isValid)
                     }
-                    .keyboardShortcut(.cancelAction)
+                    .padding(20)
                 }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        save()
-                    }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(!draft.isValid)
-                }
+                .background(Color(nsColor: .windowBackgroundColor))
             }
         }
-        .frame(minWidth: 520, minHeight: 480)
+        .frame(minWidth: 520, idealWidth: 580, minHeight: 480)
         .alert(
             "Unable to Save Prompt",
             isPresented: errorIsPresented

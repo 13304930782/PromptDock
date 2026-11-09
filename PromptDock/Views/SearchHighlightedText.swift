@@ -1,18 +1,20 @@
 import SwiftUI
 
 struct SearchHighlightedText: View {
+    @Environment(\.colorSchemeContrast) private var contrast
     let text: String
     let query: String
 
     var body: some View {
-        Text(SearchHighlighter.attributedString(for: text, query: query))
+        Text(SearchHighlighter.attributedString(for: text, query: query, increasedContrast: contrast == .increased))
     }
 }
 
 enum SearchHighlighter {
     static func attributedString(
         for text: String,
-        query: String
+        query: String,
+        increasedContrast: Bool = false
     ) -> AttributedString {
         var attributedText = AttributedString(text)
 
@@ -28,7 +30,11 @@ enum SearchHighlighter {
             }
 
             attributedText[lowerBound..<upperBound].backgroundColor =
-                Color.accentColor.opacity(0.28)
+                Color.blue.opacity(0.22)
+            attributedText[lowerBound..<upperBound].foregroundColor = .primary
+            if increasedContrast {
+                attributedText[lowerBound..<upperBound].underlineStyle = .single
+            }
         }
 
         return attributedText
