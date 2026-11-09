@@ -428,6 +428,7 @@ struct MainView: View {
 
     @ViewBuilder
     private var emptyLibraryCreateButton: some View {
+        #if compiler(>=6.2)
         if #available(macOS 26.0, *), !reduceTransparency {
             emptyLibraryCreateControl
                 .buttonStyle(.glassProminent)
@@ -437,6 +438,11 @@ struct MainView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
         }
+        #else
+        emptyLibraryCreateControl
+            .buttonStyle(.borderedProminent)
+            .tint(.blue)
+        #endif
     }
 
     private var emptyLibraryCreateControl: some View {
